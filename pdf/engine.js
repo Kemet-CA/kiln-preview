@@ -8,6 +8,7 @@
    original bytes — so quality never degrades through an edit session.
    ============================================================ */
 import * as pdfjs from "./vendor/pdf.mjs";
+const { TextLayer, setLayerDimensions } = pdfjs;
 import { PDFDocument, StandardFonts, degrees, rgb } from "./vendor/pdf-lib.mjs";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdf.worker.mjs", import.meta.url).href;
@@ -224,7 +225,8 @@ function buildViewer() {
     const el = document.createElement("div");
     el.className = "pg" + (Doc.sel.has(i) ? " sel" : "");
     el.dataset.i = i;
-    el.innerHTML = `<canvas></canvas><div class="pgov"></div><div class="pglab num">${i + 1}</div>`;
+    el.innerHTML = `<canvas></canvas><div class="hitl"></div><div class="textLayer"></div>` +
+      `<div class="pgov"></div><div class="pglab num">${i + 1}</div>`;
     host.appendChild(el);
   });
   sizePages();
@@ -292,11 +294,33 @@ async function renderViewerPage(i) {
     if (token !== renderToken) return;
     c.dataset.key = key;
     drawOverlay(el, i, vp);
+    await buildTextLayer(el, page, vp, token);
+    paintHits(i);
   } catch (e) {
     if (e?.name !== "RenderingCancelledException") console.warn("render", i, e);
   } finally {
     if (pending.get(i) === key) pending.delete(i);
   }
+}
+
+/* Real, selectable text sits over the rendered page: pdf.js positions one
+   transparent span per text run, so you can select and copy exactly what the
+   document says. Built by the library, not by hand — glyph transforms, rotated
+   runs and right-to-left text are its problem, not ours. */
+async function buildTextLayer(el, page, vp, token) {
+  const host = el.querySelector(".textLayer");
+  if (!host) return;
+  host.__layer?.cancel();
+  host.textContent = "";
+  // pdf.js sizes the layer from these custom properties; the viewer sets them too
+  host.style.setProperty("--total-scale-factor", String(viewerScale()));
+  host.style.setProperty("--scale-round-x", "1px");
+  host.style.setProperty("--scale-round-y", "1px");
+  setLayerDimensions(host, vp);
+  const layer = new TextLayer({ textContentSource: page.streamTextContent(), container: host, viewport: vp });
+  host.__layer = layer;
+  await layer.render();
+  if (token !== renderToken) { layer.cancel(); host.textContent = ""; }
 }
 
 /* watermark + page numbers are previewed as an overlay and only written
@@ -420,6 +444,11 @@ function setCurrent(n, scroll) {
   if (scroll) $("pages").children[Doc.cur - 1]?.scrollIntoView({ behavior: "smooth", block: "start" });
   [...$("thumbs").children].forEach((el, i) => el.classList.toggle("cur", Doc.cur === i + 1));
   if (scroll) $("thumbs").children[Doc.cur - 1]?.scrollIntoView({ block: "nearest" });
+  // patch the two rows that follow the current page, rather than rebuilding the
+  // panel on every scroll tick and stealing focus from the metadata fields
+  const cur = $("kvCur"), rot = $("kvRot"), p = Doc.pages[Doc.cur - 1];
+  if (cur) cur.textContent = Doc.open ? `${Doc.cur} of ${Doc.pages.length}` : "—";
+  if (rot) rot.textContent = p ? p.rot + "°" : "—";
   syncStatus();
 }
 
@@ -625,10 +654,10 @@ async function textOf(i) {
   return v;
 }
 
-let hits = [], hitI = -1;
+let hits = [], hitI = -1, hitsByPage = new Map();
 async function runSearch(q) {
-  hits = []; hitI = -1;
-  if (!Doc.open || !q || q.length < 2) { renderHits(q); return; }
+  hits = []; hitI = -1; hitsByPage = new Map();
+  if (!Doc.open || !q || q.length < 2) { renderHits(q); repaintHits(); return; }
   status("Searching…");
   const needle = q.toLowerCase();
   for (let i = 0; i < Doc.pages.length; i++) {
@@ -645,8 +674,13 @@ async function runSearch(q) {
       at = hay.indexOf(needle, at + needle.length);
     }
   }
+  hits.forEach((h, k) => {
+    if (!hitsByPage.has(h.page)) hitsByPage.set(h.page, []);
+    hitsByPage.get(h.page).push({ ...h, k });
+  });
   status("Ready");
   renderHits(q);
+  repaintHits();
   if (hits.length) gotoHit(0);
 }
 /* text-space rectangle for a substring, in unscaled page units */
@@ -669,26 +703,34 @@ function gotoHit(k) {
   hitI = (k + hits.length) % hits.length;
   const h = hits[hitI];
   setCurrent(h.page + 1, true);
-  showHitMark(h);
+  markCurrentHit();
   [...$("pSearch").querySelectorAll(".hit")].forEach((b, i) => b.classList.toggle("on", i === hitI));
   $("searchCount").textContent = `${hitI + 1}/${hits.length}`;
   $("pSearch").querySelector(`.hit[data-h="${hitI}"]`)?.scrollIntoView({ block: "nearest" });
+  document.querySelector(`.hitmark[data-k="${hitI}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
-function showHitMark(h) {
-  document.querySelectorAll(".hitmark").forEach(m => m.remove());
-  const el = $("pages").children[h.page];
-  if (!el || !h.box) return;
+const markCurrentHit = () =>
+  document.querySelectorAll(".hitmark").forEach(m => m.classList.toggle("on", +m.dataset.k === hitI));
+
+/* Every match stays highlighted while the search is live — the box comes from
+   the text run's own transform, so it lands on the glyphs at any zoom. */
+async function paintHits(i) {
+  const el = $("pages").children[i], list = hitsByPage.get(i);
+  const host = el?.querySelector(".hitl");
+  if (!host) return;
+  host.textContent = "";
+  if (!list?.length) return;
   const scale = viewerScale();
-  viewportFor(Doc.pages[h.page], scale).then(({ vp }) => {
+  const { vp } = await viewportFor(Doc.pages[i], scale);
+  host.style.width = vp.width + "px";
+  host.style.height = vp.height + "px";
+  host.innerHTML = list.filter(h => h.box).map(h => {
     const [x, y] = vp.convertToViewportPoint(h.box.x, h.box.y);
-    const m = document.createElement("div");
-    m.className = "hitmark";
-    m.style.cssText = `left:${x}px;top:${y - h.box.h * scale}px;width:${Math.max(6, h.box.w * scale)}px;height:${h.box.h * scale * 1.25}px`;
-    el.appendChild(m);
-    setTimeout(() => m.classList.add("fade"), 1400);
-    setTimeout(() => m.remove(), 2600);
-  });
+    return `<div class="hitmark${h.k === hitI ? " on" : ""}" data-k="${h.k}"
+      style="left:${x}px;top:${y - h.box.h * scale}px;width:${Math.max(6, h.box.w * scale)}px;height:${h.box.h * scale * 1.25}px"></div>`;
+  }).join("");
 }
+const repaintHits = () => Doc.pages.forEach((_, i) => paintHits(i));
 
 /* ---------------- collapsible panels ----------------
    Every side panel is an accordion. What is open, and whether a whole pane is
@@ -756,11 +798,12 @@ function renderProps() {
     ["Size", Doc.open ? fmtB(Doc.size) : "—"],
     ["PDF version", Doc.ver || "—"],
     ["Sources", Doc.sources.length || "—"],
-    ["Current page", Doc.open ? `${Doc.cur} of ${Doc.pages.length}` : "—"],
-    ["Rotation", p ? p.rot + "°" : "—"],
+    ["Current page", Doc.open ? `${Doc.cur} of ${Doc.pages.length}` : "—", "kvCur"],
+    ["Rotation", p ? p.rot + "°" : "—", "kvRot"],
   ];
   $("pInfo").innerHTML =
-    sec("info", "Document", rows.map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("")) +
+    sec("info", "Document", rows.map(([k, v, id]) =>
+      `<div class="kv"><span>${k}</span><b${id ? ` id="${id}"` : ""}>${esc(v)}</b></div>`).join("")) +
     sec("meta", "Metadata — written on export",
       ["title", "author", "subject", "keywords"].map(f =>
         `<label class="fld"><span>${f[0].toUpperCase() + f.slice(1)}</span>

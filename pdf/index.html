@@ -130,7 +130,23 @@ body.foldL .split{display:none}
 .pg{position:relative;background:#fff;border-radius:2px;box-shadow:0 18px 40px -22px rgba(0,0,0,.9),0 0 0 1px rgba(0,0,0,.18)}
 .pg canvas{display:block;border-radius:2px}
 .pg.sel{outline:2px solid var(--ember);outline-offset:3px}
-.pgov{position:absolute;left:0;top:0;pointer-events:none;overflow:hidden}
+/* selectable text — the rule subset pdf.js's TextLayer needs
+   (adapted from pdfjs-dist/web/pdf_viewer.css) */
+.textLayer{position:absolute;inset:0;overflow:clip;line-height:1;text-align:initial;z-index:2;
+  text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;caret-color:CanvasText;
+  --min-font-size:1;--text-scale-factor:calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv:calc(1 / var(--min-font-size))}
+.textLayer :is(span,br){color:transparent;position:absolute;white-space:pre;cursor:text;
+  transform-origin:0% 0%;user-select:text;-webkit-user-select:text}
+.textLayer>:not(.markedContent),.textLayer .markedContent span:not(.markedContent){
+  z-index:1;--font-height:0;--scale-x:1;--rotate:0deg;
+  font-size:calc(var(--text-scale-factor) * var(--font-height));
+  transform:rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv))}
+.textLayer .markedContent{display:contents}
+.textLayer span[role="img"]{user-select:none;cursor:default}
+.textLayer ::selection{background:color-mix(in srgb,var(--ember) 40%,transparent)}
+.hitl{position:absolute;left:0;top:0;pointer-events:none;z-index:1;overflow:hidden}
+.pgov{position:absolute;left:0;top:0;pointer-events:none;overflow:hidden;z-index:3}
 .pgov .wm{position:absolute;left:50%;top:50%;font-weight:800;font-family:Helvetica,var(--sans);
   white-space:nowrap;transform-origin:50% 50%}
 .pgov .pn{position:absolute;color:#59534f;font-family:Helvetica,var(--sans)}
@@ -140,9 +156,9 @@ body.foldL .split{display:none}
 .pgov .pn.top-center{top:22px;left:50%;transform:translateX(-50%)}
 .pgov .pn.top-right{top:22px;right:40px}
 .pglab{position:absolute;left:-2px;top:-20px;font-family:var(--mono);font-size:10px;color:var(--t4)}
-.hitmark{position:absolute;background:color-mix(in srgb,var(--hot) 55%,transparent);
-  border-radius:2px;pointer-events:none;transition:opacity .8s;mix-blend-mode:multiply}
-.hitmark.fade{opacity:0}
+.hitmark{position:absolute;background:color-mix(in srgb,var(--hot) 45%,transparent);
+  border-radius:2px;pointer-events:none;mix-blend-mode:multiply;transition:background .18s}
+.hitmark.on{background:color-mix(in srgb,var(--ember) 65%,transparent)}
 .dz{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(500px,84%);
   border:1.5px dashed var(--line2);border-radius:14px;padding:40px 26px;text-align:center;
   cursor:pointer;background:var(--s1);z-index:10}
@@ -206,7 +222,7 @@ body.foldL .split{display:none}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="228a68e-0916">
+<meta name="kiln-build" content="fc24e53-0926">
 </head>
 <body>
 <div id="app">
