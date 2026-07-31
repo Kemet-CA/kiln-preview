@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiln — Video Editor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E2622A'/%3E%3Crect x='9' y='9' width='14' height='14' rx='3' fill='%230B0A09'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);font-size:13px;
+  line-height:1.5;letter-spacing:-.008em;-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none;
+  --pool:224px;--insp:288px;--tlh:290px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left;padding:0}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ember);outline-offset:1px;border-radius:4px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--scrl);border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+.num{font-variant-numeric:tabular-nums}
+
+#app{display:grid;height:100vh;height:100dvh;
+  grid-template-rows:34px 36px minmax(0,1fr) var(--tlh) 24px;
+  grid-template-columns:var(--pool) minmax(0,1fr) var(--insp);
+  grid-template-areas:"menu menu menu" "opt opt opt" "pool stage insp" "tl tl tl" "status status status"}
+
+/* ---------- menu bar ---------- */
+.menubar{grid-area:menu;display:flex;align-items:center;gap:2px;padding:0 8px;
+  border-bottom:1px solid var(--line);background:var(--s1)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:640;letter-spacing:-.03em;font-size:13.5px;margin-right:8px}
+.mark{width:18px;height:18px;border-radius:5px;position:relative;flex:none;
+  background:linear-gradient(150deg,var(--hot),var(--ember) 45%,var(--cherry));
+  box-shadow:0 0 12px color-mix(in srgb,var(--ember) 40%,transparent),inset 0 1px 0 rgba(255,255,255,.35)}
+.mark::after{content:"";position:absolute;inset:5px 5px 0;border-radius:4px 4px 0 0;background:rgba(11,10,9,.55)}
+.menu{position:relative}
+.menu-t{padding:4px 9px;border-radius:5px;font-size:12.5px;color:var(--t2)}
+.menu-t:hover,.menu.open .menu-t{background:var(--hov2);color:var(--text)}
+.menu-d{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:240px;z-index:90;padding:5px;
+  border:var(--bw) solid var(--line2);border-radius:9px;background:var(--popbg);
+  backdrop-filter:blur(20px);box-shadow:var(--popshadow)}
+.menu.open>.menu-d{display:block;animation:pop .12s var(--ez)}
+@keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.mi{width:100%;display:flex;align-items:center;gap:10px;padding:5.5px 9px;border-radius:6px;font-size:12.5px;color:var(--t2)}
+.mi:hover{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--text)}
+.mi .sc{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t4)}
+.msep{height:1px;background:var(--line);margin:4px 6px}
+.menubar-r{margin-left:auto;display:flex;align-items:center;gap:6px}
+.projname{background:none;border:0;color:var(--t2);font-size:12.5px;width:170px;padding:3px 6px;border-radius:5px}
+.projname:hover,.projname:focus{background:var(--s2);color:var(--text);outline:0}
+
+/* ---------- toolbar ---------- */
+.optbar{grid-area:opt;display:flex;align-items:center;gap:5px;padding:0 10px;
+  border-bottom:1px solid var(--line);background:var(--s1);overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.optbar::-webkit-scrollbar{display:none}
+.tb{height:24px;min-width:26px;padding:0 7px;border-radius:6px;display:grid;place-items:center;color:var(--t2);flex:none}
+.tb:hover{background:var(--hov2);color:var(--text)}
+.tb.on{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--ember);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ember) 30%,transparent)}
+.tb svg{width:14px;height:14px}
+.tb.txt{font-size:11.5px}
+.obsep{width:1px;height:17px;background:var(--line);flex:none;margin:0 3px}
+.tcode{font-family:var(--mono);font-size:11.5px;color:var(--t2);padding:0 6px;min-width:118px;text-align:center}
+.tcode b{color:var(--text)}
+.sel{padding:3.5px 7px;border-radius:6px;border:var(--bw) solid var(--line);background:var(--s2);
+  font-size:11.5px;color:var(--text);outline:0;box-shadow:var(--hs)}
+.optbar-r{margin-left:auto;display:flex;align-items:center;gap:7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:5px 12px;border-radius:6px;
+  font-size:12px;font-weight:550;border:1px solid transparent;cursor:pointer;flex:none}
+.btn-p{background:var(--btnp-bg);color:var(--btnp-fg);border:var(--bw) solid transparent;box-shadow:var(--btnp-sh)}
+.btn-p:hover{filter:brightness(1.07)}
+.btn-g{border:var(--bw) solid var(--line);color:var(--t2);box-shadow:var(--hs)}
+.btn-g:hover{border-color:var(--line2);color:var(--text);background:var(--hov)}
+:root[data-theme="neo"] .btn-p{border-color:#141414}
+
+/* ---------- media pool ---------- */
+.pool{grid-area:pool;background:var(--s1);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.phead{display:flex;align-items:center;gap:6px;padding:7px 10px;flex:none;border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);background:var(--s2)}
+.phead .n{margin-left:auto;color:var(--t4)}
+.plist{flex:1;min-height:0;overflow-y:auto;padding:7px}
+.mitem{display:flex;gap:8px;align-items:center;padding:5px;border-radius:7px;cursor:grab;margin-bottom:4px}
+.mitem:hover{background:var(--hov)}
+.mitem.sel{background:color-mix(in srgb,var(--ember) 14%,transparent)}
+.mth{width:52px;height:32px;border-radius:4px;background:#000 center/cover no-repeat;flex:none;
+  border:var(--bw) solid var(--line2);display:grid;place-items:center;color:var(--t3);font-size:14px}
+.mmeta{min-width:0}
+.mname{font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msub{font-family:var(--mono);font-size:9.5px;color:var(--t4)}
+.pfoot{flex:none;padding:8px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:5px}
+
+/* ---------- preview ---------- */
+.stage{grid-area:stage;position:relative;overflow:hidden;display:flex;flex-direction:column;
+  background:radial-gradient(70% 60% at 50% 0%,color-mix(in srgb,var(--ember) 5%,transparent),transparent 70%),var(--stagebg)}
+.vwrap{flex:1;min-height:0;display:grid;place-items:center;padding:16px}
+#preview{max-width:100%;max-height:100%;background:#000;border-radius:3px;
+  box-shadow:0 20px 50px -24px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.07)}
+.transport{flex:none;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 0 12px}
+.tbig{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--btnp-fg);
+  background:var(--btnp-bg);box-shadow:var(--btnp-sh)}
+.tbig svg{width:15px;height:15px}
+.dz{position:absolute;inset:0;display:grid;place-items:center;background:var(--stagebg);z-index:6}
+.dz[hidden]{display:none}
+.dzi{width:min(520px,86%);border:1.5px dashed var(--line2);border-radius:14px;padding:38px 26px;text-align:center;background:var(--s1)}
+.dz.over .dzi{border-color:var(--ember)}
+.dzi h3{margin:0;font-size:15px;letter-spacing:-.02em}
+.dzi p{margin:7px 0 0;color:var(--t3);font-size:12.5px;line-height:1.6}
+.dzi .row{margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+
+/* ---------- inspector ---------- */
+.insp{grid-area:insp;background:var(--s1);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.itabs{display:flex;flex:none;border-bottom:1px solid var(--line);background:var(--s2);overflow-x:auto;scrollbar-width:none}
+.itabs::-webkit-scrollbar{display:none}
+.itab{padding:6px 9px;font-size:11.5px;color:var(--t3);white-space:nowrap}
+.itab.on{color:var(--text);background:var(--s1);box-shadow:inset 0 -2px 0 var(--ember)}
+.ibody{flex:1;min-height:0;overflow-y:auto;display:none;padding:8px}
+.ibody.on{display:block}
+.fld{display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:11.5px;color:var(--t3)}
+.fld>span{flex:none;width:78px}
+.fld input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:var(--line2);outline:0;cursor:pointer}
+.fld input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+  background:var(--text);box-shadow:0 0 0 3px var(--s1)}
+.fld b{font-family:var(--mono);font-size:10.5px;color:var(--t2);width:46px;text-align:right;flex:none}
+.fld input[type=text],.fld textarea,.fld select{flex:1;min-width:0;padding:4px 7px;border-radius:6px;
+  border:var(--bw) solid var(--line);background:var(--s2);color:var(--text);font-size:11.5px;outline:0}
+.fld textarea{resize:vertical;min-height:52px;font-family:inherit}
+.fld input[type=color]{width:30px;height:22px;padding:0;border:var(--bw) solid var(--line2);border-radius:5px;background:none}
+.kbtn{width:20px;height:20px;border-radius:5px;display:grid;place-items:center;color:var(--t4);flex:none;font-size:11px}
+.kbtn:hover{color:var(--ember);background:var(--hov2)}
+.kbtn.on{color:var(--ember);background:color-mix(in srgb,var(--ember) 18%,transparent)}
+.ihead{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);
+  padding:12px 6px 5px;border-bottom:1px solid var(--line);margin-bottom:5px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;padding:4px 6px}
+.chip{padding:4px 9px;border-radius:999px;border:var(--bw) solid var(--line);font-size:11px;color:var(--t2)}
+.chip:hover{border-color:var(--ember);color:var(--text)}
+.chip.on{background:color-mix(in srgb,var(--ember) 16%,transparent);border-color:var(--ember);color:var(--ember)}
+.rowbtn{width:100%;padding:7px;margin-top:6px;border-radius:6px;font-size:11.5px;color:var(--t2);
+  border:var(--bw) solid var(--line);text-align:center;background:var(--s2)}
+.rowbtn:hover{color:var(--ember);border-color:var(--ember)}
+.empty{padding:26px 14px;text-align:center;color:var(--t4);font-size:12px;line-height:1.6}
+.note{padding:6px;font-size:11px;color:var(--t4);line-height:1.6}
+
+/* ---------- timeline ---------- */
+.tl{grid-area:tl;background:var(--s1);border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.tlbar{flex:none;display:flex;align-items:center;gap:5px;padding:5px 9px;border-bottom:1px solid var(--line);background:var(--s2)}
+.tlnames{width:96px;flex:none}
+.tlmain{flex:1;min-height:0;display:flex}
+.tlscroll{flex:1;min-width:0;min-height:0;overflow:auto;position:relative}
+.tl-ruler{position:sticky;top:0;z-index:4;height:22px;background:var(--s2);border-bottom:1px solid var(--line)}
+.tl-ruler .tk{position:absolute;top:4px;font-family:var(--mono);font-size:9px;color:var(--t4);
+  padding-left:4px;border-left:1px solid var(--line2);height:14px}
+.tl-body{position:relative}
+.tl-track{position:relative;height:56px;border-bottom:1px solid var(--line);background:
+  repeating-linear-gradient(90deg,transparent 0 59px,var(--gridln) 59px 60px)}
+.tl-track.audio{height:44px;background-color:color-mix(in srgb,var(--celadon) 5%,transparent)}
+.tl-clip{position:absolute;top:4px;bottom:4px;border-radius:6px;overflow:hidden;cursor:grab;
+  background:color-mix(in srgb,var(--cobalt) 34%,var(--s3));border:1px solid color-mix(in srgb,var(--cobalt) 55%,transparent);
+  display:flex;align-items:center;gap:5px;padding:0 8px;min-width:6px}
+.tl-clip.k-audio{background:color-mix(in srgb,var(--celadon) 30%,var(--s3));border-color:color-mix(in srgb,var(--celadon) 55%,transparent)}
+.tl-clip.k-text{background:color-mix(in srgb,var(--ochre) 30%,var(--s3));border-color:color-mix(in srgb,var(--ochre) 55%,transparent)}
+.tl-clip.k-sticker{background:color-mix(in srgb,var(--mang) 30%,var(--s3));border-color:color-mix(in srgb,var(--mang) 55%,transparent)}
+.tl-clip.k-image{background:color-mix(in srgb,var(--iron) 30%,var(--s3));border-color:color-mix(in srgb,var(--iron) 55%,transparent)}
+.tl-clip.sel{outline:2px solid var(--ember);outline-offset:-1px;z-index:3}
+.tl-clip .clabel{font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
+.tl-clip .cbadge{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--t2);opacity:.8;pointer-events:none}
+.tl-clip .cthumb{width:38px;height:calc(100% - 10px);border-radius:3px;background:#000 center/cover no-repeat;flex:none;pointer-events:none}
+.tl-clip .cwave{position:absolute;left:0;right:0;bottom:0;height:16px;pointer-events:none;opacity:.5;
+  background:repeating-linear-gradient(90deg,currentColor 0 1px,transparent 1px 4px);color:var(--celadon)}
+.ch{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize;z-index:2}
+.ch.left{left:0}.ch.right{right:0}
+.ch:hover{background:color-mix(in srgb,var(--ember) 45%,transparent)}
+.tl-play{position:absolute;top:0;left:0;width:2px;background:var(--ember);z-index:5;pointer-events:none;
+  box-shadow:0 0 8px color-mix(in srgb,var(--ember) 60%,transparent)}
+.tl-play::before{content:"";position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--ember)}
+.tnames{width:96px;flex:none;overflow:hidden;padding-top:22px;border-right:1px solid var(--line);background:var(--s2)}
+.tname{height:56px;display:flex;align-items:center;gap:5px;padding:0 8px;font-size:11px;color:var(--t3);
+  border-bottom:1px solid var(--line)}
+.tname.audio{height:44px}
+.tname .tg{width:18px;height:18px;border-radius:4px;display:grid;place-items:center;color:var(--t4);font-size:10px}
+.tname .tg.off{color:var(--bad)}
+.tname .tg:hover{background:var(--hov2);color:var(--text)}
+
+/* ---------- status + toasts + export dialog ---------- */
+.sbar{grid-area:status;display:flex;align-items:center;padding:0 10px;border-top:1px solid var(--line);
+  background:var(--s1);font-family:var(--mono);font-size:10.5px;color:var(--t3);overflow:hidden}
+.si{display:flex;align-items:center;gap:5px;padding:0 10px;border-right:1px solid var(--line);height:100%;white-space:nowrap}
+.si:first-child{padding-left:0}
+.si b{color:var(--t2);font-weight:500}
+.si.sp{margin-left:auto;border-right:0}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--ok);flex:none}
+.toasts{position:fixed;bottom:32px;right:14px;z-index:200;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:9px;font-size:12.5px;
+  border:var(--bw) solid var(--line2);background:var(--popbg);box-shadow:var(--popshadow);
+  animation:sin .24s var(--ez);transition:opacity .3s}
+@keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+.modal{position:fixed;inset:0;z-index:150;display:grid;place-items:center;background:rgba(0,0,0,.5);backdrop-filter:blur(3px)}
+.modal[hidden]{display:none}
+.mbox{width:min(430px,92vw);border:var(--bw) solid var(--line2);border-radius:12px;background:var(--popbg);
+  box-shadow:var(--popshadow);overflow:hidden}
+.mbox h3{margin:0;padding:13px 15px;font-size:13.5px;border-bottom:1px solid var(--line)}
+.mbody{padding:12px 15px}
+.mfoot{display:flex;gap:8px;justify-content:flex-end;padding:11px 15px;border-top:1px solid var(--line)}
+.prog{height:6px;border-radius:99px;background:var(--s3);overflow:hidden;margin:10px 0 6px}
+.prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+<meta name="kiln-build" content="0886297-1646">
+</head>
+<body>
+<div id="app">
+  <div class="menubar">
+    <a class="brand" href="../" style="text-decoration:none;color:inherit" title="Back to all workspaces"><span class="mark"></span>Kiln</a>
+    <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d" id="mFile"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Edit</button><div class="menu-d" id="mEdit"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Clip</button><div class="menu-d" id="mClip"></div></div>
+    <div class="menu" data-menu><button class="menu-t">View</button><div class="menu-d" id="mView"></div></div>
+    <input class="projname" id="projName" value="Untitled project" spellcheck="false">
+    <div class="menubar-r" data-kiln-themebar></div>
+  </div>
+
+  <div class="optbar">
+    <button class="tb" data-act="import" title="Import media (⌘I)">＋ Import</button>
+    <div class="obsep"></div>
+    <button class="tb" data-act="split" title="Split at playhead (S)">✂ Split</button>
+    <button class="tb" data-act="delete" title="Delete clip (⌫)">Delete</button>
+    <button class="tb" data-act="ripple" title="Ripple delete — close the gap (⇧⌫)">Ripple</button>
+    <button class="tb" data-act="duplicate" title="Duplicate clip (⌘D)">Duplicate</button>
+    <div class="obsep"></div>
+    <button class="tb" data-act="addText" title="Add a title or caption">T Text</button>
+    <button class="tb" data-act="addSticker" title="Add a sticker or emoji">☺ Sticker</button>
+    <button class="tb" data-act="recordVoice" id="voiceBtn" title="Record a voiceover">● Voice</button>
+    <div class="obsep"></div>
+    <span style="font-size:11px;color:var(--t3)">Transition</span>
+    <select class="sel" id="transSel" title="Transition into the selected clip"></select>
+    <div class="obsep"></div>
+    <button class="tb" data-act="undo" title="Undo (⌘Z)">↶</button>
+    <button class="tb" data-act="redo" title="Redo (⇧⌘Z)">↷</button>
+    <button class="tb on" data-act="snap" id="snapBtn" title="Snapping">⌁ Snap</button>
+    <button class="tb" data-act="zoomOut" title="Zoom out timeline">−</button>
+    <button class="tb" data-act="zoomFit" title="Fit timeline">Fit</button>
+    <button class="tb" data-act="zoomIn" title="Zoom in timeline">+</button>
+    <div class="optbar-r">
+      <button class="btn btn-g" data-act="saveProject">Save project</button>
+      <button class="btn btn-p" data-act="exportOpen">Export</button>
+    </div>
+  </div>
+
+  <aside class="pool">
+    <div class="phead">Media<span class="n num" id="poolN">0</span></div>
+    <div class="plist" id="pool"><div class="empty">No media yet.<br>Import or drop files here.</div></div>
+    <div class="pfoot">
+      <button class="rowbtn" data-act="import">Import media…</button>
+      <button class="rowbtn" data-act="addToTimeline">Add selected to timeline</button>
+    </div>
+  </aside>
+
+  <div class="stage" id="stage">
+    <div class="vwrap"><canvas id="preview" width="1920" height="1080"></canvas></div>
+    <div class="transport">
+      <button class="tb" data-act="toStart" title="Go to start (Home)">⏮</button>
+      <button class="tb" data-act="back1" title="Back one frame (←)">◀|</button>
+      <button class="tbig" data-act="play" id="playBtn" title="Play / pause (Space)">
+        <svg viewBox="0 0 24 24" fill="currentColor" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
+      <button class="tb" data-act="fwd1" title="Forward one frame (→)">|▶</button>
+      <button class="tb" data-act="toEnd" title="Go to end (End)">⏭</button>
+      <span class="tcode"><b id="tcNow">0:00.00</b> / <span id="tcTotal">0:00.00</span></span>
+    </div>
+    <div class="dz" id="dz">
+      <div class="dzi">
+        <h3>Drop video, audio or images here</h3>
+        <p>Everything runs in your browser — nothing is uploaded.<br>
+           Import your own footage, or start with a generated test clip.</p>
+        <div class="row">
+          <button class="btn btn-p" data-act="sample" id="dzSample">Generate a test clip</button>
+          <button class="btn btn-g" data-act="import" id="dzOpen">Import media…</button>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="fileIn" accept="video/*,audio/*,image/*" multiple hidden>
+    <input type="file" id="projIn" accept=".kilnvid,application/json" hidden>
+  </div>
+
+  <aside class="insp">
+    <div class="itabs">
+      <button class="itab on" data-it="iTransform">Transform</button>
+      <button class="itab" data-it="iColor">Colour</button>
+      <button class="itab" data-it="iAudio">Audio</button>
+      <button class="itab" data-it="iText">Text</button>
+      <button class="itab" data-it="iKeys">Animate</button>
+      <button class="itab" data-it="iProject">Project</button>
+    </div>
+    <div class="ibody on" id="iTransform"></div>
+    <div class="ibody" id="iColor"></div>
+    <div class="ibody" id="iAudio"></div>
+    <div class="ibody" id="iText"></div>
+    <div class="ibody" id="iKeys"></div>
+    <div class="ibody" id="iProject"></div>
+  </aside>
+
+  <div class="tl">
+    <div class="tlbar">
+      <span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)">Timeline</span>
+      <button class="tb txt" data-act="addVideoTrack">＋ Video track</button>
+      <button class="tb txt" data-act="addAudioTrack">＋ Audio track</button>
+      <span class="tcode" id="tlInfo" style="margin-left:auto"></span>
+    </div>
+    <div class="tlmain">
+      <div class="tnames" id="tNames"></div>
+      <div class="tlscroll" id="tlScroll"></div>
+    </div>
+  </div>
+
+  <div class="sbar">
+    <span class="si"><span class="dot"></span><b id="sbStatus">Ready</b></span>
+    <span class="si">Clips <b class="num" id="sbClips">0</b></span>
+    <span class="si">Duration <b class="num" id="sbDur">0:00.00</b></span>
+    <span class="si">Project <b id="sbSize">1920×1080 · 30fps</b></span>
+    <span class="si sp">Encoder <b id="sbEnc">—</b></span>
+  </div>
+</div>
+
+<div class="modal" id="exportModal" hidden>
+  <div class="mbox">
+    <h3>Export video</h3>
+    <div class="mbody">
+      <label class="fld"><span>Resolution</span><select id="expRes">
+        <option value="720p">720p · 1280×720</option>
+        <option value="1080p" selected>1080p · 1920×1080</option>
+        <option value="1440p">1440p · 2560×1440</option>
+        <option value="4K">4K · 3840×2160</option></select></label>
+      <label class="fld"><span>Format</span><select id="expFmt">
+        <option value="mp4">MP4 · H.264 + AAC</option>
+        <option value="webm">WebM · VP9 + Opus</option></select></label>
+      <label class="fld"><span>Frame rate</span><select id="expFps">
+        <option value="24">24 fps</option><option value="30" selected>30 fps</option><option value="60">60 fps</option></select></label>
+      <label class="fld"><span>Quality</span><input type="range" id="expQ" min="40" max="140" value="100"><b id="expQV">100%</b></label>
+      <div class="prog"><i id="expBar"></i></div>
+      <div class="note" id="expNote">Rendering happens on your machine — nothing is uploaded.</div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-g" data-act="exportCancel">Cancel</button>
+      <button class="btn btn-p" data-act="exportStart" id="expGo">Start export</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<script type="module" src="engine.js"></script>
+</body>
+</html>
