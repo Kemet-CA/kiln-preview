@@ -1154,7 +1154,7 @@ const WORKSPACES=[
   desc:"Load one image, then crop, correct, filter, watermark and convert it with a full layer stack and non-destructive history.",
   icon:IC.img},
  {id:"pdf",name:"PDF",tint:"var(--cobalt)",n:17,ui:"Acrobat-style viewer · page thumbnails",
-  desc:"Reorder, rotate, delete, merge, split, compress and protect documents with drag-and-drop page management.",
+  desc:"Open a document and reorder, rotate, delete, merge, split, watermark and number its pages — rendered and rewritten in your browser.",
   icon:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>'},
  {id:"text",name:"Text",tint:"var(--celadon)",n:25,ui:"VS Code-style editor · live output",
   desc:"A real editor with line numbers, live statistics, validation and instant output for every text utility.",
@@ -1185,9 +1185,10 @@ let CUR="home";
 $("wsnav").innerHTML=WORKSPACES.map(w=>
   `<button data-ws="${w.id}" aria-current="${w.id==="home"}"><span class="sq"></span><span class="lbl">${w.name}</span></button>`).join("");
 function go(id){
-  // The Image workspace is a separate, full application (raster + vector).
-  // Everything below is the phase-2..5 preview shell.
+  // Image and PDF are separate, full applications now.
+  // Everything below is the phase-3..5 preview shell.
   if(id==="image"){location.href="editor.html";return;}
+  if(id==="pdf"){location.href="pdf/";return;}
   CUR=id;
   document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id==="screen-"+id));
   document.querySelectorAll("#wsnav button").forEach(b=>b.setAttribute("aria-current",String(b.dataset.ws===id)));
@@ -1310,6 +1311,7 @@ function mv(d){
 function runC(i){
   const t=cres[i];if(!t)return;closeC();
   if(t.ws==="image"){location.href="editor.html";return;}
+  if(t.ws==="pdf"){location.href="pdf/";return;}
   go(t.ws);
   if(t.tool)setTimeout(()=>selectTool(t.tool),80);
   else toast(`${t.n} — open in the ${t.ws} workspace`);
