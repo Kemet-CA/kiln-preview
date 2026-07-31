@@ -9,7 +9,9 @@
    ============================================================ */
 import * as pdfjs from "./vendor/pdf.mjs";
 const { TextLayer, setLayerDimensions } = pdfjs;
-import { PDFDocument, StandardFonts, degrees, rgb } from "./vendor/pdf-lib.mjs";
+import {
+  PDFDocument, StandardFonts, BlendMode, PDFName, PDFString, PDFHexString, degrees, rgb,
+} from "./vendor/pdf-lib.mjs";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdf.worker.mjs", import.meta.url).href;
 const STD_FONTS = new URL("./vendor/standard_fonts/", import.meta.url).href;
@@ -49,7 +51,8 @@ const Doc = {
   size: 0,
   ver: "",
   sources: [],          // { id, name, bytes, doc }  — bytes kept for pdf-lib, doc is the pdf.js proxy
-  pages: [],            // { sid, idx, rot }         — the edit list; rot is absolute (0/90/180/270)
+  pages: [],            // { sid, idx, rot, ann[] }  — the edit list; rot is absolute (0/90/180/270)
+  bookmarks: [],        // { title, page, depth }    — read from the file, editable, written on export
   sel: new Set(),
   cur: 1,
   zoom: 1,
@@ -67,7 +70,8 @@ let nextSid = 1;
 
 /* ---------------- history ---------------- */
 const snapshot = () => ({
-  pages: Doc.pages.map(p => ({ ...p })),
+  pages: Doc.pages.map(clonePage),
+  bookmarks: Doc.bookmarks.map(b => ({ ...b })),
   meta: { ...Doc.meta },
   effects: JSON.parse(JSON.stringify(Doc.effects)),
 });
@@ -82,7 +86,8 @@ function restore(i) {
   if (i < 0 || i >= Hist.steps.length) return;
   Hist.i = i;
   const s = Hist.steps[i].state;
-  Doc.pages = s.pages.map(p => ({ ...p }));
+  Doc.pages = s.pages.map(clonePage);
+  Doc.bookmarks = s.bookmarks.map(b => ({ ...b }));
   Doc.meta = { ...s.meta };
   Doc.effects = JSON.parse(JSON.stringify(s.effects));
   Doc.sel.clear();
@@ -111,9 +116,16 @@ async function addSource(bytes, name) {
 }
 function pagesOf(src, rotFrom) {
   const out = [];
-  for (let i = 0; i < src.doc.numPages; i++) out.push({ sid: src.id, idx: i, rot: rotFrom?.[i] ?? 0 });
+  for (let i = 0; i < src.doc.numPages; i++) out.push({ sid: src.id, idx: i, rot: rotFrom?.[i] ?? 0, ann: [] });
   return out;
 }
+/* pages are copied a lot — by history, by duplicate — and annotations must not
+   be shared between the copies, or editing one would edit the other */
+const clonePage = p => ({ ...p, ann: (p.ann || []).map(a => ({ ...a, quads: a.quads?.map(q => ({ ...q })), pts: a.pts?.map(pt => [...pt]) })) });
+/* A history snapshot keeps annotation ids — undo has to restore the same marks.
+   A *duplicated page* must not: two copies sharing an id means deleting one
+   deletes the other, since annotations are addressed by id alone. */
+const forkPage = p => { const c = clonePage(p); c.ann.forEach(a => { a.id = annSeq++; }); return c; };
 async function baseRotations(src) {
   const rots = [];
   for (let i = 1; i <= src.doc.numPages; i++) rots.push(((await src.doc.getPage(i)).rotate % 360 + 360) % 360);
@@ -188,9 +200,12 @@ async function sampleBytes() {
   return d.save();
 }
 
-/* ---------------- outline ---------------- */
+/* ---------------- bookmarks ----------------
+   Read out of the file as a flat list carrying its nesting depth, edited here,
+   and written back as a real outline tree on export. Before this existed the
+   editor quietly dropped a document's bookmarks the moment you exported. */
 async function loadOutline(src) {
-  Doc.outline = [];
+  Doc.bookmarks = [];
   try {
     const raw = await src.doc.getOutline();
     if (!raw) return;
@@ -200,13 +215,40 @@ async function loadOutline(src) {
         try {
           const dest = typeof it.dest === "string" ? await src.doc.getDestination(it.dest) : it.dest;
           if (dest?.[0]) idx = await src.doc.getPageIndex(dest[0]);
-        } catch { /* unresolvable destination — still show the title */ }
-        Doc.outline.push({ title: it.title, sid: src.id, idx, depth });
+        } catch { /* unresolvable destination — still keep the title */ }
+        const page = idx === null ? -1 : Doc.pages.findIndex(p => p.sid === src.id && p.idx === idx);
+        if (it.title) Doc.bookmarks.push({ title: it.title, page, depth });
         if (it.items?.length) await walk(it.items, depth + 1);
       }
     };
     await walk(raw, 0);
   } catch { /* no outline */ }
+}
+function addBookmark() {
+  if (!Doc.open) return toast("Open a document first", "warn");
+  const title = prompt("Bookmark title", `Page ${Doc.cur}`);
+  if (title === null || !title.trim()) return;
+  const at = Doc.bookmarks.findIndex(b => b.page > Doc.cur - 1);
+  const item = { title: title.trim(), page: Doc.cur - 1, depth: 0 };
+  at === -1 ? Doc.bookmarks.push(item) : Doc.bookmarks.splice(at, 0, item);
+  commit("Add bookmark");
+  renderOutline();
+  toast("Bookmark added");
+}
+function renameBookmark(i) {
+  const b = Doc.bookmarks[i];
+  if (!b) return;
+  const title = prompt("Bookmark title", b.title);
+  if (title === null || !title.trim()) return;
+  b.title = title.trim();
+  commit("Rename bookmark");
+  renderOutline();
+}
+function deleteBookmark(i) {
+  if (!Doc.bookmarks[i]) return;
+  Doc.bookmarks.splice(i, 1);
+  commit("Delete bookmark");
+  renderOutline();
 }
 
 /* ---------------- rendering: viewer ---------------- */
@@ -226,6 +268,7 @@ function buildViewer() {
     el.className = "pg" + (Doc.sel.has(i) ? " sel" : "");
     el.dataset.i = i;
     el.innerHTML = `<canvas></canvas><div class="hitl"></div><div class="textLayer"></div>` +
+      `<svg class="annl" xmlns="http://www.w3.org/2000/svg"></svg>` +
       `<div class="pgov"></div><div class="pglab num">${i + 1}</div>`;
     host.appendChild(el);
   });
@@ -247,7 +290,9 @@ async function sizePages() {
     c.style.height = vp.height + "px";
     el.style.width = vp.width + "px";
     el.dataset.w = vp.width; el.dataset.h = vp.height;
+    el.__vp = vp;                       // annotations convert screen ↔ page through this
     drawOverlay(el, i, vp);
+    paintAnnots(i);
   }
 }
 
@@ -293,7 +338,9 @@ async function renderViewerPage(i) {
     await task.promise;
     if (token !== renderToken) return;
     c.dataset.key = key;
+    el.__vp = vp;
     drawOverlay(el, i, vp);
+    paintAnnots(i);
     await buildTextLayer(el, page, vp, token);
     paintHits(i);
   } catch (e) {
@@ -473,7 +520,7 @@ function deletePages(list) {
 function duplicatePages(list) {
   if (!list.length) return toast("Select pages first", "warn");
   const out = [];
-  Doc.pages.forEach((p, i) => { out.push(p); if (list.includes(i)) out.push({ ...p }); });
+  Doc.pages.forEach((p, i) => { out.push(p); if (list.includes(i)) out.push(forkPage(p)); });
   Doc.pages = out;
   Doc.sel.clear();
   commit("Duplicate pages");
@@ -544,7 +591,9 @@ async function buildPdf(list = Doc.pages.map((_, i) => i)) {
   }
   slots.forEach((page, k) => { page.setRotation(degrees(wanted[k].rot)); out.addPage(page); });
 
+  await drawAnnots(out, wanted);
   await applyEffects(out, list);
+  writeOutline(out, list);
 
   const m = Doc.meta;
   if (m.title) out.setTitle(m.title);
@@ -554,6 +603,93 @@ async function buildPdf(list = Doc.pages.map((_, i) => i)) {
   out.setProducer("Kiln");
   out.setModificationDate(new Date());
   return out.save();
+}
+
+/* Annotations are drawn into the page itself, so they look identical in every
+   viewer — no reliance on the reader generating appearance streams. Notes have
+   no visual of their own, so they also become a real /Text annotation carrying
+   the comment, which is what a sticky note actually is. */
+async function drawAnnots(out, wanted) {
+  if (!wanted.some(p => p.ann?.length)) return;
+  const font = await out.embedFont(StandardFonts.Helvetica);
+  const pages = out.getPages();
+  wanted.forEach((p, k) => {
+    const page = pages[k];
+    for (const a of p.ann || []) {
+      const color = hexToRgb(a.color);
+      if (a.t === "highlight")
+        for (const q of a.quads)
+          page.drawRectangle({
+            x: q.x, y: q.y, width: q.w, height: q.h, color,
+            opacity: .38, blendMode: BlendMode.Multiply,
+          });
+      else if (a.t === "box")
+        page.drawRectangle({ x: a.x, y: a.y, width: a.w, height: a.h, borderColor: color, borderWidth: a.sw });
+      else if (a.t === "draw")
+        for (let n = 1; n < a.pts.length; n++)
+          page.drawLine({
+            start: { x: a.pts[n - 1][0], y: a.pts[n - 1][1] },
+            end: { x: a.pts[n][0], y: a.pts[n][1] },
+            thickness: a.sw, color,
+          });
+      else if (a.t === "text")
+        page.drawText(a.text, { x: a.x, y: a.y - a.size, size: a.size, font, color });
+      else if (a.t === "note") {
+        const s = 15;
+        page.drawRectangle({ x: a.x - s / 2, y: a.y - s / 2, width: s, height: s, color, opacity: .95 });
+        const [r, g, b] = hexToArr(a.color);
+        page.node.addAnnot(out.context.register(out.context.obj({
+          Type: "Annot", Subtype: "Text", Name: "Comment", F: 4,
+          Rect: [a.x - s / 2, a.y - s / 2, a.x + s / 2, a.y + s / 2],
+          Contents: PDFHexString.fromText(a.text),
+          T: PDFHexString.fromText("Kiln"), C: [r, g, b],
+        })));
+      }
+    }
+  });
+}
+
+/* Bookmarks back into the file as a real outline tree. Without this, exporting
+   silently threw away every bookmark the document arrived with. */
+function writeOutline(out, list) {
+  const items = Doc.bookmarks
+    .map(b => ({ ...b, slot: list.indexOf(b.page) }))     // where the page ended up in this export
+    .filter(b => b.slot >= 0);
+  if (!items.length) return;
+  const ctx = out.context, pages = out.getPages();
+  const refs = items.map(b => ctx.register(ctx.obj({
+    Title: PDFHexString.fromText(b.title),
+    Dest: [pages[b.slot].ref, PDFName.of("XYZ"), null, null, null],
+  })));
+
+  // rebuild the nesting from the depth sequence, then link each level's siblings
+  const nodes = items.map((b, i) => ({ ...b, ref: refs[i], kids: [] }));
+  const roots = [], stack = [];
+  nodes.forEach(n => {
+    while (stack.length && stack[stack.length - 1].depth >= n.depth) stack.pop();
+    (stack.length ? stack[stack.length - 1].kids : roots).push(n);
+    stack.push(n);
+  });
+  const link = (kids, parentRef) => {
+    kids.forEach((n, i) => {
+      const d = ctx.lookup(n.ref);
+      d.set(PDFName.of("Parent"), parentRef);
+      if (i) d.set(PDFName.of("Prev"), kids[i - 1].ref);
+      if (i < kids.length - 1) d.set(PDFName.of("Next"), kids[i + 1].ref);
+      if (n.kids.length) {
+        d.set(PDFName.of("First"), n.kids[0].ref);
+        d.set(PDFName.of("Last"), n.kids[n.kids.length - 1].ref);
+        d.set(PDFName.of("Count"), ctx.obj(n.kids.length));
+        link(n.kids, n.ref);
+      }
+    });
+  };
+  const rootRef = ctx.register(ctx.obj({
+    Type: "Outlines", First: roots[0].ref, Last: roots[roots.length - 1].ref, Count: roots.length,
+  }));
+  link(roots, rootRef);
+  out.catalog.set(PDFName.of("Outlines"), rootRef);
+  out.catalog.set(PDFName.of("PageMode"), PDFName.of("UseOutlines"));
 }
 
 async function applyEffects(out, list) {
@@ -587,10 +723,11 @@ async function applyEffects(out, list) {
     }
   });
 }
-function hexToRgb(hex) {
+function hexToArr(hex) {
   const n = parseInt(hex.replace("#", ""), 16);
-  return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 }
+const hexToRgb = hex => rgb(...hexToArr(hex));
 
 const stem = () => (Doc.name || "document").replace(/\.pdf$/i, "");
 async function exportAll() {
@@ -622,6 +759,15 @@ async function splitAll() {
   }
   status("Ready");
   toast(`Split into ${plural(n, "file")}`);
+}
+async function printDoc() {
+  if (!Doc.open) return toast("Open a document first", "warn");
+  status("Preparing…");
+  const url = URL.createObjectURL(new Blob([await buildPdf()], { type: "application/pdf" }));
+  const w = open(url, "_blank");
+  if (!w) toast("Allow pop-ups to print this document", "warn");
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  status("Ready");
 }
 async function exportText() {
   if (!Doc.open) return toast("Open a document first", "warn");
@@ -760,6 +906,127 @@ async function paintHits(i) {
 }
 const repaintHits = () => Doc.pages.forEach((_, i) => paintHits(i));
 
+/* ---------------- annotations ----------------
+   Everything is stored in PDF user space (points, unrotated page), so a mark
+   stays on its word at any zoom, survives rotation, and needs no conversion at
+   export. Screen ↔ page conversion is pdf.js's viewport, cached per page. */
+const ANN = { tool: "hand", color: "#e2622a", size: 14, width: 2, sel: null };
+let annSeq = 1;
+const DRAW_TOOLS = ["draw", "box", "note", "text"];
+const annPage = i => Doc.pages[i];
+
+function setAnnTool(t) {
+  ANN.tool = t;
+  document.body.classList.toggle("drawing", DRAW_TOOLS.includes(t));
+  document.body.classList.toggle("marking", t !== "hand");
+  document.querySelectorAll("[data-tool]").forEach(b => b.classList.toggle("on", b.dataset.tool === t));
+  $("sbTool").textContent = { hand: "Hand", highlight: "Highlight", note: "Note", draw: "Draw", box: "Box", text: "Text" }[t] || t;
+}
+function addAnn(i, a) {
+  const p = annPage(i);
+  if (!p) return;
+  (p.ann ||= []).push({ id: annSeq++, ...a });
+  commit(`Add ${a.t}`);
+  paintAnnots(i);
+  renderAnnList();
+}
+function deleteAnn(id) {
+  for (let i = 0; i < Doc.pages.length; i++) {
+    const p = Doc.pages[i], k = (p.ann || []).findIndex(a => a.id === id);
+    if (k >= 0) {
+      p.ann.splice(k, 1);
+      if (ANN.sel === id) ANN.sel = null;
+      commit("Delete annotation");
+      paintAnnots(i);
+      renderAnnList();
+      return;
+    }
+  }
+}
+const allAnnots = () => Doc.pages.flatMap((p, i) => (p.ann || []).map(a => ({ ...a, page: i })));
+
+/* screen point → PDF point, using the viewport cached on the page element */
+function pdfPointAt(el, clientX, clientY) {
+  const vp = el.__vp;
+  if (!vp) return null;
+  const r = el.getBoundingClientRect();
+  return vp.convertToPdfPoint(clientX - r.left, clientY - r.top);
+}
+
+async function paintAnnots(i) {
+  const el = $("pages").children[i], p = Doc.pages[i];
+  const host = el?.querySelector(".annl");
+  if (!host || !p) return;
+  const list = p.ann || [];
+  if (!list.length && !host.childElementCount) return;
+  const vp = el.__vp || (await viewportFor(p, viewerScale())).vp;
+  host.setAttribute("width", vp.width);
+  host.setAttribute("height", vp.height);
+  host.style.width = vp.width + "px";
+  host.style.height = vp.height + "px";
+  const V = (x, y) => vp.convertToViewportPoint(x, y);
+  const box = (x, y, w, h) => {                       // rect in page space → rect on screen
+    const [x1, y1] = V(x, y), [x2, y2] = V(x + w, y + h);
+    return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
+  };
+  const scale = viewerScale();
+  host.innerHTML = list.map(a => {
+    const on = a.id === ANN.sel ? " sel" : "";
+    if (a.t === "highlight")
+      return (a.quads || []).map(q => {
+        const r = box(q.x, q.y, q.w, q.h);
+        return `<rect class="ah${on}" data-id="${a.id}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${esc(a.color)}"/>`;
+      }).join("");
+    if (a.t === "box") {
+      const r = box(a.x, a.y, a.w, a.h);
+      return `<rect class="ab${on}" data-id="${a.id}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"
+        fill="none" stroke="${esc(a.color)}" stroke-width="${a.sw * scale}"/>`;
+    }
+    if (a.t === "draw")
+      return `<polyline class="ai${on}" data-id="${a.id}" fill="none" stroke="${esc(a.color)}"
+        stroke-width="${a.sw * scale}" stroke-linecap="round" stroke-linejoin="round"
+        points="${a.pts.map(([x, y]) => V(x, y).map(n => n.toFixed(1)).join(",")).join(" ")}"/>`;
+    if (a.t === "text") {
+      const [x, y] = V(a.x, a.y);
+      return `<text class="at${on}" data-id="${a.id}" x="${x}" y="${y}" fill="${esc(a.color)}"
+        font-size="${a.size * scale}" font-family="Helvetica, sans-serif">${esc(a.text)}</text>`;
+    }
+    if (a.t === "note") {
+      const [x, y] = V(a.x, a.y), s = 15;
+      return `<g class="an${on}" data-id="${a.id}" transform="translate(${x - s / 2},${y - s / 2})">
+        <rect width="${s}" height="${s}" rx="3" fill="${esc(a.color)}"/>
+        <path d="M3.5 5h8M3.5 8h6" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+        <title>${esc(a.text)}</title></g>`;
+    }
+    return "";
+  }).join("");
+}
+const repaintAnnots = () => Doc.pages.forEach((_, i) => paintAnnots(i));
+
+/* highlight comes from a real text selection, so it lands on the glyphs */
+function highlightSelection() {
+  const sel = getSelection();
+  if (!sel || sel.isCollapsed) return toast("Select some text first", "warn");
+  const byPage = new Map();
+  for (const r of sel.getRangeAt(0).getClientRects()) {
+    if (r.width < 1 || r.height < 1) continue;
+    const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest(".pg");
+    if (!el) continue;
+    const i = +el.dataset.i;
+    const a = pdfPointAt(el, r.left, r.top), b = pdfPointAt(el, r.right, r.bottom);
+    if (!a || !b) continue;
+    if (!byPage.has(i)) byPage.set(i, []);
+    byPage.get(i).push({
+      x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]),
+      w: Math.abs(b[0] - a[0]), h: Math.abs(b[1] - a[1]),
+    });
+  }
+  if (!byPage.size) return toast("Select some text first", "warn");
+  for (const [i, quads] of byPage) addAnn(i, { t: "highlight", quads, color: ANN.color });
+  sel.removeAllRanges();
+  toast(`Highlighted on ${plural(byPage.size, "page")}`);
+}
+
 /* ---------------- collapsible panels ----------------
    Every side panel is an accordion. What is open, and whether a whole pane is
    folded away, is remembered per browser — the app comes back how you left it. */
@@ -809,13 +1076,18 @@ function renderHistory() {
 }
 function renderOutline() {
   const host = $("outline");
-  const items = (Doc.outline || []).filter(o => o.title);
-  if (!items.length) { host.innerHTML = `<div class="empty">This document has no bookmarks.</div>`; return; }
-  host.innerHTML = items.map((o, k) => {
-    const slot = o.idx === null ? -1 : Doc.pages.findIndex(p => p.sid === o.sid && p.idx === o.idx);
-    return `<button class="obm" data-o="${k}" data-slot="${slot}" style="padding-left:${8 + o.depth * 12}px">
-      <span class="ot">${esc(o.title)}</span>${slot >= 0 ? `<span class="op num">${slot + 1}</span>` : ""}</button>`;
-  }).join("");
+  const add = `<button class="rowbtn" data-act="bmAdd">+ Bookmark this page</button>`;
+  if (!Doc.bookmarks.length) {
+    host.innerHTML = `<div class="empty">No bookmarks yet.</div>${Doc.open ? add : ""}`;
+    return;
+  }
+  host.innerHTML = Doc.bookmarks.map((b, k) =>
+    `<div class="obm" style="padding-left:${8 + b.depth * 12}px">
+      <button class="ot" data-bm="${k}" title="Go to page ${b.page + 1}">${esc(b.title)}</button>
+      ${b.page >= 0 ? `<span class="op num">${b.page + 1}</span>` : ""}
+      <button class="rowx" data-bm-ren="${k}" title="Rename">✎</button>
+      <button class="rowx" data-bm-del="${k}" title="Delete">×</button>
+    </div>`).join("") + add;
 }
 function renderProps() {
   const p = Doc.pages[Doc.cur - 1];
@@ -850,10 +1122,32 @@ async function sizeRow(p) {
   row.innerHTML = `<span>Page size</span><b>${Math.round(vp.width)} × ${Math.round(vp.height)} pt</b>`;
   $("pInfo").querySelectorAll(".kv")[7]?.after(row);
 }
+function annListHtml() {
+  const list = allAnnots();
+  if (!list.length)
+    return `<div class="note">Nothing yet. Pick Highlight, Note, Draw, Box or Text in the toolbar,
+      then work on the page — everything you add is written into the exported file.</div>`;
+  return list.map(a => `<div class="arow${a.id === ANN.sel ? " sel" : ""}">
+    <button class="aj" data-ann="${a.id}" data-page="${a.page}">
+      <span class="adot" style="background:${esc(a.color)}"></span>
+      <span class="aty">${a.t}</span>
+      <span class="atx">${esc(a.text || "")}</span>
+      <span class="op num">p${a.page + 1}</span>
+    </button>
+    <button class="rowx" data-ann-del="${a.id}" title="Delete">×</button></div>`).join("");
+}
+function renderAnnList() {
+  const host = $("annList");
+  if (host) host.innerHTML = annListHtml();
+  const badge = $("panels").querySelector('[data-sec="ann"] .sec-n');
+  if (badge) badge.textContent = allAnnots().length || "";
+}
 function renderTools() {
   const e = Doc.effects;
   const onOff = v => v ? "on" : "";
   $("pTools").innerHTML =
+    sec("ann", "Annotations", `<div id="annList">${annListHtml()}</div>`,
+      { count: allAnnots().length || "" }) +
     sec("wm", "Watermark", `
       <label class="chk"><input type="checkbox" data-fx="watermark.on"${e.watermark.on ? " checked" : ""}> Apply watermark</label>
       <label class="fld"><span>Text</span><input class="txtin" data-fx="watermark.text" value="${esc(e.watermark.text)}"></label>
@@ -933,7 +1227,7 @@ const MENUS = {
     ["Insert pages from PDF…", "insert"], ["Insert blank page", "blank"], null,
     ["Export PDF…", "export", "⌘E"], ["Export selected pages…", "exportSel"],
     ["Split into single pages…", "split"], ["Extract all text…", "exportTxt"], null,
-    ["Close document", "close"],
+    ["Print…", "print", "⌘P"], ["Close document", "close"],
   ],
   mEdit: [
     ["Undo", "undo", "⌘Z", "mUndo"], ["Redo", "redo", "⇧⌘Z", "mRedo"], null,
@@ -943,6 +1237,8 @@ const MENUS = {
   mDoc: [
     ["Rotate right", "rotR", "⌘]"], ["Rotate left", "rotL", "⌘["], null,
     ["Move selection up", "moveUp"], ["Move selection down", "moveDown"], null,
+    ["Highlight selected text", "annHi", "⌘⇧H"], ["Add a note", "annNote"], ["Draw", "annDraw"],
+    ["Bookmark this page", "bmAdd", "⌘B"], null,
     ["Watermark…", "toolsWm"], ["Page numbers…", "toolsPn"], ["Metadata…", "toolsMeta"],
   ],
   mView: [
@@ -969,6 +1265,11 @@ const ACT = {
   exportSel: exportSelection,
   split: splitAll,
   exportTxt: exportText,
+  print: printDoc,
+  bmAdd: addBookmark,
+  annHi: highlightSelection,
+  annNote: () => setAnnTool("note"),
+  annDraw: () => setAnnTool("draw"),
   close: () => { resetDoc(); Doc.open = false; Doc.name = ""; Hist.steps = []; Hist.i = -1; $("dz").hidden = false; renderAll(); status("Ready"); },
   undo, redo,
   selAll: () => { Doc.pages.forEach((_, i) => Doc.sel.add(i)); renderSelection(); },
@@ -1082,16 +1383,102 @@ function wire() {
     dragFrom = null;
   });
 
-  // viewer page click selects that page
+  // viewer page click selects that page (not while an annotation tool is armed)
   $("pages").addEventListener("click", e => {
     const pg = e.target.closest(".pg");
-    if (pg) selectPage(+pg.dataset.i, e);
+    if (pg && ANN.tool === "hand") selectPage(+pg.dataset.i, e);
   });
 
-  // outline + history + search result lists
+  // annotation tools
+  document.querySelectorAll("[data-tool]").forEach(b => b.addEventListener("click", () => {
+    setAnnTool(b.dataset.tool);
+    if (b.dataset.tool === "highlight" && !getSelection().isCollapsed) highlightSelection();
+  }));
+  $("annColor").addEventListener("input", e => { ANN.color = e.target.value; });
+  document.addEventListener("mouseup", () => {
+    if (ANN.tool === "highlight" && !getSelection().isCollapsed) setTimeout(highlightSelection, 0);
+  });
+  $("pages").addEventListener("pointerdown", e => {
+    if (!DRAW_TOOLS.includes(ANN.tool) || e.button !== 0) return;
+    const el = e.target.closest(".pg");
+    const start = el && pdfPointAt(el, e.clientX, e.clientY);
+    if (!start) return;
+    e.preventDefault();
+    const i = +el.dataset.i;
+
+    if (ANN.tool === "note" || ANN.tool === "text") {
+      const what = ANN.tool === "note" ? "Note text" : "Text to place on the page";
+      const text = prompt(what, "");
+      if (text?.trim()) {
+        addAnn(i, ANN.tool === "note"
+          ? { t: "note", x: start[0], y: start[1], text: text.trim(), color: ANN.color }
+          : { t: "text", x: start[0], y: start[1], text: text.trim(), size: ANN.size, color: ANN.color });
+      }
+      setAnnTool("hand");
+      return;
+    }
+
+    // draw + box: live preview straight into the page's own annotation list
+    const draft = ANN.tool === "draw"
+      ? { id: 0, t: "draw", pts: [start], sw: ANN.width, color: ANN.color }
+      : { id: 0, t: "box", x: start[0], y: start[1], w: 0, h: 0, sw: ANN.width, color: ANN.color };
+    const p = Doc.pages[i];
+    (p.ann ||= []).push(draft);
+    el.setPointerCapture(e.pointerId);
+    const move = ev => {
+      const q = pdfPointAt(el, ev.clientX, ev.clientY);
+      if (!q) return;
+      if (draft.t === "draw") draft.pts.push(q);
+      else { draft.w = q[0] - draft.x; draft.h = q[1] - draft.y; }
+      paintAnnots(i);
+    };
+    const up = () => {
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", up);
+      p.ann.pop();
+      const big = draft.t === "draw" ? draft.pts.length > 2 : Math.abs(draft.w) > 3 && Math.abs(draft.h) > 3;
+      if (big) {
+        if (draft.t === "box") {                      // normalise so width/height are positive
+          if (draft.w < 0) { draft.x += draft.w; draft.w = -draft.w; }
+          if (draft.h < 0) { draft.y += draft.h; draft.h = -draft.h; }
+        }
+        delete draft.id;
+        addAnn(i, draft);
+      } else paintAnnots(i);
+    };
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", up);
+  });
+  // clicking a note or mark selects it in the list
+  $("pages").addEventListener("click", e => {
+    const t = e.target.closest("[data-id]");
+    if (!t) return;
+    ANN.sel = +t.dataset.id;
+    repaintAnnots();
+    renderAnnList();
+    showPanel("pTools");
+  });
+
+  // bookmarks: jump, rename, delete
   $("outline").addEventListener("click", e => {
-    const b = e.target.closest(".obm");
-    if (b && +b.dataset.slot >= 0) setCurrent(+b.dataset.slot + 1, true);
+    const go = e.target.closest("[data-bm]"), ren = e.target.closest("[data-bm-ren]"), del = e.target.closest("[data-bm-del]");
+    if (ren) return renameBookmark(+ren.dataset.bmRen);
+    if (del) return deleteBookmark(+del.dataset.bmDel);
+    if (go) {
+      const p = Doc.bookmarks[+go.dataset.bm]?.page;
+      if (p >= 0) setCurrent(p + 1, true); else toast("That bookmark has no page", "warn");
+    }
+  });
+  // annotation list: jump to one, or delete it
+  $("panels").addEventListener("click", e => {
+    const del = e.target.closest("[data-ann-del]"), go = e.target.closest("[data-ann]");
+    if (del) return deleteAnn(+del.dataset.annDel);
+    if (go) {
+      ANN.sel = +go.dataset.ann;
+      setCurrent(+go.dataset.page + 1, true);
+      repaintAnnots();
+      renderAnnList();
+    }
   });
   $("pHist").addEventListener("click", e => {
     const b = e.target.closest(".hstep");
@@ -1153,11 +1540,22 @@ function wire() {
     if (M && e.key === "3") { e.preventDefault(); act("fitP"); return; }
     if (M && e.key === "]") { e.preventDefault(); act("rotR"); return; }
     if (M && e.key === "[") { e.preventDefault(); act("rotL"); return; }
-    if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); act("del"); return; }
+    if (M && e.key.toLowerCase() === "p") { e.preventDefault(); act("print"); return; }
+    if (M && e.key.toLowerCase() === "b") { e.preventDefault(); act("bmAdd"); return; }
+    if (M && e.shiftKey && e.key.toLowerCase() === "h") { e.preventDefault(); highlightSelection(); return; }
+    if (e.key === "Delete" || e.key === "Backspace") {
+      e.preventDefault();
+      // an armed annotation takes the keystroke; otherwise it means the pages
+      ANN.sel ? deleteAnn(ANN.sel) : act("del");
+      return;
+    }
     if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); act("next"); return; }
     if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); act("prev"); return; }
     if (e.key === "Tab") { e.preventDefault(); act("panels"); return; }
-    if (e.key === "Escape") { Doc.sel.clear(); renderSelection(); }
+    if (e.key === "Escape") {
+      if (ANN.tool !== "hand" || ANN.sel) { setAnnTool("hand"); ANN.sel = null; repaintAnnots(); renderAnnList(); return; }
+      Doc.sel.clear(); renderSelection();
+    }
   });
 
   // panel splitter
@@ -1206,12 +1604,22 @@ async function inspect(bytes) {
     data: new Uint8Array(bytes).slice(), standardFontDataUrl: STD_FONTS, isEvalSupported: false,
   });
   const doc = await task.promise;
-  const out = { pages: doc.numPages, rotations: [], text: [], info: (await doc.getMetadata()).info };
+  const out = {
+    pages: doc.numPages, rotations: [], text: [], annots: [], outline: [],
+    info: (await doc.getMetadata()).info,
+  };
   for (let i = 1; i <= doc.numPages; i++) {
     const p = await doc.getPage(i);
     out.rotations.push(p.rotate);
     out.text.push((await p.getTextContent()).items.map(x => x.str).join(" "));
+    for (const a of await p.getAnnotations())
+      out.annots.push({ page: i - 1, subtype: a.subtype, contents: a.contentsObj?.str ?? a.contents ?? "" });
   }
+  const walk = (items, depth) => items.forEach(it => {
+    out.outline.push({ title: it.title, depth });
+    if (it.items?.length) walk(it.items, depth + 1);
+  });
+  walk((await doc.getOutline()) || [], 0);
   await task.destroy();
   return out;
 }
@@ -1223,5 +1631,7 @@ window.Kiln = {
   deletePages, duplicatePages, runSearch, hits: () => hits, setZoom, setCurrent,
   selectPage, textOf, exportAll, thumbCache, pageKey,
   panels, toggleSec, foldPane,
+  ANN, setAnnTool, addAnn, deleteAnn, allAnnots, highlightSelection,
+  addBookmark, deleteBookmark, printDoc,
   ready: () => !pending.size && !draining,
 };

@@ -113,10 +113,27 @@ body.foldL .split{display:none}
 .th.sel .th-n{color:var(--ember)}
 .th.drop-b{box-shadow:0 -3px 0 -1px var(--ember)}
 .th.drop-a{box-shadow:0 3px 0 -1px var(--ember)}
-.obm{width:100%;display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:6px;font-size:12px;color:var(--t2)}
+.obm{width:100%;display:flex;align-items:center;gap:6px;padding:2px 6px;border-radius:6px;font-size:12px;color:var(--t2)}
 .obm:hover{background:var(--hov);color:var(--text)}
-.obm .ot{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.obm .op{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t4)}
+.obm .ot{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-align:left;padding:3px 0;color:inherit}
+.obm .op{font-family:var(--mono);font-size:10px;color:var(--t4);flex:none}
+.rowx{width:20px;height:20px;border-radius:5px;display:grid;place-items:center;color:var(--t4);
+  font-size:13px;line-height:1;flex:none;opacity:0}
+.obm:hover .rowx,.arow:hover .rowx{opacity:1}
+.rowx:hover{background:color-mix(in srgb,var(--bad) 20%,transparent);color:var(--bad)}
+.rowbtn{width:100%;padding:6px 8px;margin-top:4px;border-radius:6px;font-size:11.5px;color:var(--t3);
+  border:1px dashed var(--line2);text-align:center;display:block}
+.rowbtn:hover{color:var(--ember);border-color:var(--ember)}
+/* annotation list */
+.arow{display:flex;align-items:center;gap:4px;border-radius:6px;padding-right:4px}
+.arow:hover{background:var(--hov)}
+.arow.sel{background:color-mix(in srgb,var(--ember) 14%,transparent)}
+.arow .aj{flex:1;min-width:0;display:flex;align-items:center;gap:7px;padding:5px 7px;font-size:11.5px;color:var(--t2)}
+.adot{width:9px;height:9px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.2)}
+.aty{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--t4);flex:none}
+.atx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arow .op{font-family:var(--mono);font-size:10px;color:var(--t4);flex:none}
 
 .split{grid-area:split;cursor:col-resize;position:relative;z-index:5}
 .split::after{content:"";position:absolute;inset:0 2px;background:var(--line)}
@@ -146,7 +163,17 @@ body.foldL .split{display:none}
 .textLayer span[role="img"]{user-select:none;cursor:default}
 .textLayer ::selection{background:color-mix(in srgb,var(--ember) 40%,transparent)}
 .hitl{position:absolute;left:0;top:0;pointer-events:none;z-index:1;overflow:hidden}
-.pgov{position:absolute;left:0;top:0;pointer-events:none;overflow:hidden;z-index:3}
+/* annotations sit above the text, but only swallow the pointer while a drawing
+   tool is armed — otherwise a highlight would block selecting the text under it */
+.annl{position:absolute;left:0;top:0;pointer-events:none;z-index:3;overflow:visible}
+body.drawing .annl{pointer-events:auto}
+body.drawing .textLayer{pointer-events:none;user-select:none}
+body.drawing .pg{cursor:crosshair}
+.annl .ah{opacity:.38;mix-blend-mode:multiply}
+.annl .an{pointer-events:auto;cursor:pointer}
+.annl .sel{outline:1.5px dashed var(--ember);outline-offset:2px}
+.annl text.sel{outline:none;text-decoration:underline}
+.pgov{position:absolute;left:0;top:0;pointer-events:none;overflow:hidden;z-index:4}
 .pgov .wm{position:absolute;left:50%;top:50%;font-weight:800;font-family:Helvetica,var(--sans);
   white-space:nowrap;transform-origin:50% 50%}
 .pgov .pn{position:absolute;color:#59534f;font-family:Helvetica,var(--sans)}
@@ -222,7 +249,7 @@ body.foldL .split{display:none}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="43ccbb1-0935">
+<meta name="kiln-build" content="3ac46d3-1033">
 </head>
 <body>
 <div id="app">
@@ -259,6 +286,20 @@ body.foldL .split{display:none}
     <button class="tb txt" data-act="del" title="Delete selected pages (⌫)">Delete</button>
     <button class="tb txt" data-act="dup" title="Duplicate selected pages (⌘J)">Duplicate</button>
     <button class="tb txt" data-act="insert" title="Insert pages from another PDF">Insert…</button>
+    <div class="obsep"></div>
+    <button class="tb on" data-tool="hand" title="Hand — select pages and scroll">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6"/><path d="M11 11V4a1.5 1.5 0 0 1 3 0v7"/><path d="M14 11V6a1.5 1.5 0 0 1 3 0v8"/><path d="M17 11a1.5 1.5 0 0 1 3 0v3a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L5.6 14a1.5 1.5 0 0 1 2.4-1.8"/></svg></button>
+    <button class="tb" data-tool="highlight" title="Highlight selected text (⌘⇧H)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m9 14 6-6 4 4-6 6H8z"/><path d="M4 20h16"/></svg></button>
+    <button class="tb" data-tool="note" title="Sticky note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4H4v13h5l3 3 3-3h5z"/><path d="M8 9h8M8 12h5"/></svg></button>
+    <button class="tb" data-tool="draw" title="Draw freehand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19c4-1 5-8 9-8s4 5 8 3"/></svg></button>
+    <button class="tb" data-tool="box" title="Rectangle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="6" width="16" height="12" rx="1.5"/></svg></button>
+    <button class="tb" data-tool="text" title="Place text on the page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 6h12M12 6v12M9 18h6"/></svg></button>
+    <input type="color" class="obcolor" id="annColor" value="#e2622a" title="Annotation colour">
     <div class="optbar-r">
       <input class="txtin" id="search" placeholder="Search document… (⌘F)" style="width:180px">
       <span class="num" id="searchCount" style="font-family:var(--mono);font-size:10px;color:var(--t4);min-width:34px"></span>
@@ -319,6 +360,7 @@ body.foldL .split{display:none}
 
   <div class="sbar">
     <span class="si"><span class="dot"></span><b id="sbStatus">Ready</b></span>
+    <span class="si">Tool <b id="sbTool">Hand</b></span>
     <span class="si">Pages <b class="num" id="sbPages">—</b></span>
     <span class="si">Selected <b class="num" id="sbSel">0</b></span>
     <span class="si">Size <b id="sbSize">—</b></span>
