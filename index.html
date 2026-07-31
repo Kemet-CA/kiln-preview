@@ -1185,6 +1185,9 @@ let CUR="home";
 $("wsnav").innerHTML=WORKSPACES.map(w=>
   `<button data-ws="${w.id}" aria-current="${w.id==="home"}"><span class="sq"></span><span class="lbl">${w.name}</span></button>`).join("");
 function go(id){
+  // The Image workspace is a separate, full application (raster + vector).
+  // Everything below is the phase-2..5 preview shell.
+  if(id==="image"){location.href="editor.html";return;}
   CUR=id;
   document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id==="screen-"+id));
   document.querySelectorAll("#wsnav button").forEach(b=>b.setAttribute("aria-current",String(b.dataset.ws===id)));
@@ -1305,7 +1308,9 @@ function mv(d){
   it[csel].classList.add("sel");it[csel].scrollIntoView({block:"nearest"});
 }
 function runC(i){
-  const t=cres[i];if(!t)return;closeC();go(t.ws);
+  const t=cres[i];if(!t)return;closeC();
+  if(t.ws==="image"){location.href="editor.html";return;}
+  go(t.ws);
   if(t.tool)setTimeout(()=>selectTool(t.tool),80);
   else toast(`${t.n} — open in the ${t.ws} workspace`);
 }
