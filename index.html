@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="theme.css">
 <script src="theme.js"></script>
 
-<meta name="kiln-build" content="3ac46d3-1033">
+<meta name="kiln-build" content="86c6b76-1557">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -482,7 +482,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   <div class="hero"><div class="hero-in">
     <div class="eyebrow">Open source · No accounts · No AI · Self-hosted</div>
     <h1>Upload once.<br>Then <span class="lit">shape anything</span>.</h1>
-    <p class="lede">Six professional workspaces for images, PDFs, text, colour, fonts and files — each one a real editing environment with panels, layers, history and keyboard shortcuts. Every tool is also a documented REST endpoint.</p>
+    <p class="lede">Seven professional workspaces for images, PDFs, Word documents, text, colour, fonts and files — each one a real editing environment with panels, layers, history and keyboard shortcuts. Every tool is also a documented REST endpoint.</p>
     <div class="hcta">
       <button class="btn btn-p" data-go="image">Open Image Workspace →</button>
       <button class="btn btn-g" data-go="text">Try the Text Editor</button>
@@ -1158,6 +1158,9 @@ const WORKSPACES=[
  {id:"pdf",name:"PDF",tint:"var(--cobalt)",n:17,ui:"Acrobat-style viewer · page thumbnails",
   desc:"Open a document and reorder, rotate, delete, merge, split, watermark and number its pages — rendered and rewritten in your browser.",
   icon:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>'},
+ {id:"documents",name:"Documents",tint:"var(--ash)",n:12,ui:"Word documents · read · edit · export",
+  desc:"Open a .docx and read it exactly as Word laid it out, print it, edit the text and formatting, then export Word, HTML or plain text.",
+  icon:'<path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 4v4h4"/><path d="M8 13h8M8 17h5"/>'},
  {id:"text",name:"Text",tint:"var(--celadon)",n:25,ui:"VS Code-style editor · live output",
   desc:"A real editor with line numbers, live statistics, validation and instant output for every text utility.",
   icon:'<path d="M4 6h16M4 12h11M4 18h7"/>'},
@@ -1191,6 +1194,7 @@ function go(id){
   // Everything below is the phase-3..5 preview shell.
   if(id==="image"){location.href="editor.html";return;}
   if(id==="pdf"){location.href="pdf/";return;}
+  if(id==="documents"){location.href="documents/";return;}
   CUR=id;
   document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id==="screen-"+id));
   document.querySelectorAll("#wsnav button").forEach(b=>b.setAttribute("aria-current",String(b.dataset.ws===id)));
@@ -1314,6 +1318,7 @@ function runC(i){
   const t=cres[i];if(!t)return;closeC();
   if(t.ws==="image"){location.href="editor.html";return;}
   if(t.ws==="pdf"){location.href="pdf/";return;}
+  if(t.ws==="documents"){location.href="documents/";return;}
   go(t.ws);
   if(t.tool)setTimeout(()=>selectTool(t.tool),80);
   else toast(`${t.n} — open in the ${t.ws} workspace`);

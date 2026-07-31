@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiln — Documents</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E2622A'/%3E%3Crect x='9' y='9' width='14' height='14' rx='3' fill='%230B0A09'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<script type="importmap">
+{ "imports": { "jszip": "./vendor/jszip.mjs" } }
+</script>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);font-size:13px;
+  line-height:1.5;letter-spacing:-.008em;-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none;--lw:210px;--rw:280px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left;padding:0}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ember);outline-offset:1px;border-radius:4px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--scrl);border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+.num{font-variant-numeric:tabular-nums}
+
+#app{display:grid;height:100vh;height:100dvh;
+  grid-template-rows:34px 34px minmax(0,1fr) 24px;
+  grid-template-columns:var(--lw) 5px minmax(0,1fr) var(--rw);
+  grid-template-areas:"menu menu menu menu" "opt opt opt opt" "left split stage panels" "status status status status"}
+
+/* ---------- menu bar ---------- */
+.menubar{grid-area:menu;display:flex;align-items:center;gap:2px;padding:0 8px;
+  border-bottom:1px solid var(--line);background:var(--s1)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:640;letter-spacing:-.03em;font-size:13.5px;margin-right:8px}
+.mark{width:18px;height:18px;border-radius:5px;position:relative;flex:none;
+  background:linear-gradient(150deg,var(--hot),var(--ember) 45%,var(--cherry));
+  box-shadow:0 0 12px color-mix(in srgb,var(--ember) 40%,transparent),inset 0 1px 0 rgba(255,255,255,.35)}
+.mark::after{content:"";position:absolute;inset:5px 5px 0;border-radius:4px 4px 0 0;background:rgba(11,10,9,.55)}
+.menu{position:relative}
+.menu-t{padding:4px 9px;border-radius:5px;font-size:12.5px;color:var(--t2)}
+.menu-t:hover,.menu.open .menu-t{background:var(--hov2);color:var(--text)}
+.menu-d{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:250px;z-index:80;padding:5px;
+  border:var(--bw) solid var(--line2);border-radius:9px;background:var(--popbg);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:var(--popshadow)}
+.menu.open>.menu-d{display:block;animation:pop .12s var(--ez)}
+@keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.mi{width:100%;display:flex;align-items:center;gap:10px;padding:5.5px 9px;border-radius:6px;font-size:12.5px;color:var(--t2)}
+.mi:hover{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--text)}
+.mi .sc{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t4)}
+.mi[aria-disabled="true"]{opacity:.35;pointer-events:none}
+.msep{height:1px;background:var(--line);margin:4px 6px}
+.menubar-r{margin-left:auto;display:flex;align-items:center;gap:6px}
+
+/* ---------- options bar ---------- */
+.optbar{grid-area:opt;display:flex;align-items:center;gap:6px;padding:0 10px;
+  border-bottom:1px solid var(--line);background:var(--s1);font-size:12px;color:var(--t3);
+  overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.optbar::-webkit-scrollbar{display:none}
+.obsep{width:1px;height:16px;background:var(--line);flex:none}
+.tb{height:22px;min-width:24px;padding:0 6px;border-radius:6px;display:grid;place-items:center;color:var(--t2);flex:none}
+.tb:hover{background:var(--hov2);color:var(--text)}
+.tb.on{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--ember);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ember) 30%,transparent)}
+.tb svg{width:13px;height:13px}
+.tb.txt{font-size:11.5px;padding:0 8px}
+.tb b{font-weight:700}.tb i{font-style:italic}.tb u{text-decoration:underline}.tb s{text-decoration:line-through}
+.obsel{padding:3.5px 7px;border-radius:6px;border:var(--bw) solid var(--line);background:var(--s2);
+  font-size:11.5px;color:var(--text);outline:0;box-shadow:var(--hs)}
+.seg{display:flex;gap:2px;border:var(--bw) solid var(--line);border-radius:7px;padding:2px;background:var(--s2);flex:none}
+.seg button{padding:2px 10px;border-radius:5px;font-size:11.5px;color:var(--t3)}
+.seg button.on{background:color-mix(in srgb,var(--ember) 18%,transparent);color:var(--ember)}
+.optbar-r{margin-left:auto;display:flex;align-items:center;gap:7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:5px 12px;
+  border-radius:6px;font-size:12px;font-weight:550;border:1px solid transparent;cursor:pointer;flex:none}
+.btn-p{background:var(--btnp-bg);color:var(--btnp-fg);border:var(--bw) solid transparent;box-shadow:var(--btnp-sh)}
+.btn-p:hover{filter:brightness(1.07)}
+.btn-g{border:var(--bw) solid var(--line);color:var(--t2);box-shadow:var(--hs)}
+.btn-g:hover{border-color:var(--line2);color:var(--text);background:var(--hov)}
+:root[data-theme="neo"] .btn-p{border-color:#141414}
+
+/* ---------- left pane ---------- */
+.pane-l{grid-area:left;background:var(--s1);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;min-height:0;min-width:0}
+.pane-h{display:flex;align-items:center;flex:none;border-bottom:1px solid var(--line);background:var(--s2);
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);padding-left:10px}
+.split{grid-area:split;cursor:col-resize;position:relative;z-index:5}
+.split::after{content:"";position:absolute;inset:0 2px;background:var(--line)}
+.split:hover::after{background:var(--ember)}
+body.foldL{--lw:30px}
+body.foldR{--rw:30px}
+body.foldL .pane-l .sec,body.foldL .pane-l .pane-h span,
+body.foldR #panels .pbody,body.foldR #panels .ptab{display:none}
+body.foldL .pane-l .pane-h,body.foldR #panels .ptabs{padding-left:0;justify-content:center}
+body.foldL .pane-l .pfold,body.foldR #panels .pfold{margin:0}
+body.foldL .pane-l .pfold svg,body.foldR #panels .pfold svg{transform:rotate(-90deg)}
+body.foldL .split{display:none}
+.onav{width:100%;display:flex;align-items:baseline;gap:7px;padding:4px 8px;border-radius:6px;
+  font-size:12px;color:var(--t2);text-align:left}
+.onav:hover{background:var(--hov);color:var(--text)}
+.onav.cur{background:color-mix(in srgb,var(--ember) 14%,transparent);color:var(--hot)}
+.onav .lv{font-family:var(--mono);font-size:9px;color:var(--t4);flex:none}
+.onav .tt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- stage: the paper ---------- */
+.stage{grid-area:stage;position:relative;overflow:hidden;
+  background:radial-gradient(70% 60% at 50% 0%,color-mix(in srgb,var(--ember) 5%,transparent),transparent 70%),var(--stagebg)}
+#vp{position:absolute;inset:0;overflow:auto;padding:26px 0 60px}
+#paper{margin:0 auto;background:#fff;color:#111;width:816px;min-height:200px;
+  box-shadow:0 18px 44px -22px rgba(0,0,0,.9),0 0 0 1px rgba(0,0,0,.18);border-radius:2px}
+#paper[hidden]{display:none}
+#editor{margin:0 auto;background:#fff;color:#14110f;width:816px;min-height:1056px;padding:96px 96px 120px;
+  box-shadow:0 18px 44px -22px rgba(0,0,0,.9),0 0 0 1px rgba(0,0,0,.18);border-radius:2px;
+  outline:0;user-select:text;font-family:Calibri,Carlito,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.55}
+#editor[hidden]{display:none}
+#editor:focus{box-shadow:0 18px 44px -22px rgba(0,0,0,.9),0 0 0 2px var(--ember)}
+#editor h1{font-size:29px;line-height:1.25;margin:.6em 0 .35em;font-weight:600}
+#editor h2{font-size:23px;line-height:1.3;margin:.9em 0 .3em;font-weight:600}
+#editor h3{font-size:19px;margin:.9em 0 .3em;font-weight:600}
+#editor p{margin:0 0 .7em}
+#editor ul,#editor ol{margin:0 0 .8em;padding-left:1.6em}
+#editor li{margin:.15em 0}
+#editor table{border-collapse:collapse;margin:0 0 1em;width:100%}
+#editor td,#editor th{border:1px solid #c9c4bd;padding:5px 8px;vertical-align:top}
+#editor img{max-width:100%;height:auto}
+#editor blockquote{margin:0 0 .8em;padding-left:14px;border-left:3px solid #d9d4cd;color:#555}
+#editor a{color:#1155cc}
+/* docx-preview writes its own styles into .docx-wrapper */
+.docx-wrapper{background:transparent!important;padding:0!important}
+.docx-wrapper>section.docx{margin:0 auto 18px!important;box-shadow:0 18px 44px -22px rgba(0,0,0,.9),0 0 0 1px rgba(0,0,0,.18)}
+.dz{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,86%);
+  border:1.5px dashed var(--line2);border-radius:14px;padding:40px 26px;text-align:center;
+  cursor:pointer;background:var(--s1);z-index:10}
+.dz:hover,.dz.over{border-color:var(--ember)}
+.dz-i{width:38px;height:38px;margin:0 auto 12px;border-radius:10px;display:grid;place-items:center;
+  color:var(--ember);background:color-mix(in srgb,var(--ember) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--ember) 25%,transparent)}
+.dz h3{margin:0;font-size:15px;letter-spacing:-.02em}
+.dz p{margin:7px 0 0;color:var(--t3);font-size:12.5px;line-height:1.6}
+.dz .row{margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+
+/* ---------- right panels ---------- */
+#panels{grid-area:panels;background:var(--s1);border-left:1px solid var(--line);
+  display:flex;flex-direction:column;min-height:0}
+.ptabs{display:flex;flex:none;border-bottom:1px solid var(--line);background:var(--s2)}
+.ptab{padding:6px 11px;font-size:11.5px;color:var(--t3)}
+.ptab:hover{color:var(--t2)}
+.ptab.on{color:var(--text);background:var(--s1);box-shadow:inset 0 -2px 0 var(--ember)}
+.pbody{flex:1;min-height:0;overflow-y:auto;display:none;padding:8px}
+.pbody.on{display:block}
+.pbody:has(>.sec){padding:0}
+.pbody>.sec:last-child{border-bottom:0}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3.5px 7px;font-size:12px}
+.kv span{color:var(--t3)}
+.kv b{font-family:var(--mono);font-weight:500;color:var(--t2);font-variant-numeric:tabular-nums;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+.note{padding:6px 8px 12px;font-size:11.5px;color:var(--t4);line-height:1.65}
+.note b{color:var(--t3);font-weight:600}
+.rowbtn{width:100%;padding:7px 8px;margin-top:6px;border-radius:6px;font-size:11.5px;color:var(--t2);
+  border:var(--bw) solid var(--line);text-align:center;display:block;background:var(--s2)}
+.rowbtn:hover{color:var(--ember);border-color:var(--ember)}
+.empty{padding:24px 14px;text-align:center;color:var(--t4);font-size:12px;line-height:1.6}
+
+/* ---------- status bar + toasts ---------- */
+.sbar{grid-area:status;display:flex;align-items:center;padding:0 10px;border-top:1px solid var(--line);
+  background:var(--s1);font-family:var(--mono);font-size:10.5px;color:var(--t3);overflow:hidden}
+.si{display:flex;align-items:center;gap:5px;padding:0 10px;border-right:1px solid var(--line);height:100%;white-space:nowrap}
+.si:first-child{padding-left:0}
+.si b{color:var(--t2);font-weight:500;font-variant-numeric:tabular-nums}
+.si.sp{margin-left:auto;border-right:0}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--ok);flex:none}
+.toasts{position:fixed;bottom:32px;right:14px;z-index:120;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:9px;font-size:12.5px;
+  border:var(--bw) solid var(--line2);background:var(--popbg);box-shadow:var(--popshadow);
+  animation:sin .24s var(--ez);transition:opacity .3s,transform .3s}
+@keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* ---------- printing: the document, nothing else ---------- */
+@media print{
+  body{overflow:visible;background:#fff}
+  #app{display:block;height:auto}
+  .menubar,.optbar,.pane-l,.split,#panels,.sbar,.toasts,.dz{display:none!important}
+  .stage{position:static;overflow:visible;background:#fff}
+  #vp{position:static;overflow:visible;padding:0}
+  #paper,#editor{width:auto;margin:0;box-shadow:none;border-radius:0;min-height:0;padding:0}
+  .docx-wrapper>section.docx{box-shadow:none!important;margin:0!important}
+}
+</style>
+<meta name="kiln-build" content="86c6b76-1557">
+</head>
+<body>
+<div id="app">
+  <div class="menubar">
+    <a class="brand" href="../" style="text-decoration:none;color:inherit" title="Back to all workspaces"><span class="mark"></span>Kiln</a>
+    <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d" id="mFile"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Edit</button><div class="menu-d" id="mEdit"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Format</button><div class="menu-d" id="mFormat"></div></div>
+    <div class="menu" data-menu><button class="menu-t">View</button><div class="menu-d" id="mView"></div></div>
+    <div class="menubar-r" data-kiln-themebar></div>
+  </div>
+
+  <div class="optbar">
+    <div class="seg" id="modeSeg">
+      <button data-mode="view" class="on">Read</button>
+      <button data-mode="edit">Edit</button>
+    </div>
+    <div class="obsep"></div>
+    <select class="obsel" id="blockSel" title="Paragraph style">
+      <option value="p">Body text</option>
+      <option value="h1">Heading 1</option>
+      <option value="h2">Heading 2</option>
+      <option value="h3">Heading 3</option>
+      <option value="blockquote">Quote</option>
+    </select>
+    <button class="tb" data-fmt="bold" title="Bold (⌘B)"><b>B</b></button>
+    <button class="tb" data-fmt="italic" title="Italic (⌘I)"><i>I</i></button>
+    <button class="tb" data-fmt="underline" title="Underline (⌘U)"><u>U</u></button>
+    <button class="tb" data-fmt="strikeThrough" title="Strikethrough"><s>S</s></button>
+    <div class="obsep"></div>
+    <button class="tb" data-fmt="insertUnorderedList" title="Bulleted list">•—</button>
+    <button class="tb" data-fmt="insertOrderedList" title="Numbered list">1—</button>
+    <button class="tb txt" data-fmt="justifyLeft" title="Align left">⯇</button>
+    <button class="tb txt" data-fmt="justifyCenter" title="Centre">≡</button>
+    <button class="tb txt" data-fmt="justifyRight" title="Align right">⯈</button>
+    <button class="tb txt" data-act="link" title="Add a link (⌘K)">Link</button>
+    <button class="tb txt" data-fmt="removeFormat" title="Clear formatting">Clear</button>
+    <div class="obsep"></div>
+    <button class="tb" data-act="zout" title="Zoom out">−</button>
+    <span class="num" id="zoomV" style="font-family:var(--mono);font-size:11px;min-width:40px;text-align:center;color:var(--t3)">100%</span>
+    <button class="tb" data-act="zin" title="Zoom in">+</button>
+    <div class="optbar-r">
+      <button class="btn btn-g" data-act="print">Print</button>
+      <button class="btn btn-p" data-act="exportDocx">Export</button>
+    </div>
+  </div>
+
+  <aside class="pane-l">
+    <div class="pane-h"><span>Document</span>
+      <button class="pfold" data-fold="L" title="Collapse this panel" aria-label="Collapse this panel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <div class="sec grow" data-sec="outline">
+      <button class="sec-h" data-sec-h aria-expanded="true">
+        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
+        Outline<span class="sec-n num" id="outN">0</span></button>
+      <div class="sec-b" id="outline"><div class="empty">No document open.</div></div>
+    </div>
+  </aside>
+
+  <div class="split" id="splitL"></div>
+
+  <div class="stage" id="stage">
+    <div id="vp">
+      <div id="paper" hidden></div>
+      <div id="editor" contenteditable="true" spellcheck="true" hidden></div>
+    </div>
+    <div class="dz" id="dz" tabindex="0" role="button">
+      <div class="dz-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></div>
+      <h3>Drop a Word document to open it</h3>
+      <p>.docx opens here in your browser — read it, print it, edit it.<br>Nothing is uploaded.</p>
+      <div class="row">
+        <button class="btn btn-p" data-act="sample" id="dzSample">Sample document</button>
+        <button class="btn btn-g" data-act="open" id="dzOpen">Open file…</button>
+        <button class="btn btn-g" data-act="blank" id="dzBlank">Start writing</button>
+      </div>
+    </div>
+    <input type="file" id="fileMain" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+  </div>
+
+  <aside id="panels">
+    <div class="ptabs">
+      <button class="ptab on" data-pt="pInfo">Document</button>
+      <button class="ptab" data-pt="pExport">Export</button>
+      <button class="pfold" data-fold="R" title="Collapse this panel" aria-label="Collapse this panel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <div class="pbody on" id="pInfo"></div>
+    <div class="pbody" id="pExport"></div>
+  </aside>
+
+  <div class="sbar">
+    <span class="si"><span class="dot"></span><b id="sbStatus">Ready</b></span>
+    <span class="si">Mode <b id="sbMode">Read</b></span>
+    <span class="si">Words <b class="num" id="sbWords">0</b></span>
+    <span class="si">Characters <b class="num" id="sbChars">0</b></span>
+    <span class="si sp">File <b id="sbFile">—</b></span>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<script type="module" src="engine.js"></script>
+</body>
+</html>
