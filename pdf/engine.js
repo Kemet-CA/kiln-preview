@@ -644,9 +644,16 @@ async function textOf(i) {
   const tc = await page.getTextContent();
   const items = [];
   let text = "";
+  let span = 0;
   for (const it of tc.items) {
     if (typeof it.str !== "string") continue;
-    items.push({ str: it.str, at: text.length, tr: it.transform, w: it.width, h: it.height });
+    // The text layer renders a <span> per item that has glyphs and a <br> for the
+    // empty end-of-line items, so only the former get a span index. Getting this
+    // wrong silently shifts every highlight onto a neighbouring line.
+    items.push({
+      i: it.str.length ? span++ : -1,
+      str: it.str, at: text.length, tr: it.transform, w: it.width, h: it.height,
+    });
     text += it.str + (it.hasEOL ? "\n" : "");
   }
   const v = { text, items };
@@ -669,6 +676,7 @@ async function runSearch(q) {
       hits.push({
         page: i, at,
         context: text.slice(Math.max(0, at - 34), at + q.length + 34).replace(/\s+/g, " ").trim(),
+        item: it ? it.i : -1, off: it ? at - it.at : 0, len: q.length,
         box: it ? boxFor(it, at - it.at, q.length) : null,
       });
       at = hay.indexOf(needle, at + needle.length);
@@ -712,8 +720,22 @@ function gotoHit(k) {
 const markCurrentHit = () =>
   document.querySelectorAll(".hitmark").forEach(m => m.classList.toggle("on", +m.dataset.k === hitI));
 
-/* Every match stays highlighted while the search is live — the box comes from
-   the text run's own transform, so it lands on the glyphs at any zoom. */
+/* Every match stays highlighted while the search is live. The rectangle is
+   measured off the text layer with a DOM Range — the browser knows exactly
+   where those glyphs are, so highlights land on the word rather than near it.
+   The transform-derived box is the fallback for a page not yet rendered. */
+function rangeRects(spans, h, pageRect) {
+  if (h.item < 0) return [];
+  const node = spans[h.item]?.firstChild;
+  if (!node || node.nodeType !== Node.TEXT_NODE) return [];
+  const a = Math.min(h.off, node.length), b = Math.min(h.off + h.len, node.length);
+  if (b <= a) return [];
+  const r = document.createRange();
+  r.setStart(node, a); r.setEnd(node, b);
+  return [...r.getClientRects()]
+    .filter(x => x.width > 0.5 && x.height > 0.5)
+    .map(x => ({ x: x.left - pageRect.left, y: x.top - pageRect.top, w: x.width, h: x.height }));
+}
 async function paintHits(i) {
   const el = $("pages").children[i], list = hitsByPage.get(i);
   const host = el?.querySelector(".hitl");
@@ -724,10 +746,16 @@ async function paintHits(i) {
   const { vp } = await viewportFor(Doc.pages[i], scale);
   host.style.width = vp.width + "px";
   host.style.height = vp.height + "px";
-  host.innerHTML = list.filter(h => h.box).map(h => {
+  const spans = [...el.querySelectorAll(".textLayer span:not(.markedContent)")];
+  const pageRect = el.getBoundingClientRect();
+  const box = (h, r) => `<div class="hitmark${h.k === hitI ? " on" : ""}" data-k="${h.k}"
+    style="left:${r.x}px;top:${r.y}px;width:${Math.max(5, r.w)}px;height:${r.h}px"></div>`;
+  host.innerHTML = list.map(h => {
+    const rects = rangeRects(spans, h, pageRect);
+    if (rects.length) return rects.map(r => box(h, r)).join("");
+    if (!h.box) return "";
     const [x, y] = vp.convertToViewportPoint(h.box.x, h.box.y);
-    return `<div class="hitmark${h.k === hitI ? " on" : ""}" data-k="${h.k}"
-      style="left:${x}px;top:${y - h.box.h * scale}px;width:${Math.max(6, h.box.w * scale)}px;height:${h.box.h * scale * 1.25}px"></div>`;
+    return box(h, { x, y: y - h.box.h * scale, w: h.box.w * scale, h: h.box.h * scale * 1.25 });
   }).join("");
 }
 const repaintHits = () => Doc.pages.forEach((_, i) => paintHits(i));
