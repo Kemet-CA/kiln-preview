@@ -2253,17 +2253,33 @@ $("splitR").addEventListener("pointerdown", e => {
   window.addEventListener("pointermove", mv);
   window.addEventListener("pointerup", up);
 });
+const THEMES = [
+  ["dark", "Ember Dark", "#0B0A09", "#E2622A"],
+  ["light", "Paper Light", "#F2EEE8", "#C9511C"],
+  ["neo", "Neo Pop", "#F6EFDF", "#F2BE22"],
+  ["ocean", "Deep Ocean", "#071019", "#19A7BE"],
+  ["mono", "Monochrome", "#101010", "#E6E6E6"],
+];
 (function theme() {
   let saved = null;
   try { saved = localStorage.getItem("kiln-theme"); } catch {}
-  if (saved === "light" || saved === "dark") document.documentElement.dataset.theme = saved;
-  $("thToggle").addEventListener("click", () => {
-    const cur = document.documentElement.dataset.theme ||
-      (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
-    const next = cur === "light" ? "dark" : "light";
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem("kiln-theme", next); } catch {}
-  });
+  if (THEMES.some(t => t[0] === saved)) document.documentElement.dataset.theme = saved;
+  const render = () => {
+    const cur = document.documentElement.dataset.theme || "dark";
+    $("mTheme").innerHTML = THEMES.map(([id, name, bg, ac]) => `
+      <button class="mi" data-th="${id}">
+        <span style="width:22px;height:15px;border-radius:4px;flex:none;border:1px solid var(--line2);
+          background:linear-gradient(120deg,${bg} 55%,${ac} 55%)"></span>
+        ${name}${id === cur ? '<span class="sc">✓</span>' : ""}
+      </button>`).join("");
+    $("mTheme").querySelectorAll("[data-th]").forEach(b => b.addEventListener("click", () => {
+      document.documentElement.dataset.theme = b.dataset.th;
+      try { localStorage.setItem("kiln-theme", b.dataset.th); } catch {}
+      render();
+      toast(THEMES.find(t => t[0] === b.dataset.th)[1]);
+    }));
+  };
+  render();
 })();
 
 $("fileImg").addEventListener("change", e => openImageFile(e.target.files[0]));
