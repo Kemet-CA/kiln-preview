@@ -4,98 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Kiln — Image Editor</title>
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
 <style>
-/* ================= Kiln tokens (approved design) ================= */
-:root, :root[data-theme="dark"]{
-  --ground:#0B0A09; --s1:#121110; --s2:#181615; --s3:#211E1D; --s4:#2B2726;
-  --stagebg:#0E0D0C;
-  --line:rgba(255,242,232,.09); --line2:rgba(255,242,232,.16);
-  --text:#F6F2ED; --t2:#B7ADA4; --t3:#7E756D; --t4:#5C5550;
-  --cherry:#7A2E12; --ember:#E2622A; --hot:#FFB25C;
-  --hov:rgba(255,255,255,.055); --hov2:rgba(255,255,255,.085);
-  --popbg:rgba(26,24,23,.96); --scrl:rgba(255,255,255,.12);
-  --ok:#6FBF8B; --warn:#D9A441; --bad:#E0655F;
-  --bw:1px; --hs:none;
-  --popshadow:0 22px 50px -18px rgba(0,0,0,.85);
-  --btnp-bg:linear-gradient(180deg,#F0743A,var(--ember)); --btnp-fg:#1A0B04;
-  --btnp-sh:0 1px 0 rgba(255,255,255,.26) inset,0 5px 16px -8px rgba(226,98,42,.8);
-  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
-  --ez:cubic-bezier(.2,.7,.2,1);
-}
-@media (prefers-color-scheme: light){
-  :root:not([data-theme]){
-    --ground:#F2EEE8; --s1:#FAF7F2; --s2:#EFEAE3; --s3:#E5DFD6; --s4:#DAD2C8;
-    --stagebg:#E6E1D9;
-    --line:rgba(46,32,20,.12); --line2:rgba(46,32,20,.22);
-    --text:#211A14; --t2:#52463C; --t3:#827466; --t4:#A79A8C;
-    --cherry:#8A2E0E; --ember:#C9511C; --hot:#B15A0F;
-    --hov:rgba(46,32,20,.06); --hov2:rgba(46,32,20,.10);
-    --popbg:rgba(252,250,246,.97); --scrl:rgba(46,32,20,.18);
-    --ok:#2E7D4F; --warn:#9A6B10; --bad:#B03A34;
-    --bw:1px; --hs:none;
-    --popshadow:0 22px 50px -18px rgba(0,0,0,.35);
-    --btnp-bg:linear-gradient(180deg,#E0662D,var(--ember)); --btnp-fg:#FFF6EC;
-    --btnp-sh:0 5px 16px -8px rgba(201,81,28,.7);
-  }
-}
-:root[data-theme="light"]{
-  --ground:#F2EEE8; --s1:#FAF7F2; --s2:#EFEAE3; --s3:#E5DFD6; --s4:#DAD2C8;
-  --stagebg:#E6E1D9;
-  --line:rgba(46,32,20,.12); --line2:rgba(46,32,20,.22);
-  --text:#211A14; --t2:#52463C; --t3:#827466; --t4:#A79A8C;
-  --cherry:#8A2E0E; --ember:#C9511C; --hot:#B15A0F;
-  --hov:rgba(46,32,20,.06); --hov2:rgba(46,32,20,.10);
-  --popbg:rgba(252,250,246,.97); --scrl:rgba(46,32,20,.18);
-  --ok:#2E7D4F; --warn:#9A6B10; --bad:#B03A34;
-    --bw:1px; --hs:none;
-    --popshadow:0 22px 50px -18px rgba(0,0,0,.35);
-    --btnp-bg:linear-gradient(180deg,#E0662D,var(--ember)); --btnp-fg:#FFF6EC;
-    --btnp-sh:0 5px 16px -8px rgba(201,81,28,.7);
-}
-/* ---- Neo Pop: neubrutalism — cream ground, black outlines, hard shadows ---- */
-:root[data-theme="neo"]{
-  --ground:#F6EFDF; --s1:#FFFDF6; --s2:#F8F0DA; --s3:#F0E4C6; --s4:#E7D8B0;
-  --stagebg:#EFE6D0;
-  --line:#141414; --line2:#141414;
-  --text:#141414; --t2:#3B372F; --t3:#6C6455; --t4:#9A8F7C;
-  --cherry:#C13A1B; --ember:#E88A1A; --hot:#C46A10;
-  --hov:rgba(20,20,20,.07); --hov2:rgba(20,20,20,.13);
-  --popbg:#FFFDF6; --scrl:rgba(20,20,20,.4);
-  --ok:#1F9D55; --warn:#B7791F; --bad:#D64545;
-  --bw:2px; --hs:3px 3px 0 #141414;
-  --popshadow:6px 6px 0 #141414;
-  --btnp-bg:#F2BE22; --btnp-fg:#141414; --btnp-sh:3px 3px 0 #141414;
-}
-/* ---- Deep Ocean: blue-black with teal accent ---- */
-:root[data-theme="ocean"]{
-  --ground:#071019; --s1:#0C1622; --s2:#101D2C; --s3:#162636; --s4:#1D3040;
-  --stagebg:#0A131D;
-  --line:rgba(160,210,255,.12); --line2:rgba(160,210,255,.24);
-  --text:#EAF4FF; --t2:#A8C2D8; --t3:#6E8AA3; --t4:#49607A;
-  --cherry:#0E5E75; --ember:#19A7BE; --hot:#6FE3EC;
-  --hov:rgba(255,255,255,.06); --hov2:rgba(255,255,255,.1);
-  --popbg:rgba(12,22,34,.96); --scrl:rgba(160,210,255,.2);
-  --ok:#4ADE80; --warn:#FBBF24; --bad:#F87171;
-  --bw:1px; --hs:none;
-  --popshadow:0 22px 50px -18px rgba(0,0,0,.9);
-  --btnp-bg:linear-gradient(180deg,#35C6D8,#19A7BE); --btnp-fg:#04222A;
-  --btnp-sh:0 1px 0 rgba(255,255,255,.25) inset,0 5px 16px -8px rgba(25,167,190,.8);
-}
-/* ---- Monochrome: pure grayscale, white accent ---- */
-:root[data-theme="mono"]{
-  --ground:#101010; --s1:#161616; --s2:#1D1D1D; --s3:#262626; --s4:#303030;
-  --stagebg:#141414;
-  --line:rgba(255,255,255,.11); --line2:rgba(255,255,255,.22);
-  --text:#F2F2F2; --t2:#C4C4C4; --t3:#8A8A8A; --t4:#5C5C5C;
-  --cherry:#9A9A9A; --ember:#E6E6E6; --hot:#FFFFFF;
-  --hov:rgba(255,255,255,.06); --hov2:rgba(255,255,255,.1);
-  --popbg:rgba(22,22,22,.97); --scrl:rgba(255,255,255,.16);
-  --ok:#B5E3C4; --warn:#E8D5A6; --bad:#EBAAAA;
-  --bw:1px; --hs:none;
-  --popshadow:0 22px 50px -18px rgba(0,0,0,.9);
-  --btnp-bg:#F2F2F2; --btnp-fg:#111111; --btnp-sh:0 5px 16px -8px rgba(255,255,255,.4);
-}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);font-size:13px;
@@ -146,8 +57,6 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 4.5px;border:var(--bw) 
 .menu.open .menu-d .menu-d{display:none}
 .menu.open .mi-sub:hover>.menu-d{display:block}
 .menubar-r{margin-left:auto;display:flex;align-items:center;gap:6px}
-.thbtn{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;color:var(--t3);border:var(--bw) solid var(--line)}
-.thbtn:hover{color:var(--text);background:var(--hov)}
 
 
 /* ---------- options bar ---------- */
@@ -376,15 +285,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
     <div class="menu" data-menu><button class="menu-t">Select</button><div class="menu-d" id="mSelect"></div></div>
     <div class="menu" data-menu><button class="menu-t">Filter</button><div class="menu-d" id="mFilter"></div></div>
     <div class="menu" data-menu><button class="menu-t">View</button><div class="menu-d" id="mView"></div></div>
-    <div class="menubar-r">
-      <div class="menu" data-menu>
-        <button class="menu-t thbtn" id="thToggle" title="Theme" aria-label="Choose theme">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-.8-.5-1.2-.5-2 0-1 .8-1.8 2-1.8h1.9A3.8 3.8 0 0 0 21 12c0-5-4-9-9-9z"/><circle cx="7.5" cy="11" r="1.1" fill="currentColor"/><circle cx="10.5" cy="7.5" r="1.1" fill="currentColor"/><circle cx="15" cy="7.8" r="1.1" fill="currentColor"/></svg>
-        </button>
-        <div class="menu-d" id="mTheme" style="left:auto;right:0;min-width:180px"></div>
-      </div>
+    <div class="menubar-r" data-kiln-themebar></div>
     </div>
-  </div>
 
   <div class="optbar" id="optbar"></div>
   <aside class="toolbar" id="toolbar"></aside>

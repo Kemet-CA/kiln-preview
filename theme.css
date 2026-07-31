@@ -1,0 +1,309 @@
+/* ============================================================
+   Kiln shared theme system — 4 families x light/dark.
+   <html data-theme="ember|neo|ocean|mono" data-mode="dark|light">
+   Loaded by every Kiln page; theme.js drives the two buttons.
+   ============================================================ */
+:root{
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  --ez:cubic-bezier(.2,.7,.2,1);
+}
+:root, :root[data-theme="ember"][data-mode="dark"]{
+  --ground:#0B0A09;
+  --s1:#121110;
+  --s2:#181615;
+  --s3:#211E1D;
+  --s4:#2B2726;
+  --stagebg:#0E0D0C;
+  --line:rgba(255,242,232,.09);
+  --line2:rgba(255,242,232,.16);
+  --text:#F6F2ED;
+  --t2:#B7ADA4;
+  --t3:#7E756D;
+  --t4:#5C5550;
+  --ember:#E2622A;
+  --hot:#FFB25C;
+  --cherry:#7A2E12;
+  --iron:#C4623F;
+  --celadon:#7FA88A;
+  --cobalt:#6C8CC4;
+  --ochre:#C9A24B;
+  --mang:#9B7BB8;
+  --ash:#8D949B;
+  --ok:#6FBF8B;
+  --warn:#D9A441;
+  --bad:#E0655F;
+  --hov:rgba(255,255,255,.055); --hov2:rgba(255,255,255,.09); --card1:rgba(255,255,255,.028); --card2:rgba(255,255,255,.012);
+  --popbg:rgba(26,24,23,.96); --scrl:rgba(255,255,255,.14); --scrl2:rgba(255,255,255,.26); --gridln:rgba(255,242,232,.045); --checker:rgba(255,255,255,.03);
+  --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.85);
+  --btnp-bg:linear-gradient(180deg,#FFB25C,#E2622A); --btnp-fg:#0C0806; --btnp-sh:0 1px 0 rgba(255,255,255,.24) inset,0 5px 16px -8px rgba(0,0,0,.55);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-mode]){
+    --ground:#F2EEE8;
+    --s1:#FAF7F2;
+    --s2:#EFEAE3;
+    --s3:#E5DFD6;
+    --s4:#DAD2C8;
+    --stagebg:#E6E1D9;
+    --line:rgba(46,32,20,.12);
+    --line2:rgba(46,32,20,.22);
+    --text:#211A14;
+    --t2:#52463C;
+    --t3:#827466;
+    --t4:#A79A8C;
+    --ember:#C9511C;
+    --hot:#B15A0F;
+    --cherry:#8A2E0E;
+    --iron:#A44A2A;
+    --celadon:#4E7B5E;
+    --cobalt:#3F63A0;
+    --ochre:#94701C;
+    --mang:#6E4E90;
+    --ash:#5D666F;
+    --ok:#2E7D4F;
+    --warn:#9A6B10;
+    --bad:#B03A34;
+    --hov:rgba(20,20,20,.06); --hov2:rgba(20,20,20,.11); --card1:rgba(255,255,255,.75); --card2:rgba(255,255,255,.4);
+    --popbg:rgba(252,250,246,.97); --scrl:rgba(20,20,20,.18); --scrl2:rgba(20,20,20,.32); --gridln:rgba(20,20,20,.055); --checker:rgba(20,20,20,.055);
+    --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.3);
+    --btnp-bg:linear-gradient(180deg,#C9511C,#8A2E0E); --btnp-fg:#FFF6EC; --btnp-sh:0 1px 0 rgba(255,255,255,.24) inset,0 5px 16px -8px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="ember"][data-mode="light"]{
+  --ground:#F2EEE8;
+  --s1:#FAF7F2;
+  --s2:#EFEAE3;
+  --s3:#E5DFD6;
+  --s4:#DAD2C8;
+  --stagebg:#E6E1D9;
+  --line:rgba(46,32,20,.12);
+  --line2:rgba(46,32,20,.22);
+  --text:#211A14;
+  --t2:#52463C;
+  --t3:#827466;
+  --t4:#A79A8C;
+  --ember:#C9511C;
+  --hot:#B15A0F;
+  --cherry:#8A2E0E;
+  --iron:#A44A2A;
+  --celadon:#4E7B5E;
+  --cobalt:#3F63A0;
+  --ochre:#94701C;
+  --mang:#6E4E90;
+  --ash:#5D666F;
+  --ok:#2E7D4F;
+  --warn:#9A6B10;
+  --bad:#B03A34;
+  --hov:rgba(20,20,20,.06); --hov2:rgba(20,20,20,.11); --card1:rgba(255,255,255,.75); --card2:rgba(255,255,255,.4);
+  --popbg:rgba(252,250,246,.97); --scrl:rgba(20,20,20,.18); --scrl2:rgba(20,20,20,.32); --gridln:rgba(20,20,20,.055); --checker:rgba(20,20,20,.055);
+  --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.3);
+  --btnp-bg:linear-gradient(180deg,#C9511C,#8A2E0E); --btnp-fg:#FFF6EC; --btnp-sh:0 1px 0 rgba(255,255,255,.24) inset,0 5px 16px -8px rgba(0,0,0,.55);
+}
+:root[data-theme="neo"][data-mode="dark"]{
+  --ground:#131316;
+  --s1:#1C1C21;
+  --s2:#24242B;
+  --s3:#2E2E36;
+  --s4:#3A3A44;
+  --stagebg:#101013;
+  --line:#F5F5F0;
+  --line2:#F5F5F0;
+  --text:#F5F5F0;
+  --t2:#CFCFC7;
+  --t3:#9A9A93;
+  --t4:#6E6E68;
+  --ember:#F2BE22;
+  --hot:#FFD84D;
+  --cherry:#E4572E;
+  --iron:#E4572E;
+  --celadon:#2FA36B;
+  --cobalt:#3B6FE0;
+  --ochre:#F2BE22;
+  --mang:#8B5CF6;
+  --ash:#6B7280;
+  --ok:#6FBF8B;
+  --warn:#D9A441;
+  --bad:#E0655F;
+  --hov:rgba(255,255,255,.055); --hov2:rgba(255,255,255,.09); --card1:rgba(255,255,255,.028); --card2:rgba(255,255,255,.012);
+  --popbg:#1C1C21; --scrl:rgba(255,255,255,.14); --scrl2:rgba(255,255,255,.26); --gridln:rgba(255,242,232,.045); --checker:rgba(255,255,255,.03);
+  --bw:2px; --hs:3px 3px 0 #F5F5F0; --popshadow:6px 6px 0 #F5F5F0;
+  --btnp-bg:#F2BE22; --btnp-fg:#141414; --btnp-sh:3px 3px 0 #F5F5F0;
+}
+:root[data-theme="neo"][data-mode="light"]{
+  --ground:#F6EFDF;
+  --s1:#FFFDF6;
+  --s2:#F8F0DA;
+  --s3:#F0E4C6;
+  --s4:#E7D8B0;
+  --stagebg:#EFE6D0;
+  --line:#141414;
+  --line2:#141414;
+  --text:#141414;
+  --t2:#3B372F;
+  --t3:#6C6455;
+  --t4:#9A8F7C;
+  --ember:#E88A1A;
+  --hot:#C46A10;
+  --cherry:#C13A1B;
+  --iron:#E4572E;
+  --celadon:#2FA36B;
+  --cobalt:#3B6FE0;
+  --ochre:#F2BE22;
+  --mang:#8B5CF6;
+  --ash:#6B7280;
+  --ok:#2E7D4F;
+  --warn:#9A6B10;
+  --bad:#B03A34;
+  --hov:rgba(20,20,20,.06); --hov2:rgba(20,20,20,.11); --card1:rgba(255,255,255,.75); --card2:rgba(255,255,255,.4);
+  --popbg:#FFFDF6; --scrl:rgba(20,20,20,.18); --scrl2:rgba(20,20,20,.32); --gridln:rgba(20,20,20,.055); --checker:rgba(20,20,20,.055);
+  --bw:2px; --hs:3px 3px 0 #141414; --popshadow:6px 6px 0 #141414;
+  --btnp-bg:#E88A1A; --btnp-fg:#141414; --btnp-sh:3px 3px 0 #141414;
+}
+:root[data-theme="ocean"][data-mode="dark"]{
+  --ground:#071019;
+  --s1:#0C1622;
+  --s2:#101D2C;
+  --s3:#162636;
+  --s4:#1D3040;
+  --stagebg:#0A131D;
+  --line:rgba(160,210,255,.12);
+  --line2:rgba(160,210,255,.24);
+  --text:#EAF4FF;
+  --t2:#A8C2D8;
+  --t3:#6E8AA3;
+  --t4:#49607A;
+  --ember:#19A7BE;
+  --hot:#6FE3EC;
+  --cherry:#0E5E75;
+  --iron:#C4623F;
+  --celadon:#7FA88A;
+  --cobalt:#6C8CC4;
+  --ochre:#C9A24B;
+  --mang:#9B7BB8;
+  --ash:#8D949B;
+  --ok:#6FBF8B;
+  --warn:#D9A441;
+  --bad:#E0655F;
+  --hov:rgba(255,255,255,.055); --hov2:rgba(255,255,255,.09); --card1:rgba(255,255,255,.028); --card2:rgba(255,255,255,.012);
+  --popbg:rgba(26,24,23,.96); --scrl:rgba(255,255,255,.14); --scrl2:rgba(255,255,255,.26); --gridln:rgba(255,242,232,.045); --checker:rgba(255,255,255,.03);
+  --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.85);
+  --btnp-bg:linear-gradient(180deg,#6FE3EC,#19A7BE); --btnp-fg:#0C0806; --btnp-sh:0 1px 0 rgba(255,255,255,.24) inset,0 5px 16px -8px rgba(0,0,0,.55);
+}
+:root[data-theme="ocean"][data-mode="light"]{
+  --ground:#EDF4F8;
+  --s1:#F9FCFD;
+  --s2:#E3EEF4;
+  --s3:#D4E4ED;
+  --s4:#C1D6E3;
+  --stagebg:#E2ECF2;
+  --line:rgba(10,45,65,.14);
+  --line2:rgba(10,45,65,.26);
+  --text:#0A1F2B;
+  --t2:#2D4B5C;
+  --t3:#5C7C8E;
+  --t4:#8FA9B8;
+  --ember:#0E7C90;
+  --hot:#0A6274;
+  --cherry:#073F4C;
+  --iron:#A44A2A;
+  --celadon:#4E7B5E;
+  --cobalt:#3F63A0;
+  --ochre:#94701C;
+  --mang:#6E4E90;
+  --ash:#5D666F;
+  --ok:#2E7D4F;
+  --warn:#9A6B10;
+  --bad:#B03A34;
+  --hov:rgba(20,20,20,.06); --hov2:rgba(20,20,20,.11); --card1:rgba(255,255,255,.75); --card2:rgba(255,255,255,.4);
+  --popbg:rgba(252,250,246,.97); --scrl:rgba(20,20,20,.18); --scrl2:rgba(20,20,20,.32); --gridln:rgba(20,20,20,.055); --checker:rgba(20,20,20,.055);
+  --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.3);
+  --btnp-bg:linear-gradient(180deg,#0E7C90,#073F4C); --btnp-fg:#FFF6EC; --btnp-sh:0 1px 0 rgba(255,255,255,.24) inset,0 5px 16px -8px rgba(0,0,0,.55);
+}
+:root[data-theme="mono"][data-mode="dark"]{
+  --ground:#101010;
+  --s1:#161616;
+  --s2:#1D1D1D;
+  --s3:#262626;
+  --s4:#303030;
+  --stagebg:#141414;
+  --line:rgba(255,255,255,.11);
+  --line2:rgba(255,255,255,.22);
+  --text:#F2F2F2;
+  --t2:#C4C4C4;
+  --t3:#8A8A8A;
+  --t4:#5C5C5C;
+  --ember:#E6E6E6;
+  --hot:#FFFFFF;
+  --cherry:#9A9A9A;
+  --iron:#C4623F;
+  --celadon:#7FA88A;
+  --cobalt:#6C8CC4;
+  --ochre:#C9A24B;
+  --mang:#9B7BB8;
+  --ash:#8D949B;
+  --ok:#6FBF8B;
+  --warn:#D9A441;
+  --bad:#E0655F;
+  --hov:rgba(255,255,255,.055); --hov2:rgba(255,255,255,.09); --card1:rgba(255,255,255,.028); --card2:rgba(255,255,255,.012);
+  --popbg:rgba(26,24,23,.96); --scrl:rgba(255,255,255,.14); --scrl2:rgba(255,255,255,.26); --gridln:rgba(255,242,232,.045); --checker:rgba(255,255,255,.03);
+  --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.85);
+  --btnp-bg:#E6E6E6; --btnp-fg:#111; --btnp-sh:0 5px 16px -8px rgba(0,0,0,.5);
+}
+:root[data-theme="mono"][data-mode="light"]{
+  --ground:#F4F4F4;
+  --s1:#FFFFFF;
+  --s2:#EDEDED;
+  --s3:#E2E2E2;
+  --s4:#D4D4D4;
+  --stagebg:#EAEAEA;
+  --line:rgba(20,20,20,.13);
+  --line2:rgba(20,20,20,.24);
+  --text:#141414;
+  --t2:#3D3D3D;
+  --t3:#6E6E6E;
+  --t4:#9B9B9B;
+  --ember:#2B2B2B;
+  --hot:#000000;
+  --cherry:#5A5A5A;
+  --iron:#A44A2A;
+  --celadon:#4E7B5E;
+  --cobalt:#3F63A0;
+  --ochre:#94701C;
+  --mang:#6E4E90;
+  --ash:#5D666F;
+  --ok:#2E7D4F;
+  --warn:#9A6B10;
+  --bad:#B03A34;
+  --hov:rgba(20,20,20,.06); --hov2:rgba(20,20,20,.11); --card1:rgba(255,255,255,.75); --card2:rgba(255,255,255,.4);
+  --popbg:rgba(252,250,246,.97); --scrl:rgba(20,20,20,.18); --scrl2:rgba(20,20,20,.32); --gridln:rgba(20,20,20,.055); --checker:rgba(20,20,20,.055);
+  --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.3);
+  --btnp-bg:#2B2B2B; --btnp-fg:#fff; --btnp-sh:0 5px 16px -8px rgba(0,0,0,.5);
+}
+
+/* brutalist families get chunkier chrome everywhere */
+:root[data-theme="neo"] .btn-p,:root[data-theme="neo"] .btnp{border:var(--bw) solid var(--line)}
+
+/* ---- theme bar: two buttons, works on any Kiln page ---- */
+.ktb{display:flex;align-items:center;gap:6px;position:relative}
+.ktb-btn{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;color:var(--t3);
+  border:var(--bw) solid var(--line);background:none;cursor:pointer;transition:.15s var(--ez);
+  box-shadow:var(--hs);padding:0}
+.ktb-btn:hover{color:var(--text);border-color:var(--line2);background:var(--hov)}
+.ktb-btn svg{width:15px;height:15px}
+.ktb-pop{display:none;position:absolute;top:calc(100% + 7px);right:0;min-width:194px;z-index:200;padding:5px;
+  border:var(--bw) solid var(--line2);border-radius:10px;background:var(--popbg);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:var(--popshadow)}
+.ktb-pop.on{display:block}
+.ktb-item{width:100%;display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;
+  font-size:12.5px;color:var(--t2);background:none;border:0;cursor:pointer;text-align:left;font-family:inherit}
+.ktb-item:hover{background:color-mix(in srgb,var(--ember) 18%,transparent);color:var(--text)}
+.ktb-sw{width:24px;height:16px;border-radius:4px;flex:none;border:1px solid var(--line2)}
+.ktb-item .ktb-tick{margin-left:auto;color:var(--ember);font-size:12px}
+:root[data-mode="light"] .ktb-moon{display:none}
+:root[data-mode="dark"] .ktb-sun{display:none}
+:root:not([data-mode]) .ktb-sun{display:none}
+@media (prefers-color-scheme: light){
+  :root:not([data-mode]) .ktb-moon{display:none}
+  :root:not([data-mode]) .ktb-sun{display:block}
+}
