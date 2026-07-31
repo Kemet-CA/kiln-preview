@@ -1924,25 +1924,60 @@ function openAdjust(a, asLayer) {
   });
   window.addEventListener("pointerup", () => on = false);
 })();
+/* ---------------- collapsible panels ----------------
+   Same accordion as the PDF editor (styles live in packages/theme/theme.css):
+   sections fold from their header, whole groups fold from their tab strip, and
+   both are remembered per browser. */
+const PANELS_KEY = "kiln-editor-panels";
+const panels = (() => { try { return JSON.parse(localStorage.getItem(PANELS_KEY)) || {}; } catch { return {}; } })();
+const savePanels = () => { try { localStorage.setItem(PANELS_KEY, JSON.stringify(panels)); } catch { /* private mode */ } };
+const CHEV = `<svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>`;
+function sec(id, title, body, dflt = false) {
+  const shut = panels[id] ?? dflt;
+  return `<div class="sec${shut ? " shut" : ""}" data-sec="${id}">
+    <button class="sec-h" data-sec-h aria-expanded="${!shut}">${CHEV}${title}</button>
+    <div class="sec-b">${body}</div></div>`;
+}
+function toggleSec(el) {
+  const shut = !el.classList.contains("shut");
+  el.classList.toggle("shut", shut);
+  el.querySelector("[data-sec-h]")?.setAttribute("aria-expanded", String(!shut));
+  if (el.dataset.sec) { panels[el.dataset.sec] = shut; savePanels(); }
+}
+function foldGroup(g, id, force) {
+  const shut = force ?? !g.classList.contains("shut");
+  g.classList.toggle("shut", shut);
+  g.querySelector("[data-fold]")?.setAttribute("aria-expanded", String(!shut));
+  panels["group:" + id] = shut; savePanels();
+}
+function applyPanelState() {
+  document.querySelectorAll("[data-fold]").forEach(b => {
+    if (panels["group:" + b.dataset.fold]) foldGroup(b.closest(".pgroup"), b.dataset.fold, true);
+  });
+  document.querySelectorAll(".sec[data-sec]").forEach(el => {
+    const shut = panels[el.dataset.sec] ?? el.classList.contains("shut");
+    el.classList.toggle("shut", shut);
+    el.querySelector("[data-sec-h]")?.setAttribute("aria-expanded", String(!shut));
+  });
+}
+
 function renderAdjTree() {
-  $("pAdj").innerHTML = `
-    <div class="sec"><button class="sec-h" data-sec>
-      <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-      Adjustments</button>
-      <div class="sec-b">${ADJ.map((a, i) => `<button class="trow" data-adj="${i}">${a.name}</button>`).join("")}</div></div>
-    <div class="sec"><button class="sec-h" data-sec>
-      <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-      Filters</button>
-      <div class="sec-b">${FILTERS.map((a, i) => `<button class="trow" data-flt="${i}">${a.name}</button>`).join("")}</div></div>`;
+  $("pAdj").innerHTML =
+    sec("adjust", "Adjustments", ADJ.map((a, i) => `<button class="trow" data-adj="${i}">${a.name}</button>`).join("")) +
+    sec("filters", "Filters", FILTERS.map((a, i) => `<button class="trow" data-flt="${i}">${a.name}</button>`).join(""));
   $("pAdj").querySelectorAll("[data-adj]").forEach(b => b.addEventListener("click", () => openAdjust(ADJ[+b.dataset.adj])));
   $("pAdj").querySelectorAll("[data-flt]").forEach(b => b.addEventListener("click", () => openAdjust(FILTERS[+b.dataset.flt])));
 }
 document.addEventListener("click", e => {
-  const h = e.target.closest("[data-sec]");
-  if (h) h.parentElement.classList.toggle("shut");
+  const h = e.target.closest("[data-sec-h]");
+  if (h) toggleSec(h.closest(".sec"));
+  const f = e.target.closest("[data-fold]");
+  if (f) foldGroup(f.closest(".pgroup"), f.dataset.fold);
   const pt = e.target.closest("[data-pt]");
   if (pt) {
     const g = pt.closest(".pgroup");
+    // clicking a tab in a folded group opens the group on that tab
+    if (g.classList.contains("shut")) foldGroup(g, g.querySelector("[data-fold]")?.dataset.fold, false);
     g.querySelectorAll(".ptab").forEach(x => x.classList.toggle("on", x === pt));
     g.querySelectorAll(".pbody").forEach(x => x.classList.toggle("on", x.id === pt.dataset.pt));
   }
@@ -2272,6 +2307,7 @@ vp.addEventListener("contextmenu", e => e.preventDefault());
 buildToolbar();
 buildMenus();
 renderAdjTree();
+applyPanelState();
 setTool("move");
 syncSwatches();
 

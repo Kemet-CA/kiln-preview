@@ -84,20 +84,22 @@ body.nopanels #panels{display:none}
 :root[data-theme="neo"] .pane-l,:root[data-theme="neo"] #panels{border-color:#141414}
 
 /* ---------- left pane: pages + outline ---------- */
+/* the section/accordion look is shared — see packages/theme/theme.css */
 .pane-l{grid-area:left;background:var(--s1);border-right:1px solid var(--line);
   display:flex;flex-direction:column;min-height:0;min-width:0}
-.sec{border-bottom:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
-.sec.grow{flex:1}
-.sec-h{width:100%;display:flex;align-items:center;gap:7px;padding:7px 10px;flex:none;
-  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
-.sec-h:hover{color:var(--t2)}
-.sec-h .cv{width:9px;height:9px;transition:transform .16s;opacity:.6}
-.sec-h .sec-n{margin-left:auto;color:var(--t4)}
-.sec.shut .cv{transform:rotate(-90deg)}
-.sec.shut .sec-b{display:none}
-.sec.shut{flex:none}
-.sec-b{flex:1;min-height:0;overflow-y:auto;padding:8px}
+.pane-h{display:flex;align-items:center;flex:none;border-bottom:1px solid var(--line);background:var(--s2);
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);padding-left:10px}
 #outline{max-height:210px}
+
+/* folded panes collapse to a strip you can click open again */
+body.foldL{--lw:30px}
+body.foldR{--rw:30px}
+body.foldL .pane-l .sec,body.foldL .pane-l .pane-h span,
+body.foldR #panels .pbody,body.foldR #panels .ptab{display:none}
+body.foldL .pane-l .pane-h,body.foldR #panels .ptabs{padding-left:0;justify-content:center}
+body.foldL .pane-l .pfold,body.foldR #panels .pfold{margin:0}
+body.foldL .pane-l .pfold svg,body.foldR #panels .pfold svg{transform:rotate(-90deg)}
+body.foldL .split{display:none}
 
 .th{position:relative;margin:0 auto 10px;width:100%;max-width:160px;border-radius:7px;padding:4px;
   border:1px solid transparent;cursor:pointer;transition:.12s var(--ez)}
@@ -165,8 +167,8 @@ body.nopanels #panels{display:none}
 .kv span{color:var(--t3)}
 .kv b{font-family:var(--mono);font-weight:500;color:var(--t2);font-variant-numeric:tabular-nums;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
-.phead{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);
-  padding:14px 7px 6px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.pbody:has(>.sec){padding:0}          /* accordion panels are flush; list panels keep their padding */
+.pbody>.sec:last-child{border-bottom:0}
 .fld{display:flex;align-items:center;gap:8px;padding:4px 7px;font-size:11.5px;color:var(--t3)}
 .fld>span{flex:none;width:66px}
 .fld input[type=text],.fld .txtin{flex:1;min-width:0}
@@ -204,7 +206,7 @@ body.nopanels #panels{display:none}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="2941743-0846">
+<meta name="kiln-build" content="228a68e-0916">
 </head>
 <body>
 <div id="app">
@@ -249,14 +251,18 @@ body.nopanels #panels{display:none}
   </div>
 
   <aside class="pane-l">
-    <div class="sec grow">
-      <button class="sec-h" data-sec>
+    <div class="pane-h"><span>Document</span>
+      <button class="pfold" data-fold="L" title="Collapse this panel" aria-label="Collapse this panel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <div class="sec grow" data-sec="pages">
+      <button class="sec-h" data-sec-h aria-expanded="true">
         <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
         Pages<span class="sec-n num" id="pgN">0</span></button>
       <div class="sec-b" id="thumbs"><div class="empty">No document open.</div></div>
     </div>
-    <div class="sec shut">
-      <button class="sec-h" data-sec>
+    <div class="sec shut" data-sec="bookmarks">
+      <button class="sec-h" data-sec-h aria-expanded="false">
         <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
         Bookmarks</button>
       <div class="sec-b" id="outline"><div class="empty">No document open.</div></div>
@@ -286,6 +292,8 @@ body.nopanels #panels{display:none}
       <button class="ptab" data-pt="pTools">Tools</button>
       <button class="ptab" data-pt="pSearch">Search</button>
       <button class="ptab" data-pt="pHist">History</button>
+      <button class="pfold" data-fold="R" title="Collapse this panel" aria-label="Collapse this panel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></button>
     </div>
     <div class="pbody on" id="pInfo"></div>
     <div class="pbody" id="pTools"></div>

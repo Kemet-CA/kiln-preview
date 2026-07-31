@@ -220,15 +220,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
 .kv b{font-family:var(--mono);font-weight:500;color:var(--t2);font-variant-numeric:tabular-nums}
 .empty{padding:24px 14px;text-align:center;color:var(--t4);font-size:12px;line-height:1.6}
 
-/* adjustments tree */
-.sec{border-bottom:1px solid var(--line)}
-.sec-h{width:100%;display:flex;align-items:center;gap:7px;padding:7px 10px;
-  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
-.sec-h:hover{color:var(--t2)}
-.sec-h .cv{width:9px;height:9px;transition:transform .16s;opacity:.6}
-.sec.shut .cv{transform:rotate(-90deg)}
-.sec.shut .sec-b{display:none}
-.sec-b{padding:2px 8px 8px}
+/* adjustments tree — the .sec accordion itself is shared, see packages/theme/theme.css */
+.pgroup.shut .ptabs{border-bottom:0}
+.pgroup.shut>.pbody{display:none!important}   /* beats #pLayers.on{display:flex} */
+.ptabs .pmenu+.pfold{margin-left:0}
+.pbody:has(>.sec){padding:0}
 .trow{width:100%;display:flex;align-items:center;gap:8px;padding:4.5px 8px;border-radius:6px;
   font-size:12.5px;color:var(--t2)}
 .trow:hover{background:var(--hov);color:var(--text)}
@@ -274,7 +270,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="2941743-0846">
+<meta name="kiln-build" content="228a68e-0916">
 </head>
 <body>
 <div id="app">
@@ -321,6 +317,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
         <button class="ptab on" data-pt="pHist">History</button>
         <button class="ptab" data-pt="pAdj">Adjustments</button>
         <button class="ptab" data-pt="pInfo">Info</button>
+        <button class="pfold" data-fold="top" title="Collapse this panel" aria-label="Collapse this panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></button>
       </div>
       <div class="pbody on" id="pHist"></div>
       <div class="pbody" id="pAdj"></div>
@@ -330,6 +328,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
       <div class="ptabs">
         <button class="ptab on" data-pt="pLayers">Layers</button>
         <button class="pmenu" id="lyrMenu">≡</button>
+        <button class="pfold" data-fold="layers" title="Collapse this panel" aria-label="Collapse this panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></button>
       </div>
       <div class="pbody on" id="pLayers">
         <div class="lrow">

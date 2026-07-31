@@ -690,6 +690,47 @@ function showHitMark(h) {
   });
 }
 
+/* ---------------- collapsible panels ----------------
+   Every side panel is an accordion. What is open, and whether a whole pane is
+   folded away, is remembered per browser — the app comes back how you left it. */
+const PANELS_KEY = "kiln-pdf-panels";
+const panels = (() => { try { return JSON.parse(localStorage.getItem(PANELS_KEY)) || {}; } catch { return {}; } })();
+const savePanels = () => { try { localStorage.setItem(PANELS_KEY, JSON.stringify(panels)); } catch { /* private mode */ } };
+const shutBy = (id, dflt = false) => panels[id] ?? dflt;
+const CHEV = `<svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>`;
+
+/* one collapsible section of a panel */
+function sec(id, title, body, { dflt = false, count = null, grow = false } = {}) {
+  const shut = shutBy(id, dflt);
+  // the badge stays in the DOM even when empty, so a toggle can fill it later
+  return `<div class="sec${grow ? " grow" : ""}${shut ? " shut" : ""}" data-sec="${id}">
+    <button class="sec-h" data-sec-h aria-expanded="${!shut}">${CHEV}${esc(title)}
+      ${count === null ? "" : `<span class="sec-n num">${esc(count)}</span>`}</button>
+    <div class="sec-b">${body}</div></div>`;
+}
+function toggleSec(el) {
+  const shut = !el.classList.contains("shut");
+  el.classList.toggle("shut", shut);
+  el.querySelector("[data-sec-h]")?.setAttribute("aria-expanded", String(!shut));
+  if (el.dataset.sec) { panels[el.dataset.sec] = shut; savePanels(); }
+}
+function foldPane(side, force) {
+  const cls = "fold" + side;
+  const on = force ?? !document.body.classList.contains(cls);
+  document.body.classList.toggle(cls, on);
+  panels[cls] = on; savePanels();
+  if (Doc.fit) applyFit(); else repaint();
+}
+/* markup carries the default; a remembered choice wins */
+function applyPanelState() {
+  document.querySelectorAll(".sec[data-sec]").forEach(el => {
+    const shut = shutBy(el.dataset.sec, el.classList.contains("shut"));
+    el.classList.toggle("shut", shut);
+    el.querySelector("[data-sec-h]")?.setAttribute("aria-expanded", String(!shut));
+  });
+  ["L", "R"].forEach(s => document.body.classList.toggle("fold" + s, !!panels["fold" + s]));
+}
+
 /* ---------------- panels ---------------- */
 function renderHistory() {
   $("pHist").innerHTML = Hist.steps.map((s, i) =>
@@ -718,11 +759,12 @@ function renderProps() {
     ["Current page", Doc.open ? `${Doc.cur} of ${Doc.pages.length}` : "—"],
     ["Rotation", p ? p.rot + "°" : "—"],
   ];
-  $("pInfo").innerHTML = rows.map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("") +
-    `<div class="phead">Metadata — written on export</div>` +
-    ["title", "author", "subject", "keywords"].map(f =>
-      `<label class="fld"><span>${f[0].toUpperCase() + f.slice(1)}</span>
-        <input class="txtin" data-meta="${f}" value="${esc(Doc.meta[f] || "")}" placeholder="—"></label>`).join("");
+  $("pInfo").innerHTML =
+    sec("info", "Document", rows.map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("")) +
+    sec("meta", "Metadata — written on export",
+      ["title", "author", "subject", "keywords"].map(f =>
+        `<label class="fld"><span>${f[0].toUpperCase() + f.slice(1)}</span>
+          <input class="txtin" data-meta="${f}" value="${esc(Doc.meta[f] || "")}" placeholder="—"></label>`).join(""));
   if (p) sizeRow(p);
 }
 /* page size needs an async page load, so it lands after the rest of the panel */
@@ -739,26 +781,29 @@ async function sizeRow(p) {
 }
 function renderTools() {
   const e = Doc.effects;
-  $("pTools").innerHTML = `
-    <div class="phead">Watermark</div>
-    <label class="chk"><input type="checkbox" data-fx="watermark.on"${e.watermark.on ? " checked" : ""}> Apply watermark</label>
-    <label class="fld"><span>Text</span><input class="txtin" data-fx="watermark.text" value="${esc(e.watermark.text)}"></label>
-    <label class="fld"><span>Size</span><input type="range" min="10" max="160" step="2" data-fx="watermark.size" value="${e.watermark.size}"><b class="num">${e.watermark.size}pt</b></label>
-    <label class="fld"><span>Angle</span><input type="range" min="-90" max="90" step="5" data-fx="watermark.angle" value="${e.watermark.angle}"><b class="num">${e.watermark.angle}°</b></label>
-    <label class="fld"><span>Opacity</span><input type="range" min="2" max="100" step="2" data-fx="watermark.opacity" value="${Math.round(e.watermark.opacity * 100)}"><b class="num">${Math.round(e.watermark.opacity * 100)}%</b></label>
-    <label class="fld"><span>Colour</span><input type="color" class="obcolor" data-fx="watermark.color" value="${e.watermark.color}"></label>
-
-    <div class="phead">Page numbers</div>
-    <label class="chk"><input type="checkbox" data-fx="numbers.on"${e.numbers.on ? " checked" : ""}> Stamp page numbers</label>
-    <label class="fld"><span>Format</span><select class="obsel" data-fx="numbers.format">
-      ${["n", "Page n", "n of N"].map(f => `<option${e.numbers.format === f ? " selected" : ""}>${f}</option>`).join("")}</select></label>
-    <label class="fld"><span>Position</span><select class="obsel" data-fx="numbers.pos">
-      ${["bottom-center", "bottom-right", "bottom-left", "top-center", "top-right"].map(f => `<option${e.numbers.pos === f ? " selected" : ""}>${f}</option>`).join("")}</select></label>
-    <label class="fld"><span>Start at</span><input class="txtin num" style="width:56px" type="number" min="1" data-fx="numbers.start" value="${e.numbers.start}"></label>
-    <label class="chk"><input type="checkbox" data-fx="numbers.skipFirst"${e.numbers.skipFirst ? " checked" : ""}> Skip the first page</label>
-
-    <div class="phead">Needs the API</div>
-    <div class="note">Compression, password protection and unlocking rewrite the file with ghostscript and qpdf. They arrive with the PDF API (milestone M6); everything above runs entirely in this browser.</div>`;
+  const onOff = v => v ? "on" : "";
+  $("pTools").innerHTML =
+    sec("wm", "Watermark", `
+      <label class="chk"><input type="checkbox" data-fx="watermark.on"${e.watermark.on ? " checked" : ""}> Apply watermark</label>
+      <label class="fld"><span>Text</span><input class="txtin" data-fx="watermark.text" value="${esc(e.watermark.text)}"></label>
+      <label class="fld"><span>Size</span><input type="range" min="10" max="160" step="2" data-fx="watermark.size" value="${e.watermark.size}"><b class="num">${e.watermark.size}pt</b></label>
+      <label class="fld"><span>Angle</span><input type="range" min="-90" max="90" step="5" data-fx="watermark.angle" value="${e.watermark.angle}"><b class="num">${e.watermark.angle}°</b></label>
+      <label class="fld"><span>Opacity</span><input type="range" min="2" max="100" step="2" data-fx="watermark.opacity" value="${Math.round(e.watermark.opacity * 100)}"><b class="num">${Math.round(e.watermark.opacity * 100)}%</b></label>
+      <label class="fld"><span>Colour</span><input type="color" class="obcolor" data-fx="watermark.color" value="${e.watermark.color}"></label>`,
+      { count: onOff(e.watermark.on) }) +
+    sec("pn", "Page numbers", `
+      <label class="chk"><input type="checkbox" data-fx="numbers.on"${e.numbers.on ? " checked" : ""}> Stamp page numbers</label>
+      <label class="fld"><span>Format</span><select class="obsel" data-fx="numbers.format">
+        ${["n", "Page n", "n of N"].map(f => `<option${e.numbers.format === f ? " selected" : ""}>${f}</option>`).join("")}</select></label>
+      <label class="fld"><span>Position</span><select class="obsel" data-fx="numbers.pos">
+        ${["bottom-center", "bottom-right", "bottom-left", "top-center", "top-right"].map(f => `<option${e.numbers.pos === f ? " selected" : ""}>${f}</option>`).join("")}</select></label>
+      <label class="fld"><span>Start at</span><input class="txtin num" style="width:56px" type="number" min="1" data-fx="numbers.start" value="${e.numbers.start}"></label>
+      <label class="chk"><input type="checkbox" data-fx="numbers.skipFirst"${e.numbers.skipFirst ? " checked" : ""}> Skip the first page</label>`,
+      { count: onOff(e.numbers.on) }) +
+    sec("api", "Needs the API",
+      `<div class="note">Compression, password protection and unlocking rewrite the file with ghostscript
+       and qpdf. They arrive with the PDF API (milestone M6); everything above runs entirely in this
+       browser.</div>`, { dflt: true });
 }
 
 /* ---------------- status bar + full render ---------------- */
@@ -903,9 +948,14 @@ function wire() {
     if (tb) act(tb.dataset.act);
   });
 
-  // panel tabs + collapsible sections
+  // panel tabs, collapsible sections, folding a whole pane away
   document.querySelectorAll(".ptab").forEach(t => t.addEventListener("click", () => showPanel(t.dataset.pt)));
-  document.querySelectorAll("[data-sec]").forEach(h => h.addEventListener("click", () => h.parentElement.classList.toggle("shut")));
+  document.addEventListener("click", e => {
+    const h = e.target.closest("[data-sec-h]");            // delegated: panels re-render constantly
+    if (h) toggleSec(h.closest(".sec"));
+    const f = e.target.closest("[data-fold]");
+    if (f) foldPane(f.dataset.fold);
+  });
 
   // drop zone + file inputs
   const dz = $("dz");
@@ -1053,6 +1103,7 @@ function wire() {
 
   addEventListener("resize", () => { if (Doc.fit) applyFit(); });
   renderAll();
+  applyPanelState();
   status("Ready");
 }
 
@@ -1069,6 +1120,9 @@ function applyFx(path, input, isChange) {
   });
   const b = input.parentElement.querySelector("b");
   if (b) b.textContent = key === "opacity" ? Math.round(v * 100) + "%" : key === "angle" ? v + "°" : v + "pt";
+  // the section header says "on" even when the section is collapsed
+  const badge = $("panels").querySelector(`[data-sec="${group === "watermark" ? "wm" : "pn"}"] .sec-n`);
+  if (badge) badge.textContent = Doc.effects[group].on ? "on" : "";
   if (isChange) commit(group === "watermark" ? "Watermark" : "Page numbers");
 }
 
@@ -1097,5 +1151,6 @@ window.Kiln = {
   Doc, Hist, act, openBytes, sampleBytes, buildPdf, movePages, rotatePages,
   deletePages, duplicatePages, runSearch, hits: () => hits, setZoom, setCurrent,
   selectPage, textOf, exportAll, thumbCache, pageKey,
+  panels, toggleSec, foldPane,
   ready: () => !pending.size && !draining,
 };
