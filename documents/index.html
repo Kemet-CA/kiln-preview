@@ -24,7 +24,7 @@ input,select{font:inherit;color:inherit}
 .num{font-variant-numeric:tabular-nums}
 
 #app{display:grid;height:100vh;height:100dvh;
-  grid-template-rows:34px 34px minmax(0,1fr) 24px;
+  grid-template-rows:34px auto minmax(0,1fr) 24px;
   grid-template-columns:var(--lw) 5px minmax(0,1fr) var(--rw);
   grid-template-areas:"menu menu menu menu" "opt opt opt opt" "left split stage panels" "status status status status"}
 
@@ -51,25 +51,89 @@ input,select{font:inherit;color:inherit}
 .msep{height:1px;background:var(--line);margin:4px 6px}
 .menubar-r{margin-left:auto;display:flex;align-items:center;gap:6px}
 
-/* ---------- options bar ---------- */
-.optbar{grid-area:opt;display:flex;align-items:center;gap:6px;padding:0 10px;
-  border-bottom:1px solid var(--line);background:var(--s1);font-size:12px;color:var(--t3);
-  overflow-x:auto;scrollbar-width:none;white-space:nowrap}
-.optbar::-webkit-scrollbar{display:none}
-.obsep{width:1px;height:16px;background:var(--line);flex:none}
-.tb{height:22px;min-width:24px;padding:0 6px;border-radius:6px;display:grid;place-items:center;color:var(--t2);flex:none}
-.tb:hover{background:var(--hov2);color:var(--text)}
-.tb.on{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--ember);
+/* ---------- ribbon ---------- */
+.ribbon{grid-area:opt;display:flex;flex-direction:column;min-width:0;
+  border-bottom:1px solid var(--line);background:var(--s1)}
+.rtabs{display:flex;align-items:center;gap:2px;padding:0 8px;flex:none;height:28px;
+  border-bottom:1px solid var(--line);background:var(--s2)}
+.rtab{padding:4px 12px;border-radius:6px 6px 0 0;font-size:12px;color:var(--t3)}
+.rtab:hover{color:var(--t2)}
+.rtab.on{color:var(--text);background:var(--s1);box-shadow:inset 0 -2px 0 var(--ember)}
+.rtabs-r{margin-left:auto;display:flex;align-items:center;gap:6px}
+.rtabs-r #zoomV{font-family:var(--mono);font-size:10.5px;min-width:38px;text-align:center;color:var(--t3)}
+.rpanel{display:none;align-items:stretch;gap:0;padding:4px 6px 2px;overflow-x:auto;
+  scrollbar-width:none;white-space:nowrap;min-height:76px}
+.rpanel::-webkit-scrollbar{display:none}
+.rpanel.on{display:flex}
+.rgrp{display:flex;flex-direction:column;justify-content:space-between;gap:2px;flex:none;
+  padding:0 9px;border-right:1px solid var(--line)}
+.rgrp:last-child{border-right:0}
+.rgl{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--t4);text-align:center;padding-top:2px}
+.rgb{display:flex;align-items:center;gap:3px}
+.rcol{display:flex;flex-direction:column;gap:1px}
+.rb{height:21px;padding:0 7px;border-radius:5px;font-size:11.5px;color:var(--t2);
+  display:flex;align-items:center;gap:5px;white-space:nowrap}
+.rb:hover{background:var(--hov2);color:var(--text)}
+.rb.ic{min-width:25px;justify-content:center;padding:0 5px;font-size:12px}
+.rb.on{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--ember);
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ember) 30%,transparent)}
-.tb svg{width:13px;height:13px}
-.tb.txt{font-size:11.5px;padding:0 8px}
-.tb b{font-weight:700}.tb i{font-style:italic}.tb u{text-decoration:underline}.tb s{text-decoration:line-through}
-.obsel{padding:3.5px 7px;border-radius:6px;border:var(--bw) solid var(--line);background:var(--s2);
-  font-size:11.5px;color:var(--text);outline:0;box-shadow:var(--hs)}
+.rb b{font-weight:700}.rb i{font-style:italic}.rb u{text-decoration:underline}.rb s{text-decoration:line-through}
+.rbig{width:58px;padding:5px 4px 4px;border-radius:6px;display:flex;flex-direction:column;
+  align-items:center;gap:3px;color:var(--t2);font-size:10.5px;text-align:center}
+.rbig:hover{background:var(--hov2);color:var(--text)}
+.rbig svg{width:18px;height:18px}
+.rbig .rglyph{font-size:17px;line-height:18px}
+.rsel{padding:3px 6px;border-radius:6px;border:var(--bw) solid var(--line);background:var(--s2);
+  font-size:11.5px;color:var(--text);outline:0;box-shadow:var(--hs);max-width:150px}
+.rfield{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t3)}
+.rfield>span{flex:none}
+.rcolor{position:relative;display:grid;place-items:center;width:26px;height:21px;border-radius:5px;cursor:pointer}
+.rcolor:hover{background:var(--hov2)}
+.rcolor span{font-size:12px;line-height:1}
+.rcolor input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.rcolor i{position:absolute;left:4px;right:4px;bottom:2px;height:3px;border-radius:2px}
 .seg{display:flex;gap:2px;border:var(--bw) solid var(--line);border-radius:7px;padding:2px;background:var(--s2);flex:none}
 .seg button{padding:2px 10px;border-radius:5px;font-size:11.5px;color:var(--t3)}
 .seg button.on{background:color-mix(in srgb,var(--ember) 18%,transparent);color:var(--ember)}
-.optbar-r{margin-left:auto;display:flex;align-items:center;gap:7px}
+.tb{height:22px;min-width:24px;padding:0 6px;border-radius:6px;display:grid;place-items:center;color:var(--t2);flex:none}
+.tb:hover{background:var(--hov2);color:var(--text)}
+.rstats{display:flex;gap:14px;font-size:11.5px;color:var(--t2);padding:4px 2px}
+.rstats b{font-family:var(--mono);color:var(--text)}
+/* style gallery */
+.sgal{padding:3px 9px;border-radius:6px;border:var(--bw) solid var(--line);background:var(--s2);
+  color:var(--t2);font-size:11.5px;min-width:56px;text-align:center;line-height:1.3}
+.sgal:hover{border-color:var(--ember);color:var(--text)}
+.sgal.on{border-color:var(--ember);color:var(--ember)}
+/* pop-outs (table grid, shapes, symbols) */
+.rmenu{position:relative}
+.pop{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:90;padding:7px;
+  border:var(--bw) solid var(--line2);border-radius:9px;background:var(--popbg);
+  backdrop-filter:blur(20px);box-shadow:var(--popshadow);min-width:170px}
+.pop.on{display:block;animation:pop .12s var(--ez)}
+.tgrid{display:grid;grid-template-columns:repeat(10,15px);gap:2px}
+.tgrid i{width:15px;height:15px;border:1px solid var(--line2);border-radius:2px;display:block}
+.tgrid i.on{background:color-mix(in srgb,var(--ember) 45%,transparent);border-color:var(--ember)}
+.tglab{padding-top:6px;font-size:11px;color:var(--t3);text-align:center}
+.symgrid{display:grid;grid-template-columns:repeat(8,24px);gap:2px}
+.symgrid button{width:24px;height:24px;border-radius:4px;display:grid;place-items:center;font-size:14px;color:var(--t2)}
+.symgrid button:hover{background:var(--hov2);color:var(--text)}
+/* find & replace */
+.findbar{position:absolute;top:calc(34px + var(--ribbonH,104px));right:18px;z-index:70;display:flex;align-items:center;gap:6px;
+  padding:7px 9px;border:var(--bw) solid var(--line2);border-radius:10px;background:var(--popbg);
+  backdrop-filter:blur(20px);box-shadow:var(--popshadow)}
+.findbar[hidden]{display:none}
+.fin{padding:4px 8px;border-radius:6px;border:var(--bw) solid var(--line);background:var(--s2);
+  font-size:11.5px;color:var(--text);outline:0;width:150px}
+.fin:focus{border-color:color-mix(in srgb,var(--ember) 45%,transparent)}
+.fcount{font-family:var(--mono);font-size:10.5px;color:var(--t4);min-width:44px;text-align:center}
+.fchk{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t3)}
+.fchk input{accent-color:var(--ember)}
+mark.kfind{background:color-mix(in srgb,var(--hot) 55%,transparent);color:inherit;border-radius:2px}
+mark.kfind.cur{background:color-mix(in srgb,var(--ember) 70%,transparent)}
+/* read mode disables everything that edits */
+body.reading .rpanel .rb,body.reading .rpanel .rbig,body.reading .rpanel .rsel,
+body.reading .rpanel .rcolor,body.reading .rpanel .sgal{opacity:.4;pointer-events:none}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:5px 12px;
   border-radius:6px;font-size:12px;font-weight:550;border:1px solid transparent;cursor:pointer;flex:none}
 .btn-p{background:var(--btnp-bg);color:var(--btnp-fg);border:var(--bw) solid transparent;box-shadow:var(--btnp-sh)}
@@ -124,6 +188,13 @@ body.foldL .split{display:none}
 #editor img{max-width:100%;height:auto}
 #editor blockquote{margin:0 0 .8em;padding-left:14px;border-left:3px solid #d9d4cd;color:#555}
 #editor a{color:#1155cc}
+#editor .ktb{border:1px solid #8a8378;border-radius:3px;padding:10px 12px;margin:0 0 .8em;background:#fcfbf9}
+#editor .kshape{margin:0 0 .8em}
+#editor .kshape svg{max-width:100%}
+#editor .kcomment{background:#fff3bf;border-bottom:2px solid #e0a800;padding:0 2px;border-radius:2px}
+#editor hr{border:0;border-top:1px solid #c9c4bd;margin:1.2em 0}
+#editor .kpagebreak{border:0;border-top:2px dashed #b9b3aa;margin:1.6em 0;position:relative;height:0}
+#editor table td.sel,#editor table th.sel{outline:2px solid #E2622A;outline-offset:-2px}
 /* docx-preview writes its own styles into .docx-wrapper */
 .docx-wrapper{background:transparent!important;padding:0!important}
 .docx-wrapper>section.docx{margin:0 auto 18px!important;box-shadow:0 18px 44px -22px rgba(0,0,0,.9),0 0 0 1px rgba(0,0,0,.18)}
@@ -179,14 +250,14 @@ body.foldL .split{display:none}
 @media print{
   body{overflow:visible;background:#fff}
   #app{display:block;height:auto}
-  .menubar,.optbar,.pane-l,.split,#panels,.sbar,.toasts,.dz{display:none!important}
+  .menubar,.ribbon,.findbar,.pane-l,.split,#panels,.sbar,.toasts,.dz{display:none!important}
   .stage{position:static;overflow:visible;background:#fff}
   #vp{position:static;overflow:visible;padding:0}
   #paper,#editor{width:auto;margin:0;box-shadow:none;border-radius:0;min-height:0;padding:0}
   .docx-wrapper>section.docx{box-shadow:none!important;margin:0!important}
 }
 </style>
-<meta name="kiln-build" content="86c6b76-1557">
+<meta name="kiln-build" content="55dbd0b-1618">
 </head>
 <body>
 <div id="app">
@@ -199,39 +270,255 @@ body.foldL .split{display:none}
     <div class="menubar-r" data-kiln-themebar></div>
   </div>
 
-  <div class="optbar">
-    <div class="seg" id="modeSeg">
-      <button data-mode="view" class="on">Read</button>
-      <button data-mode="edit">Edit</button>
+  <div class="ribbon" id="ribbon">
+    <div class="rtabs">
+      <button class="rtab on" data-rtab="rHome">Home</button>
+      <button class="rtab" data-rtab="rInsert">Insert</button>
+      <button class="rtab" data-rtab="rLayout">Layout</button>
+      <button class="rtab" data-rtab="rReview">Review</button>
+      <div class="rtabs-r">
+        <div class="seg" id="modeSeg">
+          <button data-mode="view" class="on">Read</button>
+          <button data-mode="edit">Edit</button>
+        </div>
+        <button class="tb" data-act="zout" title="Zoom out">−</button>
+        <span class="num" id="zoomV">100%</span>
+        <button class="tb" data-act="zin" title="Zoom in">+</button>
+        <button class="btn btn-g" data-act="print">Print</button>
+        <button class="btn btn-p" data-act="exportDocx">Export</button>
+      </div>
     </div>
-    <div class="obsep"></div>
-    <select class="obsel" id="blockSel" title="Paragraph style">
-      <option value="p">Body text</option>
-      <option value="h1">Heading 1</option>
-      <option value="h2">Heading 2</option>
-      <option value="h3">Heading 3</option>
-      <option value="blockquote">Quote</option>
-    </select>
-    <button class="tb" data-fmt="bold" title="Bold (⌘B)"><b>B</b></button>
-    <button class="tb" data-fmt="italic" title="Italic (⌘I)"><i>I</i></button>
-    <button class="tb" data-fmt="underline" title="Underline (⌘U)"><u>U</u></button>
-    <button class="tb" data-fmt="strikeThrough" title="Strikethrough"><s>S</s></button>
-    <div class="obsep"></div>
-    <button class="tb" data-fmt="insertUnorderedList" title="Bulleted list">•—</button>
-    <button class="tb" data-fmt="insertOrderedList" title="Numbered list">1—</button>
-    <button class="tb txt" data-fmt="justifyLeft" title="Align left">⯇</button>
-    <button class="tb txt" data-fmt="justifyCenter" title="Centre">≡</button>
-    <button class="tb txt" data-fmt="justifyRight" title="Align right">⯈</button>
-    <button class="tb txt" data-act="link" title="Add a link (⌘K)">Link</button>
-    <button class="tb txt" data-fmt="removeFormat" title="Clear formatting">Clear</button>
-    <div class="obsep"></div>
-    <button class="tb" data-act="zout" title="Zoom out">−</button>
-    <span class="num" id="zoomV" style="font-family:var(--mono);font-size:11px;min-width:40px;text-align:center;color:var(--t3)">100%</span>
-    <button class="tb" data-act="zin" title="Zoom in">+</button>
-    <div class="optbar-r">
-      <button class="btn btn-g" data-act="print">Print</button>
-      <button class="btn btn-p" data-act="exportDocx">Export</button>
+
+    <!-- ============ HOME ============ -->
+    <div class="rpanel on" id="rHome">
+      <div class="rgrp">
+        <div class="rgb">
+          <button class="rbig" data-act="paste" title="Paste (⌘V)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 4h6v3H9z"/><path d="M15 5h3v15H6V5h3"/></svg>
+            <span>Paste</span></button>
+          <div class="rcol">
+            <button class="rb" data-act="cut" title="Cut (⌘X)">✂ Cut</button>
+            <button class="rb" data-act="copy" title="Copy (⌘C)">⧉ Copy</button>
+            <button class="rb" data-act="formatPainter" title="Copy formatting from the selection, then select where to apply it">🖌 Format</button>
+          </div>
+        </div>
+        <div class="rgl">Clipboard</div>
+      </div>
+
+      <div class="rgrp">
+        <div class="rgb">
+          <select class="rsel" id="fontSel" title="Font" style="width:132px"></select>
+          <select class="rsel" id="sizeSel" title="Font size" style="width:62px"></select>
+          <button class="rb ic" data-act="fontGrow" title="Grow font">A▴</button>
+          <button class="rb ic" data-act="fontShrink" title="Shrink font">A▾</button>
+        </div>
+        <div class="rgb">
+          <button class="rb ic" data-fmt="bold" title="Bold (⌘B)"><b>B</b></button>
+          <button class="rb ic" data-fmt="italic" title="Italic (⌘I)"><i>I</i></button>
+          <button class="rb ic" data-fmt="underline" title="Underline (⌘U)"><u>U</u></button>
+          <button class="rb ic" data-fmt="strikeThrough" title="Strikethrough"><s>S</s></button>
+          <button class="rb ic" data-fmt="subscript" title="Subscript">X₂</button>
+          <button class="rb ic" data-fmt="superscript" title="Superscript">X²</button>
+          <label class="rcolor" title="Text colour"><span style="color:var(--t2)">A</span>
+            <input type="color" id="foreColor" value="#c00000"><i style="background:#c00000"></i></label>
+          <label class="rcolor" title="Highlight colour"><span style="color:var(--t2)">▨</span>
+            <input type="color" id="backColor" value="#ffe066"><i style="background:#ffe066"></i></label>
+          <button class="rb ic" data-fmt="removeFormat" title="Clear all formatting">⌫A</button>
+        </div>
+        <div class="rgl">Font</div>
+      </div>
+
+      <div class="rgrp">
+        <div class="rgb">
+          <button class="rb ic" data-fmt="insertUnorderedList" title="Bulleted list">•≡</button>
+          <button class="rb ic" data-fmt="insertOrderedList" title="Numbered list">1≡</button>
+          <button class="rb ic" data-act="outdent" title="Decrease indent">⇤</button>
+          <button class="rb ic" data-act="indent" title="Increase indent">⇥</button>
+          <select class="rsel" id="lineSel" title="Line spacing" style="width:74px">
+            <option value="1">1.0</option><option value="1.15">1.15</option>
+            <option value="1.5">1.5</option><option value="2">2.0</option><option value="2.5">2.5</option>
+          </select>
+        </div>
+        <div class="rgb">
+          <button class="rb ic" data-fmt="justifyLeft" title="Align left">▤</button>
+          <button class="rb ic" data-fmt="justifyCenter" title="Centre">▥</button>
+          <button class="rb ic" data-fmt="justifyRight" title="Align right">▧</button>
+          <button class="rb ic" data-fmt="justifyFull" title="Justify">▩</button>
+          <label class="rcolor" title="Paragraph shading"><span style="color:var(--t2)">▩</span>
+            <input type="color" id="shadeColor" value="#f2efe9"><i style="background:#f2efe9"></i></label>
+          <button class="rb ic" data-act="paraBorder" title="Border around the paragraph">▣</button>
+        </div>
+        <div class="rgl">Paragraph</div>
+      </div>
+
+      <div class="rgrp">
+        <div class="rgb" id="styleRow"></div>
+        <div class="rgl">Styles</div>
+      </div>
+
+      <div class="rgrp">
+        <div class="rgb">
+          <button class="rbig" data-act="find" title="Find and replace (⌘F)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>
+            <span>Find</span></button>
+          <div class="rcol">
+            <button class="rb" data-act="selectAll" title="Select all (⌘A)">Select all</button>
+            <button class="rb" data-act="undo" title="Undo (⌘Z)">↶ Undo</button>
+            <button class="rb" data-act="redo" title="Redo (⇧⌘Z)">↷ Redo</button>
+          </div>
+        </div>
+        <div class="rgl">Editing</div>
+      </div>
     </div>
+
+    <!-- ============ INSERT ============ -->
+    <div class="rpanel" id="rInsert">
+      <div class="rgrp">
+        <div class="rgb">
+          <div class="rmenu">
+            <button class="rbig" data-pop="tablePop" title="Insert a table">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18M3 14h18M9 4v16M15 4v16"/></svg>
+              <span>Table ▾</span></button>
+            <div class="pop" id="tablePop"><div class="tgrid" id="tgrid"></div><div class="tglab" id="tglab">Insert a table</div></div>
+          </div>
+          <div class="rcol">
+            <button class="rb" data-act="rowAbove">Row above</button>
+            <button class="rb" data-act="rowBelow">Row below</button>
+            <button class="rb" data-act="delRow">Delete row</button>
+          </div>
+          <div class="rcol">
+            <button class="rb" data-act="colBefore">Column left</button>
+            <button class="rb" data-act="colAfter">Column right</button>
+            <button class="rb" data-act="delCol">Delete column</button>
+          </div>
+        </div>
+        <div class="rgl">Table</div>
+      </div>
+
+      <div class="rgrp">
+        <div class="rgb">
+          <button class="rbig" data-act="image" title="Insert a picture">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="m4 17 5-4 4 3 3-2 4 3"/></svg>
+            <span>Picture</span></button>
+          <div class="rmenu">
+            <button class="rbig" data-pop="shapePop" title="Insert a shape">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="12" width="8" height="8"/><circle cx="16" cy="8" r="4.5"/></svg>
+              <span>Shape ▾</span></button>
+            <div class="pop" id="shapePop">
+              <button class="mi" data-shape="rect">Rectangle</button>
+              <button class="mi" data-shape="round">Rounded rectangle</button>
+              <button class="mi" data-shape="ellipse">Ellipse</button>
+              <button class="mi" data-shape="triangle">Triangle</button>
+              <button class="mi" data-shape="line">Line</button>
+              <button class="mi" data-shape="arrow">Arrow</button>
+              <button class="mi" data-shape="star">Star</button>
+            </div>
+          </div>
+          <button class="rbig" data-act="textBox" title="Insert a text box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="6" width="18" height="12" rx="1"/><path d="M8 10h8M8 14h5"/></svg>
+            <span>Text box</span></button>
+        </div>
+        <div class="rgl">Illustrations</div>
+      </div>
+
+      <div class="rgrp">
+        <div class="rgb">
+          <div class="rcol">
+            <button class="rb" data-act="link" title="Insert a link (⌘K)">🔗 Link</button>
+            <button class="rb" data-act="unlink">Remove link</button>
+            <button class="rb" data-act="comment">💬 Comment</button>
+          </div>
+          <div class="rcol">
+            <button class="rb" data-act="pageBreak">Page break</button>
+            <button class="rb" data-act="hr">Horizontal line</button>
+            <button class="rb" data-act="dateNow">Date &amp; time</button>
+          </div>
+          <div class="rmenu">
+            <button class="rbig" data-pop="symPop" title="Insert a symbol"><span class="rglyph">Ω</span><span>Symbol ▾</span></button>
+            <div class="pop" id="symPop"><div class="symgrid" id="symgrid"></div></div>
+          </div>
+        </div>
+        <div class="rgl">Links &amp; symbols</div>
+      </div>
+    </div>
+
+    <!-- ============ LAYOUT ============ -->
+    <div class="rpanel" id="rLayout">
+      <div class="rgrp">
+        <div class="rgb">
+          <label class="rfield"><span>Page</span>
+            <select class="rsel" id="pageSize" style="width:110px">
+              <option value="a4">A4</option><option value="letter">Letter</option>
+              <option value="legal">Legal</option><option value="a5">A5</option>
+            </select></label>
+          <label class="rfield"><span>Orientation</span>
+            <select class="rsel" id="pageOrient" style="width:104px">
+              <option value="portrait">Portrait</option><option value="landscape">Landscape</option>
+            </select></label>
+        </div>
+        <div class="rgb">
+          <label class="rfield"><span>Margins</span>
+            <select class="rsel" id="pageMargin" style="width:110px">
+              <option value="normal">Normal · 1"</option><option value="narrow">Narrow · 0.5"</option>
+              <option value="moderate">Moderate · 0.75"</option><option value="wide">Wide · 1.5"</option>
+            </select></label>
+          <label class="rfield"><span>Columns</span>
+            <select class="rsel" id="pageCols" style="width:104px">
+              <option value="1">One</option><option value="2">Two</option><option value="3">Three</option>
+            </select></label>
+        </div>
+        <div class="rgl">Page setup</div>
+      </div>
+      <div class="rgrp">
+        <div class="rgb">
+          <div class="rcol">
+            <button class="rb" data-act="spacingBefore">Space before ＋</button>
+            <button class="rb" data-act="spacingAfter">Space after ＋</button>
+            <button class="rb" data-act="spacingReset">Reset spacing</button>
+          </div>
+          <div class="rcol">
+            <button class="rb" data-act="indent">Indent ＋</button>
+            <button class="rb" data-act="outdent">Indent −</button>
+            <button class="rb" data-act="pageBorder">Page border</button>
+          </div>
+        </div>
+        <div class="rgl">Paragraph &amp; page</div>
+      </div>
+    </div>
+
+    <!-- ============ REVIEW ============ -->
+    <div class="rpanel" id="rReview">
+      <div class="rgrp">
+        <div class="rgb">
+          <div class="rcol">
+            <button class="rb" data-act="find">Find &amp; replace</button>
+            <button class="rb" data-act="spellToggle" id="spellBtn">Spell check: on</button>
+          </div>
+          <div class="rcol">
+            <button class="rb" data-act="comment">Add comment</button>
+            <button class="rb" data-act="clearComments">Clear comments</button>
+          </div>
+        </div>
+        <div class="rgl">Proofing</div>
+      </div>
+      <div class="rgrp">
+        <div class="rgb"><div class="rstats" id="rstats"></div></div>
+        <div class="rgl">Statistics</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- find & replace bar -->
+  <div class="findbar" id="findbar" hidden>
+    <input class="fin" id="findIn" placeholder="Find in document">
+    <input class="fin" id="replIn" placeholder="Replace with">
+    <span class="fcount num" id="findCount">0</span>
+    <button class="rb" data-act="findPrev" title="Previous">‹</button>
+    <button class="rb" data-act="findNext" title="Next">›</button>
+    <button class="rb" data-act="replaceOne">Replace</button>
+    <button class="rb" data-act="replaceAll">Replace all</button>
+    <label class="fchk"><input type="checkbox" id="findCase"> Match case</label>
+    <button class="rb" data-act="findClose" style="margin-left:auto">✕</button>
   </div>
 
   <aside class="pane-l">
