@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiln — Image Editor</title>
+<style>
+/* ================= Kiln tokens (approved design) ================= */
+:root, :root[data-theme="dark"]{
+  --ground:#0B0A09; --s1:#121110; --s2:#181615; --s3:#211E1D; --s4:#2B2726;
+  --stagebg:#0E0D0C;
+  --line:rgba(255,242,232,.09); --line2:rgba(255,242,232,.16);
+  --text:#F6F2ED; --t2:#B7ADA4; --t3:#7E756D; --t4:#5C5550;
+  --cherry:#7A2E12; --ember:#E2622A; --hot:#FFB25C;
+  --hov:rgba(255,255,255,.055); --hov2:rgba(255,255,255,.085);
+  --popbg:rgba(26,24,23,.96); --scrl:rgba(255,255,255,.12);
+  --ok:#6FBF8B; --warn:#D9A441; --bad:#E0655F;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  --ez:cubic-bezier(.2,.7,.2,1);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme]){
+    --ground:#F2EEE8; --s1:#FAF7F2; --s2:#EFEAE3; --s3:#E5DFD6; --s4:#DAD2C8;
+    --stagebg:#E6E1D9;
+    --line:rgba(46,32,20,.12); --line2:rgba(46,32,20,.22);
+    --text:#211A14; --t2:#52463C; --t3:#827466; --t4:#A79A8C;
+    --cherry:#8A2E0E; --ember:#C9511C; --hot:#B15A0F;
+    --hov:rgba(46,32,20,.06); --hov2:rgba(46,32,20,.10);
+    --popbg:rgba(252,250,246,.97); --scrl:rgba(46,32,20,.18);
+    --ok:#2E7D4F; --warn:#9A6B10; --bad:#B03A34;
+  }
+}
+:root[data-theme="light"]{
+  --ground:#F2EEE8; --s1:#FAF7F2; --s2:#EFEAE3; --s3:#E5DFD6; --s4:#DAD2C8;
+  --stagebg:#E6E1D9;
+  --line:rgba(46,32,20,.12); --line2:rgba(46,32,20,.22);
+  --text:#211A14; --t2:#52463C; --t3:#827466; --t4:#A79A8C;
+  --cherry:#8A2E0E; --ember:#C9511C; --hot:#B15A0F;
+  --hov:rgba(46,32,20,.06); --hov2:rgba(46,32,20,.10);
+  --popbg:rgba(252,250,246,.97); --scrl:rgba(46,32,20,.18);
+  --ok:#2E7D4F; --warn:#9A6B10; --bad:#B03A34;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);font-size:13px;
+  line-height:1.5;letter-spacing:-.008em;-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left;padding:0}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ember);outline-offset:1px;border-radius:4px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--scrl);border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+kbd{font-family:var(--mono);font-size:10px;padding:1.5px 4.5px;border:1px solid var(--line);
+  border-radius:4px;color:var(--t3);background:var(--s2)}
+.num{font-variant-numeric:tabular-nums}
+
+/* ================= app grid ================= */
+#app{display:grid;height:100vh;height:100dvh;
+  grid-template-rows:34px 34px minmax(0,1fr) 24px;
+  grid-template-columns:44px minmax(0,1fr) 5px var(--rw,296px);
+  grid-template-areas:"menu menu menu menu" "opt opt opt opt" "tools stage split panels" "status status status status"}
+#app.nopanels{grid-template-columns:44px minmax(0,1fr) 0 0}
+#app.nopanels .split,#app.nopanels #panels{display:none}
+
+/* ---------- menu bar ---------- */
+.menubar{grid-area:menu;display:flex;align-items:center;gap:2px;padding:0 8px;
+  border-bottom:1px solid var(--line);background:var(--s1)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:640;letter-spacing:-.03em;font-size:13.5px;margin-right:8px}
+.mark{width:18px;height:18px;border-radius:5px;position:relative;flex:none;
+  background:linear-gradient(150deg,var(--hot),var(--ember) 45%,var(--cherry));
+  box-shadow:0 0 12px rgba(226,98,42,.4),inset 0 1px 0 rgba(255,255,255,.35)}
+.mark::after{content:"";position:absolute;inset:5px 5px 0;border-radius:4px 4px 0 0;background:rgba(11,10,9,.55)}
+.menu{position:relative}
+.menu-t{padding:4px 9px;border-radius:5px;font-size:12.5px;color:var(--t2)}
+.menu-t:hover,.menu.open .menu-t{background:var(--hov2);color:var(--text)}
+.menu-d{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:216px;z-index:80;padding:5px;
+  border:1px solid var(--line2);border-radius:9px;background:var(--popbg);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  box-shadow:0 22px 50px -18px rgba(0,0,0,.85)}
+.menu.open>.menu-d{display:block;animation:pop .12s var(--ez)}
+@keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.mi{width:100%;display:flex;align-items:center;gap:10px;padding:5.5px 9px;border-radius:6px;
+  font-size:12.5px;color:var(--t2)}
+.mi:hover{background:rgba(226,98,42,.16);color:var(--text)}
+.mi .sc{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t4)}
+.mi[aria-disabled="true"]{opacity:.35;pointer-events:none}
+.msep{height:1px;background:var(--line);margin:4px 6px}
+.mi-sub{position:relative}
+.mi-sub>.menu-d{left:calc(100% - 6px);top:-6px}
+.menu.open .menu-d .menu-d{display:none}
+.menu.open .mi-sub:hover>.menu-d{display:block}
+.menubar-r{margin-left:auto;display:flex;align-items:center;gap:6px}
+.thbtn{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;color:var(--t3);border:1px solid var(--line)}
+.thbtn:hover{color:var(--text);background:var(--hov)}
+:root[data-theme="light"] .th-moon{display:none}
+:root[data-theme="dark"] .th-sun{display:none}
+:root:not([data-theme]) .th-sun{display:none}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme]) .th-moon{display:none}
+  :root:not([data-theme]) .th-sun{display:block}
+}
+
+/* ---------- options bar ---------- */
+.optbar{grid-area:opt;display:flex;align-items:center;gap:8px;padding:0 10px;
+  border-bottom:1px solid var(--line);background:var(--s1);font-size:12px;color:var(--t3);
+  overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.optbar::-webkit-scrollbar{display:none}
+.ob-ico{width:22px;height:22px;border-radius:5px;display:grid;place-items:center;
+  color:var(--ember);background:rgba(226,98,42,.12);border:1px solid rgba(226,98,42,.25);flex:none}
+.ob-ico svg{width:13px;height:13px}
+.obsep{width:1px;height:16px;background:var(--line);flex:none}
+.oblab{color:var(--t3);font-size:11.5px;flex:none}
+.obnum{display:flex;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--s2);flex:none}
+.obnum input{width:44px;background:none;border:0;outline:0;text-align:center;
+  font-family:var(--mono);font-size:11px;padding:3px 0;color:var(--text)}
+.obnum .u{padding-right:6px;font-size:10px;color:var(--t4)}
+.obsel{padding:3.5px 7px;border-radius:6px;border:1px solid var(--line);background:var(--s2);
+  font-size:11.5px;color:var(--text);outline:0;max-width:150px}
+.obbtn{padding:4px 9px;border-radius:6px;border:1px solid var(--line);font-size:11.5px;color:var(--t2);flex:none}
+.obbtn:hover{border-color:var(--line2);color:var(--text);background:var(--hov)}
+.obbtn.on{background:rgba(226,98,42,.16);border-color:rgba(226,98,42,.34);color:var(--ember)}
+.obtog{display:flex;gap:2px;border:1px solid var(--line);border-radius:6px;padding:1px;background:var(--s2);flex:none}
+.obtog button{width:24px;height:20px;border-radius:4px;display:grid;place-items:center;color:var(--t3)}
+.obtog button:hover{color:var(--text)}
+.obtog button.on{background:rgba(226,98,42,.2);color:var(--ember)}
+.obtog svg{width:12px;height:12px}
+.obcolor{width:26px;height:20px;border:1px solid var(--line2);border-radius:5px;padding:0;background:none;cursor:pointer;flex:none}
+.obcolor::-webkit-color-swatch-wrapper{padding:1.5px}
+.obcolor::-webkit-color-swatch{border:none;border-radius:3px}
+.obrange{display:flex;align-items:center;gap:6px;flex:none}
+.obrange input[type=range]{-webkit-appearance:none;appearance:none;width:76px;height:3px;border-radius:2px;
+  background:var(--line2);outline:0;cursor:pointer}
+.obrange input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;
+  background:var(--text);box-shadow:0 0 0 3px var(--s1)}
+.obhint{color:var(--t4);font-size:11px}
+
+/* ---------- toolbar ---------- */
+.toolbar{grid-area:tools;background:var(--s1);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;padding:5px 0;gap:1px;overflow-y:auto}
+.tl{width:32px;height:30px;border-radius:7px;display:grid;place-items:center;color:var(--t3);
+  position:relative;flex:none;transition:.12s var(--ez)}
+.tl:hover{background:var(--hov2);color:var(--text)}
+.tl.sel{background:rgba(226,98,42,.16);color:var(--ember);box-shadow:inset 0 0 0 1px rgba(226,98,42,.3)}
+.tl svg{width:15px;height:15px}
+.tl .fly{content:"";position:absolute;right:3px;bottom:3px;width:0;height:0;
+  border-left:4px solid transparent;border-bottom:4px solid currentColor;opacity:.5}
+.tl .tip{position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);z-index:90;
+  padding:3px 8px;border-radius:6px;background:var(--popbg);border:1px solid var(--line2);
+  font-size:11px;color:var(--t2);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .12s}
+.tl:hover .tip{opacity:1}
+.tlsep{width:22px;height:1px;background:var(--line);margin:3px 0;flex:none}
+.flyout{position:fixed;z-index:95;padding:4px;border:1px solid var(--line2);border-radius:8px;
+  background:var(--popbg);backdrop-filter:blur(18px);box-shadow:0 18px 40px -16px rgba(0,0,0,.85);display:none}
+.flyout.on{display:block;animation:pop .1s var(--ez)}
+.flyout .mi kbd{margin-left:14px}
+.swpair{margin-top:auto;margin-bottom:6px;position:relative;width:28px;height:28px;flex:none;cursor:pointer}
+.swpair .fg{position:absolute;left:0;top:0;width:18px;height:18px;border-radius:4px;z-index:2;
+  border:1.5px solid var(--line2);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.swpair .bg{position:absolute;right:0;bottom:0;width:18px;height:18px;border-radius:4px;border:1.5px solid var(--line2)}
+
+/* ---------- stage ---------- */
+.stage{grid-area:stage;position:relative;overflow:hidden;
+  background:radial-gradient(70% 60% at 50% 0%,rgba(226,98,42,.05),transparent 70%),var(--stagebg)}
+#vp{position:absolute;inset:0;overflow:hidden}
+#docWrap{position:absolute;left:50%;top:50%;transform-origin:0 0;
+  box-shadow:0 26px 60px -26px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.08)}
+#docCanvas,#uiCanvas{position:absolute;left:0;top:0;display:block}
+#uiCanvas{pointer-events:none;z-index:5}
+.checkerbg{position:absolute;left:0;top:0;width:100%;height:100%;
+  --c:rgba(127,127,127,.16);
+  background-image:linear-gradient(45deg,var(--c) 25%,transparent 25%,transparent 75%,var(--c) 75%),
+    linear-gradient(45deg,var(--c) 25%,transparent 25%,transparent 75%,var(--c) 75%);
+  background-size:16px 16px;background-position:0 0,8px 8px}
+.dz{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(480px,84%);
+  border:1.5px dashed var(--line2);border-radius:14px;padding:40px 26px;text-align:center;
+  cursor:pointer;background:var(--s1);z-index:10}
+.dz:hover,.dz.over{border-color:var(--ember)}
+.dz h3{margin:0;font-size:15px;letter-spacing:-.02em}
+.dz p{margin:7px 0 0;color:var(--t3);font-size:12.5px;line-height:1.6}
+.dz .row{margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 12px;
+  border-radius:6px;font-size:12px;font-weight:550;border:1px solid transparent;cursor:pointer}
+.btn-p{background:linear-gradient(180deg,#F0743A,var(--ember));color:#1A0B04;
+  box-shadow:0 1px 0 rgba(255,255,255,.26) inset,0 5px 16px -8px rgba(226,98,42,.8)}
+.btn-p:hover{filter:brightness(1.07)}
+.btn-g{border-color:var(--line);color:var(--t2)}
+.btn-g:hover{border-color:var(--line2);color:var(--text);background:var(--hov)}
+
+/* ---------- splitter + panels ---------- */
+.split{grid-area:split;cursor:col-resize;position:relative;z-index:5}
+.split::after{content:"";position:absolute;inset:0 2px;background:var(--line)}
+.split:hover::after{background:var(--ember)}
+#panels{grid-area:panels;background:var(--s1);border-left:1px solid var(--line);
+  display:flex;flex-direction:column;min-height:0}
+.pgroup{display:flex;flex-direction:column;min-height:0;border-bottom:1px solid var(--line)}
+.pgroup.grow{flex:1}
+.pgroup.fix{flex:none;height:32%}
+.ptabs{display:flex;flex:none;border-bottom:1px solid var(--line);background:var(--s2)}
+.ptab{padding:6px 11px;font-size:11.5px;color:var(--t3)}
+.ptab:hover{color:var(--t2)}
+.ptab.on{color:var(--text);background:var(--s1);box-shadow:inset 0 -2px 0 var(--ember)}
+.pmenu{margin-left:auto;padding:4px 10px;color:var(--t3);font-size:13px}
+.pmenu:hover{color:var(--text)}
+.pbody{flex:1;min-height:0;overflow-y:auto;display:none;padding:6px}
+.pbody.on{display:block}
+#pLayers.on{display:flex;flex-direction:column;padding:0}
+
+/* layers panel internals */
+.lrow{display:flex;align-items:center;gap:6px;padding:7px 8px 0;flex:none}
+.lval{font-size:11px;color:var(--t3);white-space:nowrap}
+.lnum{display:flex;align-items:center;gap:3px;padding:3px 7px;border:1px solid var(--line);
+  border-radius:6px;font-size:11px;color:var(--t2);background:var(--s2)}
+.lnum:hover{border-color:var(--line2);color:var(--text)}
+.lkb{width:22px;height:22px;border-radius:5px;display:grid;place-items:center;color:var(--t3);border:1px solid transparent}
+.lkb:hover{background:var(--hov2);color:var(--text)}
+.lkb.on{background:rgba(226,98,42,.16);color:var(--ember);border-color:rgba(226,98,42,.3)}
+.lpop{padding:8px 12px 4px;flex:none}
+.lpop input[type=range]{width:100%}
+.lfoot{display:flex;align-items:center;justify-content:flex-end;gap:2px;padding:6px 8px;
+  border-top:1px solid var(--line);flex:none;background:var(--s2)}
+.lfb{width:26px;height:24px;border-radius:5px;display:grid;place-items:center;color:var(--t2)}
+.lfb:hover{background:var(--hov2);color:var(--text)}
+.lfb.dim{color:var(--t4)}
+.lyr{display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:6px;margin:1px 0}
+.lyr:hover{background:var(--hov)}
+.lyr.sel{background:rgba(226,98,42,.14);box-shadow:inset 0 0 0 1px rgba(226,98,42,.28)}
+.lyr.off{opacity:.45}
+.lyr .eye{padding:2px;border-radius:4px;color:var(--t3);flex:none;line-height:0}
+.lyr .eye:hover{color:var(--text);background:var(--hov2)}
+.lyr .th{width:34px;height:26px;border-radius:4px;flex:none;border:1px solid var(--line2);
+  overflow:hidden;position:relative;background:
+  repeating-conic-gradient(rgba(127,127,127,.25) 0 25%,transparent 0 50%) 0 0/10px 10px}
+.lyr .th canvas{width:100%;height:100%;display:block}
+.lyr .th.msk{background:#000;cursor:pointer}
+.lyr .th.msk.off::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(45deg,transparent 46%,var(--bad) 46%,var(--bad) 54%,transparent 54%)}
+.lyr .th.mskSel{outline:2px solid var(--ember);outline-offset:1px}
+.lyr .nm{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.lyr .tag{font-size:9px;color:var(--hot);opacity:.75;flex:none}
+.lyr .op{font-family:var(--mono);font-size:9.5px;color:var(--t4);flex:none}
+input[type=range]{-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;
+  background:var(--line2);outline:0;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+  background:var(--text);box-shadow:0 0 0 3px var(--s1)}
+
+/* history + generic rows */
+.hstep{display:flex;align-items:center;gap:8px;padding:4px 7px;border-radius:5px;font-size:12px;
+  color:var(--t3);width:100%}
+.hstep:hover{background:var(--hov);color:var(--t2)}
+.hstep.cur{background:rgba(226,98,42,.14);color:var(--hot)}
+.hstep.fut{opacity:.38}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3.5px 7px;font-size:12px}
+.kv span{color:var(--t3)}
+.kv b{font-family:var(--mono);font-weight:500;color:var(--t2);font-variant-numeric:tabular-nums}
+.empty{padding:24px 14px;text-align:center;color:var(--t4);font-size:12px;line-height:1.6}
+
+/* adjustments tree */
+.sec{border-bottom:1px solid var(--line)}
+.sec-h{width:100%;display:flex;align-items:center;gap:7px;padding:7px 10px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
+.sec-h:hover{color:var(--t2)}
+.sec-h .cv{width:9px;height:9px;transition:transform .16s;opacity:.6}
+.sec.shut .cv{transform:rotate(-90deg)}
+.sec.shut .sec-b{display:none}
+.sec-b{padding:2px 8px 8px}
+.trow{width:100%;display:flex;align-items:center;gap:8px;padding:4.5px 8px;border-radius:6px;
+  font-size:12.5px;color:var(--t2)}
+.trow:hover{background:var(--hov);color:var(--text)}
+
+/* ---------- status bar ---------- */
+.sbar{grid-area:status;display:flex;align-items:center;padding:0 10px;border-top:1px solid var(--line);
+  background:var(--s1);font-family:var(--mono);font-size:10.5px;color:var(--t3);overflow:hidden}
+.si{display:flex;align-items:center;gap:5px;padding:0 10px;border-right:1px solid var(--line);
+  height:100%;white-space:nowrap}
+.si:first-child{padding-left:0}
+.si b{color:var(--t2);font-weight:500;font-variant-numeric:tabular-nums}
+.si.sp{margin-left:auto;border-right:0}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--ok);flex:none}
+
+/* ---------- dialogs (adjustments only — Photoshop behaviour) ---------- */
+.fdlg{position:fixed;z-index:85;width:270px;border-radius:11px;overflow:hidden;
+  border:1px solid var(--line2);background:var(--popbg);
+  backdrop-filter:blur(20px);box-shadow:0 30px 70px -22px rgba(0,0,0,.85)}
+.fdlg[hidden]{display:none}
+.fdlg-t{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);
+  cursor:grab;user-select:none}
+.fdlg-t b{font-size:12.5px;font-weight:600}
+.fdlg-x{margin-left:auto;padding:3px 9px;border-radius:6px;color:var(--t2);font-size:16px;line-height:1}
+.fdlg-x:hover{background:rgba(224,101,95,.18);color:var(--bad)}
+.fdlg-b{padding:11px 13px 13px;max-height:min(420px,58vh);overflow-y:auto}
+.ctl{margin-top:10px}
+.ctl-t{display:flex;justify-content:space-between;margin-bottom:5px}
+.ctl-t label{font-size:11.5px;color:var(--t2)}
+.ctl-v{font-family:var(--mono);font-size:10.5px;color:var(--text)}
+.ctl input[type=range]{width:100%}
+.acts{display:flex;gap:6px;margin-top:13px}
+.f1{flex:1}
+
+/* context menu + toasts */
+.ctx{display:none;position:fixed;z-index:96;min-width:190px;padding:5px;border:1px solid var(--line2);
+  border-radius:9px;background:var(--popbg);backdrop-filter:blur(20px);
+  box-shadow:0 22px 50px -18px rgba(0,0,0,.85)}
+.ctx.on{display:block;animation:pop .1s var(--ez)}
+.toasts{position:fixed;bottom:32px;right:14px;z-index:120;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:9px;font-size:12.5px;
+  border:1px solid var(--line2);background:var(--popbg);box-shadow:0 18px 40px -18px rgba(0,0,0,.85);
+  animation:sin .24s var(--ez)}
+@keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="menubar">
+    <a class="brand" href="./" style="text-decoration:none;color:inherit" title="Back to all workspaces"><span class="mark"></span>Kiln</a>
+    <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d" id="mFile"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Edit</button><div class="menu-d" id="mEdit"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Image</button><div class="menu-d" id="mImage"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Layer</button><div class="menu-d" id="mLayer"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Select</button><div class="menu-d" id="mSelect"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Filter</button><div class="menu-d" id="mFilter"></div></div>
+    <div class="menu" data-menu><button class="menu-t">View</button><div class="menu-d" id="mView"></div></div>
+    <div class="menubar-r">
+      <button class="thbtn" id="thToggle" title="Light / dark">
+        <svg class="th-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z"/></svg>
+        <svg class="th-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="optbar" id="optbar"></div>
+  <aside class="toolbar" id="toolbar"></aside>
+
+  <div class="stage">
+    <div id="vp">
+      <div id="docWrap" hidden>
+        <div class="checkerbg"></div>
+        <canvas id="docCanvas"></canvas>
+        <canvas id="uiCanvas"></canvas>
+      </div>
+      <div class="dz" id="dz" tabindex="0" role="button">
+        <h3>Drop an image — or start from scratch</h3>
+        <p>Everything runs in your browser. Nothing is uploaded.</p>
+        <div class="row">
+          <button class="btn btn-p" id="dzSample">Sample image</button>
+          <button class="btn btn-g" id="dzOpen">Open file…</button>
+          <button class="btn btn-g" id="dzNew">New 1280 × 800</button>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="fileImg" accept="image/*" hidden>
+  </div>
+
+  <div class="split" id="splitR"></div>
+
+  <aside id="panels">
+    <div class="pgroup fix">
+      <div class="ptabs">
+        <button class="ptab on" data-pt="pHist">History</button>
+        <button class="ptab" data-pt="pAdj">Adjustments</button>
+        <button class="ptab" data-pt="pInfo">Info</button>
+      </div>
+      <div class="pbody on" id="pHist"></div>
+      <div class="pbody" id="pAdj"></div>
+      <div class="pbody" id="pInfo"><div class="empty">No document.</div></div>
+    </div>
+    <div class="pgroup grow">
+      <div class="ptabs">
+        <button class="ptab on" data-pt="pLayers">Layers</button>
+        <button class="pmenu" id="lyrMenu">≡</button>
+      </div>
+      <div class="pbody on" id="pLayers">
+        <div class="lrow">
+          <select id="lyrBlend" class="obsel" style="flex:1;min-width:0">
+            <option value="source-over">Normal</option><option value="multiply">Multiply</option>
+            <option value="screen">Screen</option><option value="overlay">Overlay</option>
+            <option value="darken">Darken</option><option value="lighten">Lighten</option>
+            <option value="color-dodge">Colour dodge</option><option value="color-burn">Colour burn</option>
+            <option value="hard-light">Hard light</option><option value="soft-light">Soft light</option>
+            <option value="difference">Difference</option><option value="exclusion">Exclusion</option>
+            <option value="hue">Hue</option><option value="saturation">Saturation</option>
+            <option value="color">Colour</option><option value="luminosity">Luminosity</option>
+          </select>
+          <span class="lval">Opacity:</span>
+          <button class="lnum" id="opBtn"><b class="num" id="opV">100%</b> ▾</button>
+        </div>
+        <div class="lrow" style="padding-bottom:6px;border-bottom:1px solid var(--line)">
+          <span class="lval">Lock:</span>
+          <button class="lkb" id="lkAll" title="Lock layer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>
+          <span class="lval" style="margin-left:auto">Fill:</span>
+          <button class="lnum" id="fillBtn"><b class="num" id="fillV">100%</b> ▾</button>
+        </div>
+        <div class="lpop" id="opPop" hidden><input type="range" min="0" max="100" value="100" id="opR"></div>
+        <div class="lpop" id="fillPop" hidden><input type="range" min="0" max="100" value="100" id="fillR"></div>
+        <div id="layers" style="flex:1;overflow-y:auto;padding:5px 6px"></div>
+        <div class="lfoot">
+          <button class="lfb" id="fAddMask" title="Add layer mask">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="13" height="13"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></button>
+          <button class="lfb" id="fAdj" title="New adjustment layer">
+            <svg viewBox="0 0 24 24" width="13" height="13"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
+          <button class="lfb" id="fNew" title="New layer (⌘⇧N)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="13" height="13"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 9v6M9 12h6"/></svg></button>
+          <button class="lfb" id="fDup" title="Duplicate layer (⌘J)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="13" height="13"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+          <button class="lfb" id="fDel" title="Delete layer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="13" height="13"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m3 0-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sbar">
+    <span class="si"><span class="dot"></span><b id="sbTool">Move</b></span>
+    <span class="si">Zoom <b id="sbZoom">100%</b></span>
+    <span class="si">Doc <b id="sbDoc">—</b></span>
+    <span class="si">Cursor <b id="sbPos">0, 0</b></span>
+    <span class="si">Sel <b id="sbSel">none</b></span>
+    <span class="si sp"><b id="sbHint"></b></span>
+  </div>
+</div>
+
+<div class="flyout" id="flyout"></div>
+<div class="ctx" id="ctx"></div>
+<div class="fdlg" id="fdlg" hidden>
+  <div class="fdlg-t" id="fdlgT"><b id="fdlgTitle"></b><button class="fdlg-x" id="fdlgX">×</button></div>
+  <div class="fdlg-b" id="fdlgB"></div>
+</div>
+<div class="toasts" id="toasts"></div>
+<script src="engine.js"></script>
+</body>
+</html>
