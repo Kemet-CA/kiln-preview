@@ -158,9 +158,15 @@ function composite(draft) {
     x.globalCompositeOperation = l.blend;
     x.drawImage(content, l.x, l.y);
     // live paint preview on the active layer
-    if (painting && i === Doc.active && strokeBuf) {
-      if (paintEraser || Doc.editingMask) { /* handled below */ }
-      else {
+    if (painting && i === Doc.active && strokeBuf && !Doc.editingMask) {
+      if (paintEraser) {
+        // punch the stroke out of what we just drew for this layer
+        x.save();
+        x.globalCompositeOperation = "destination-out";
+        x.globalAlpha = paintOpacity;
+        x.drawImage(strokeBuf, l.x, l.y);
+        x.restore();
+      } else {
         x.globalAlpha = l.opacity * l.fill * paintOpacity;
         x.drawImage(strokeBuf, l.x, l.y);
       }
@@ -179,9 +185,15 @@ function requestComposite() {
 
 /* ---- marching ants ---- */
 let antsOffset = 0, antsTimer = null;
+let hoverPt = null;   // cursor in doc coords, for the brush-size circle
+const BRUSHY = () => ["brush", "pencil", "eraser", "clone", "smudge", "blur", "sharp", "dodge", "burn", "sponge"].includes(TOOL);
+function brushRadius() {
+  return (TOOL === "pencil" ? T.pencilSize : TOOL === "eraser" ? T.eraserSize : T.brushSize) / 2;
+}
 function drawAnts() {
   const x = uiC.getContext("2d");
   x.clearRect(0, 0, Doc.w, Doc.h);
+  drawExtras(x);
   if (!Doc.antsPaths) return;
   x.save();
   x.lineWidth = 1 / View.z;
@@ -201,6 +213,34 @@ function drawAnts() {
 function antsTick() {
   antsOffset = (antsOffset + 1) % 8;
   drawAnts();
+}
+/* brush circle, crop overlay, transform box — drawn on every ui refresh */
+function drawExtras(x) {
+  if (cropRect) {
+    x.save();
+    x.fillStyle = "rgba(0,0,0,.5)";
+    x.fillRect(0, 0, Doc.w, Doc.h);
+    x.clearRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+    x.strokeStyle = "#FFB25C"; x.lineWidth = 1.5 / View.z;
+    x.strokeRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+    x.lineWidth = .5 / View.z; x.globalAlpha = .5;
+    for (let i = 1; i < 3; i++) { // rule of thirds
+      x.beginPath(); x.moveTo(cropRect.x + cropRect.w * i / 3, cropRect.y); x.lineTo(cropRect.x + cropRect.w * i / 3, cropRect.y + cropRect.h); x.stroke();
+      x.beginPath(); x.moveTo(cropRect.x, cropRect.y + cropRect.h * i / 3); x.lineTo(cropRect.x + cropRect.w, cropRect.y + cropRect.h * i / 3); x.stroke();
+    }
+    x.restore();
+  }
+  if (hoverPt && BRUSHY() && Doc.open) {
+    x.save();
+    x.lineWidth = 1 / View.z;
+    x.strokeStyle = "rgba(255,255,255,.9)";
+    x.beginPath(); x.arc(hoverPt.x, hoverPt.y, brushRadius(), 0, 7); x.stroke();
+    x.strokeStyle = "rgba(0,0,0,.55)";
+    x.beginPath(); x.arc(hoverPt.x, hoverPt.y, brushRadius() + 1 / View.z, 0, 7); x.stroke();
+    x.restore();
+  }
+  if (FT) drawFTBox(x);
+  if (VEC.editing) drawVecUi(x);
 }
 function setSelection(mask) { // mask canvas or null
   Doc.selMask = mask;
@@ -507,6 +547,13 @@ const IC = {
   text:'<path d="M5 6V4h14v2"/><path d="M12 4v16"/><path d="M9 20h6"/>',
   hand:'<path d="M8.5 11.5v-6a1.5 1.5 0 0 1 3 0V11m0-5.8a1.5 1.5 0 0 1 3 0V11m0-4.3a1.5 1.5 0 0 1 3 0v6.8c0 4-2.6 7.5-7 7.5-3.4 0-4.9-1.9-6.4-5.3l-1.5-3.4a1.45 1.45 0 0 1 2.4-1.4l1.5 2.1"/>',
   zoom:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11h6M11 8v6"/>',
+  pen:'<path d="m12 19 7-7-4-4-7 7-1.5 5.5z"/><path d="m15 8 1.5-1.5a2.1 2.1 0 0 1 3 3L18 11"/><circle cx="7" cy="17" r="1.2"/>',
+  directsel:'<path d="m6 3 12 9-5.5 1L15 19l-3 1.4-2.5-6L6 16z" fill="none"/>',
+  vrect:'<rect x="4" y="6" width="16" height="12" rx="1.5"/>',
+  vellipse:'<ellipse cx="12" cy="12" rx="8" ry="6"/>',
+  vpoly:'<path d="M12 3l8.5 6.2-3.2 10H6.7L3.5 9.2z"/>',
+  vstar:'<path d="m12 3 2.5 5.5 6 .6-4.5 4 1.3 5.9L12 15.8 6.7 19l1.3-5.9-4.5-4 6-.6z"/>',
+  vline:'<path d="M4 19 20 5"/><circle cx="4" cy="19" r="1.6"/><circle cx="20" cy="5" r="1.6"/>',
 };
 const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 
@@ -526,6 +573,11 @@ const TOOL_GROUPS = [
   [["dodge","Dodge","O"],["burn","Burn","O"],["sponge","Sponge","O"]],
   "-",
   [["text","Text","T"]],
+  "-",
+  [["pen","Pen","P"]],
+  [["directsel","Direct Selection","A"]],
+  [["vrect","Rectangle","U"],["vellipse","Ellipse","U"],["vpoly","Polygon","U"],["vstar","Star","U"],["vline","Line","U"]],
+  "-",
   [["hand","Hand","H"],["zoom","Zoom","Z"]],
 ];
 const groupTop = {}; // group index -> currently shown tool
@@ -535,6 +587,7 @@ const T = { // per-tool options state
   brushSize: 40, brushHard: 60, brushOp: 100, brushFlow: 100,
   pencilSize: 3, eraserSize: 40, eraserHard: 80, eraserOp: 100,
   tol: 32, contiguous: true, selMode: "new", featherIn: 0,
+  spacing: 12, smoothing: 20, pressure: true,
   gradKind: "linear", gradToTrans: false,
   stampStr: 55, cloneAligned: true,
   bucketTol: 40,
@@ -596,7 +649,7 @@ function setTool(id) {
   buildToolbar();
   const names = {}; TOOL_GROUPS.flat().forEach(t => { if (Array.isArray(t)) names[t[0]] = t[1]; });
   $("sbTool").textContent = names[id] || id;
-  vp.style.cursor = { move: "default", hand: "grab", zoom: "zoom-in", text: "text", eyedrop: "crosshair" }[id] || "crosshair";
+  vp.style.cursor = { move: "default", hand: "grab", zoom: "zoom-in", text: "text", eyedrop: "crosshair" }[id] || (BRUSHY() ? "none" : "crosshair");
   syncOptbar();
 }
 
@@ -614,6 +667,27 @@ const selModeTog = () => `
       .map(([m, t, ic]) => `<button data-sm="${m}" class="${T.selMode === m ? "on" : ""}" title="${t}">${SVG(ic)}</button>`).join("")}
   </div>`;
 const obIco = id => `<span class="ob-ico">${SVG(IC[id])}</span>`;
+const vecFillStroke = () => {
+  const l = vecActive();
+  const fill = l ? l.vfill : VDEF.fill, stroke = l ? l.vstroke : VDEF.stroke, sw = l ? l.vsw : VDEF.sw;
+  return `<span class="oblab">Fill</span><input type="color" class="obcolor" id="obVf" value="${fill === "none" ? "#000000" : fill}">
+    <button class="obbtn ${fill === "none" ? "on" : ""}" id="obVfN" title="No fill">∅</button>
+    <span class="oblab">Stroke</span><input type="color" class="obcolor" id="obVs" value="${stroke === "none" ? "#000000" : stroke}">
+    ${num("obVsw", sw, "px", 30)}`;
+};
+function wireVecFS(o) {
+  const apply = fn => {
+    fn(VDEF);
+    const l = vecActive();
+    if (l) { fn({ set fill(v){l.vfill=v}, set stroke(v){l.vstroke=v}, set sw(v){l.vsw=v},
+      get fill(){return l.vfill}, get stroke(){return l.vstroke}, get sw(){return l.vsw} });
+      renderVector(l); commit("Shape style"); drawAnts(); }
+  };
+  o.querySelector("#obVf")?.addEventListener("change", e => apply(t => t.fill = e.target.value));
+  o.querySelector("#obVfN")?.addEventListener("click", () => apply(t => t.fill = t.fill === "none" ? "#e2622a" : "none"));
+  o.querySelector("#obVs")?.addEventListener("change", e => apply(t => t.stroke = e.target.value));
+  o.querySelector("#obVsw")?.addEventListener("change", e => apply(t => t.sw = +e.target.value));
+}
 
 function syncOptbar() {
   const o = $("optbar");
@@ -666,10 +740,15 @@ function syncOptbar() {
     case "brush":
       o.innerHTML = brushRow("brushSize", "brushHard", "brushOp") +
         `<span class="obsep"></span><span class="oblab">Flow</span>${num("obFl", T.brushFlow, "%")}
+         <span class="oblab">Spacing</span>${num("obSp", T.spacing, "%", 34)}
+         <span class="oblab">Smoothing</span>${num("obSm", T.smoothing, "%", 34)}
+         <label class="oblab" style="display:flex;gap:4px;align-items:center">
+           <input type="checkbox" id="obPr" ${T.pressure ? "checked" : ""} style="accent-color:var(--ember)">Pressure</label>
          <span class="obsep"></span><input type="color" class="obcolor" id="obFg" value="${FG}">`;
       bind("obSz", "brushSize", v => o.querySelector("#obSzR").value = v);
-      o.querySelector("#obSzR").addEventListener("input", e => { T.brushSize = +e.target.value; o.querySelector("#obSz").value = e.target.value; });
+      o.querySelector("#obSzR").addEventListener("input", e => { T.brushSize = +e.target.value; o.querySelector("#obSz").value = e.target.value; drawAnts(); });
       bind("obHd", "brushHard"); bind("obOp", "brushOp"); bind("obFl", "brushFlow");
+      bind("obSp", "spacing"); bind("obSm", "smoothing"); bind("obPr", "pressure");
       bind("obFg", null, v => { FG = v; syncSwatches(); });
       break;
     case "pencil":
@@ -718,6 +797,39 @@ function syncOptbar() {
       bind("obSz", "brushSize"); bind("obStr", "stampStr");
       break;
     case "text": syncTextOptbar(); break;
+    case "pen":
+      o.innerHTML = `${obIco("pen")}${vecFillStroke()}
+        <span class="obsep"></span><span class="obhint">Click adds a corner · drag adds a curve · click the first point (or Enter) closes · Esc ends</span>`;
+      wireVecFS(o);
+      break;
+    case "directsel":
+      o.innerHTML = `${obIco("directsel")}${vecFillStroke()}
+        <div class="obtog" id="obVop">${[["add","Combine",'<rect x="4" y="4" width="11" height="11" rx="2"/><rect x="9" y="9" width="11" height="11" rx="2"/>'],
+          ["sub","Subtract",'<rect x="4" y="4" width="11" height="11" rx="2"/><path d="M13 16h8" stroke-width="2.2"/>'],
+          ["exclude","Exclude",'<rect x="4" y="4" width="11" height="11" rx="2"/><rect x="9" y="9" width="11" height="11" rx="2" fill="currentColor" stroke="none" opacity=".4"/>']]
+          .map(([m,t,ic]) => `<button data-vop="${m}" title="${t}">${SVG(ic)}</button>`).join("")}</div>
+        <span class="obsep"></span><span class="obhint">Drag anchors and handles · drag inside a shape moves it · ⌫ deletes an anchor</span>`;
+      wireVecFS(o);
+      o.querySelectorAll("[data-vop]").forEach(b => b.addEventListener("click", () => {
+        const l = vecActive();
+        if (!l || !VEC.sel) return toast("Select a shape's anchor first", "warn");
+        l.shapes[VEC.sel.si].op = b.dataset.vop === "add" ? "add" : b.dataset.vop;
+        renderVector(l); commit("Path operation"); drawAnts();
+      }));
+      break;
+    case "vrect": case "vellipse": case "vpoly": case "vstar": case "vline":
+      o.innerHTML = `${obIco(TOOL)}${vecFillStroke()}
+        ${TOOL === "vrect" ? `<span class="oblab">Radius</span>${num("obRad", VDEF.radius, "px", 36)}` : ""}
+        ${TOOL === "vpoly" || TOOL === "vstar" ? `<span class="oblab">Sides</span>${num("obSides", VDEF.sides, "", 30)}` : ""}
+        ${TOOL === "vstar" ? `<span class="oblab">Inner</span>${num("obInner", VDEF.starIn, "%", 32)}` : ""}
+        <span class="obsep"></span><span class="obhint">Drag to draw — stays an editable vector layer</span>`;
+      wireVecFS(o);
+      ["obRad|radius", "obSides|sides", "obInner|starIn"].forEach(pair => {
+        const [id, key] = pair.split("|");
+        const el = o.querySelector("#" + id);
+        if (el) el.addEventListener("change", () => VDEF[key] = +el.value);
+      });
+      break;
     case "hand":
       o.innerHTML = `${obIco("hand")}<button class="obbtn" id="obFit">Fit</button>
         <button class="obbtn" id="ob100">100%</button><span class="obhint">Drag to pan · double-click fits</span>`;
@@ -815,13 +927,17 @@ function stampBrush(ctx, x, y, size, hard, color, flow) {
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
 }
-function strokeTo(ctx, from, to, size, cb) {
+/* even stamp spacing carried across segments — no doubled joints */
+function strokeTo(ctx, from, to, size, cb, carry = { d: 0 }) {
   const dist = Math.hypot(to.x - from.x, to.y - from.y);
-  const step = Math.max(1, size * .18);
-  for (let d = 0; d <= dist; d += step) {
-    const t = dist ? d / dist : 0;
+  const step = Math.max(.5, size * (T.spacing / 100));
+  let d = carry.d === 0 ? 0 : step - carry.d;
+  if (dist === 0 && carry.d === 0) { cb(from.x, from.y); carry.d = 1e-4; return; }
+  for (; d <= dist; d += step) {
+    const t = d / dist;
     cb(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
   }
+  carry.d = dist - (d - step);
 }
 
 /* filter-brush stamp: apply a ctx.filter to a soft circle of the layer */
@@ -902,6 +1018,61 @@ vp.addEventListener("pointerdown", e => {
   const p = docPt(e);
   const l = active();
   vp.setPointerCapture(e.pointerId);
+  if (FT && !(e.button === 1 || spaceHeld)) { if (ftPointer("down", p, e)) return; }
+
+  if (TOOL === "pen") {
+    let vl = vecActive();
+    if (!vl) { vl = newVectorLayer(); commit("New vector layer"); VEC.penShape = null; }
+    const sp = snapPt(p);
+    if (VEC.penShape && VEC.penShape.pts.length > 1) {
+      const first = VEC.penShape.pts[0];
+      if (Math.hypot(first.x - sp.x, first.y - sp.y) < 9 / View.z) {  // close the path
+        VEC.penShape.closed = true;
+        VEC.penShape = null;
+        renderVector(vl); commit("Close path"); drawAnts();
+        return;
+      }
+    }
+    if (!VEC.penShape) {
+      VEC.penShape = { kind: "path", pts: [], closed: false, op: "add" };
+      vl.shapes.push(VEC.penShape);
+      VEC.editing = true;
+    }
+    const pt = { x: sp.x, y: sp.y, hin: null, hout: null };
+    VEC.penShape.pts.push(pt);
+    VEC.sel = { si: vl.shapes.indexOf(VEC.penShape), pi: VEC.penShape.pts.length - 1 };
+    drag = { kind: "penDrag", pt, vl };
+    renderVector(vl); requestComposite(); drawAnts();
+    return;
+  }
+  if (TOOL === "directsel") {
+    const vl = vecActive() || Doc.layers.map((x, i) => ({ x, i })).reverse().find(o2 => o2.x.type === "vector");
+    const layer = vl && vl.x ? (Doc.active = vl.i, vl.x) : vecActive();
+    if (!layer) return toast("No vector layer — draw one with the Pen or a shape tool", "warn");
+    VEC.editing = true;
+    const hit = vecHit(layer, p);
+    if (hit) {
+      VEC.sel = hit.part === "pt" ? { si: hit.si, pi: hit.pi } : VEC.sel;
+      drag = { kind: "vecPt", layer, hit, start: p };
+    } else {
+      // drag inside a filled shape moves the whole subpath
+      const x = docC.getContext("2d");
+      for (let si = layer.shapes.length - 1; si >= 0; si--) {
+        if (x.isPointInPath(shapePath2D(layer.shapes[si]), p.x, p.y)) {
+          drag = { kind: "vecShape", layer, si, start: p,
+            orig: JSON.parse(JSON.stringify(layer.shapes[si].pts)) };
+          VEC.sel = { si, pi: 0 };
+          break;
+        }
+      }
+    }
+    renderLayersPanel(); drawAnts();
+    return;
+  }
+  if (["vrect", "vellipse", "vpoly", "vstar", "vline"].includes(TOOL)) {
+    drag = { kind: "vshape", start: snapPt(p) };
+    return;
+  }
 
   // pan: middle button, space, or hand tool
   if (e.button === 1 || spaceHeld || TOOL === "hand") {
@@ -931,15 +1102,22 @@ vp.addEventListener("pointerdown", e => {
   }
   if (TOOL === "text") {
     // click a text layer to select/edit; empty space = new text layer
-    const hit = [...Doc.layers].reverse().find(t => t.type === "text" && inBounds(p, textBounds(t)));
-    if (hit) { Doc.active = Doc.layers.indexOf(hit); renderLayersPanel(); syncTextOptbar(); }
+    const hit = hitTextLayer(p);
+    if (hit) {
+      Doc.active = Doc.layers.indexOf(hit);
+      Doc.editingMask = false;
+      renderLayersPanel(); syncTextOptbar();
+      setTimeout(() => { const i = $("txText"); if (i) { i.focus(); i.select(); } }, 40);
+    }
     else addTextLayer(p);
     return;
   }
   if (TOOL === "move") {
-    if (!l || l.locked) return;
-    // double-click text layer → focus the text input
-    drag = { kind: "move", start: p, lx: l.type === "text" ? l.tx : l.x, ly: l.type === "text" ? l.ty : l.y, isText: l.type === "text" };
+    const th = hitTextLayer(p);
+    if (th && th !== l) { Doc.active = Doc.layers.indexOf(th); renderLayersPanel(); }
+    const tl = active();
+    if (!tl || tl.locked) return;
+    drag = { kind: "move", start: p, lx: tl.type === "text" ? tl.tx : tl.x, ly: tl.type === "text" ? tl.ty : tl.y, isText: tl.type === "text" };
     return;
   }
   if (TOOL === "bucket") { bucketFill(p); return; }
@@ -955,6 +1133,7 @@ vp.addEventListener("pointerdown", e => {
     }
     const target = Doc.editingMask && l.mask ? "mask" : "canvas";
     if (l.type === "text" && target === "canvas") return toast("Text layers hold live text — paint on a mask, or rasterise via the Layer menu", "warn");
+    if (l.type === "vector" && target === "canvas") return toast("Vector layers stay editable — paint on a mask, or Layer ▸ Rasterise vector", "warn");
     if (l.type === "adjust" && target === "canvas") return toast("Paint on this adjustment layer's mask instead", "warn");
     if (TOOL === "clone" && !cloneSrc) return toast("⌥ Alt-click first to set the clone source", "warn");
     cow(l, target);   // history keeps the old pixels
@@ -963,8 +1142,8 @@ vp.addEventListener("pointerdown", e => {
       painting = true;
       paintEraser = TOOL === "eraser" && target === "canvas";
       paintOpacity = (TOOL === "brush" ? T.brushOp : TOOL === "eraser" ? T.eraserOp : 100) / 100;
-      drag = { kind: "paint", target, last: p };
-      paintDab(p, p);
+      drag = { kind: "paint", target, last: p, carry: { d: 0 }, sm: { ...p } };
+      paintDab(p, p, e.pressure, drag.carry);
     } else {
       if (TOOL === "clone") cloneOff = { x: p.x - cloneSrc.x, y: p.y - cloneSrc.y };
       drag = { kind: "fbrush", target, last: p };
@@ -974,21 +1153,35 @@ vp.addEventListener("pointerdown", e => {
   }
 });
 
-function inBounds(p, b) { return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h; }
+function inBounds(p, b, pad = 0) {
+  return p.x >= b.x - pad && p.x <= b.x + b.w + pad && p.y >= b.y - pad && p.y <= b.y + b.h + pad;
+}
+function hitTextLayer(p) {
+  return [...Doc.layers].reverse().find(t => t.type === "text" && t.visible && inBounds(p, textBounds(t), 18));
+}
 
-function paintDab(from, to) {
+function paintDab(from, to, pressure, carry) {
   const x = strokeBuf.getContext("2d");
-  const size = TOOL === "brush" ? T.brushSize : TOOL === "pencil" ? T.pencilSize : T.eraserSize;
+  let size = TOOL === "brush" ? T.brushSize : TOOL === "pencil" ? T.pencilSize : T.eraserSize;
   const hard = TOOL === "brush" ? T.brushHard : TOOL === "pencil" ? 100 : T.eraserHard;
-  const flow = TOOL === "brush" ? T.brushFlow / 100 : 1;
-  const col = TOOL === "eraser" ? "#ffffff" : FG;
+  let flow = TOOL === "brush" ? T.brushFlow / 100 : 1;
+  // tablet pressure (mouse reports 0.5 — treated as neutral)
+  if (T.pressure && pressure != null && pressure !== .5 && pressure > 0) {
+    size = Math.max(1, size * (0.35 + pressure * 1.3));
+    flow = clamp(flow * (0.4 + pressure * 1.2), .02, 1);
+  }
   if (TOOL === "pencil") x.imageSmoothingEnabled = false;
-  strokeTo(x, from, to, size, (px, py) => stampBrush(x, px, py, size, hard, col, flow));
+  strokeTo(x, from, to, size, (px, py) => stampBrush(x, px, py, size, hard, TOOL === "eraser" ? "#ffffff" : FG, flow), carry);
 }
 
 vp.addEventListener("pointermove", e => {
   const p = Doc.open ? docPt(e) : { x: 0, y: 0 };
-  if (Doc.open) $("sbPos").textContent = `${Math.round(p.x)}, ${Math.round(p.y)}`;
+  if (Doc.open) {
+    $("sbPos").textContent = `${Math.round(p.x)}, ${Math.round(p.y)}`;
+    hoverPt = p;
+    if (BRUSHY() && !drag) drawAnts();
+  }
+  if (FT && FT.drag) { ftPointer("move", p, e); return; }
   if (!drag) { if (polyPts) drawPolyUi(p); return; }
   const l = active();
   switch (drag.kind) {
@@ -1016,25 +1209,85 @@ vp.addEventListener("pointermove", e => {
       drag.pts.push(p);
       drawLassoUi(drag.pts);
       break;
-    case "paint":
-      paintDab(drag.last, p);
-      drag.last = p;
+    case "paint": {
+      // sub-event precision + stroke smoothing (EMA toward the cursor)
+      const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+      const k = 1 - clamp(T.smoothing, 0, 95) / 100;
+      for (const ev of evs) {
+        const q = docPt(ev);
+        drag.sm.x += (q.x - drag.sm.x) * k;
+        drag.sm.y += (q.y - drag.sm.y) * k;
+        paintDab(drag.last, { x: drag.sm.x, y: drag.sm.y }, ev.pressure, drag.carry);
+        drag.last = { x: drag.sm.x, y: drag.sm.y };
+      }
       requestComposite();
       break;
+    }
     case "fbrush":
       strokeTo(null, drag.last, p, T.brushSize, (px, py) =>
         stampFilter(l, px, py, T.brushSize, TOOL, T.stampStr, drag.last));
       drag.last = p;
       requestComposite();
       break;
-    case "grad":
+    case "penDrag": {
+      // dragging after placing an anchor pulls out symmetric handles
+      const d0 = drag;
+      const sp = snapPt(p);
+      if (Math.hypot(sp.x - d0.pt.x, sp.y - d0.pt.y) > 2 / View.z) {
+        d0.pt.hout = { x: sp.x, y: sp.y };
+        d0.pt.hin = { x: 2 * d0.pt.x - sp.x, y: 2 * d0.pt.y - sp.y };
+      }
+      renderVector(d0.vl); requestComposite(); drawAnts();
+      break;
+    }
+    case "vecPt": {
+      const { layer, hit } = drag;
+      const sp = snapPt(p);
+      const pt = layer.shapes[hit.si].pts[hit.pi];
+      if (hit.part === "pt") {
+        const dx = sp.x - pt.x, dy = sp.y - pt.y;
+        pt.x = sp.x; pt.y = sp.y;
+        if (pt.hin) { pt.hin.x += dx; pt.hin.y += dy; }
+        if (pt.hout) { pt.hout.x += dx; pt.hout.y += dy; }
+      } else {
+        pt[hit.part] = { x: sp.x, y: sp.y };
+        const other = hit.part === "hout" ? "hin" : "hout";
+        if (!e.altKey && pt[other]) pt[other] = { x: 2 * pt.x - sp.x, y: 2 * pt.y - sp.y };
+      }
+      renderVector(layer); requestComposite(); drawAnts();
+      break;
+    }
+    case "vecShape": {
+      const { layer, si, orig, start } = drag;
+      const dx = p.x - start.x, dy = p.y - start.y;
+      layer.shapes[si].pts = orig.map(q => ({
+        x: q.x + dx, y: q.y + dy,
+        hin: q.hin ? { x: q.hin.x + dx, y: q.hin.y + dy } : null,
+        hout: q.hout ? { x: q.hout.x + dx, y: q.hout.y + dy } : null,
+      }));
+      renderVector(layer); requestComposite(); drawAnts();
+      break;
+    }
+    case "vshape":
+      drag.cur = snapPt(p);
+      drawShapeUi(drag.start, drag.cur);
+      break;
+    case "grad": {
       drag.cur = p;
+      // live gradient preview through the paint pipeline
+      if (!strokeBuf) { strokeBuf = mkCanvas(Doc.w, Doc.h); painting = true; paintEraser = false; paintOpacity = 1; }
+      const gx = strokeBuf.getContext("2d");
+      gx.clearRect(0, 0, Doc.w, Doc.h);
+      paintGradient(gx, drag.start, p);
+      requestComposite();
       drawShapeUi(drag.start, p, true);
       break;
+    }
   }
 });
 
 vp.addEventListener("pointerup", e => {
+  if (FT && FT.drag) { ftPointer("up", null, e); return; }
   if (!drag) return;
   const l = active();
   const d = drag; drag = null;
@@ -1118,25 +1371,31 @@ vp.addEventListener("pointerup", e => {
       break;
     }
     case "grad": {
-      if (!d.cur || !l || l.locked || l.type !== "raster") break;
+      painting = false;
+      const buf = strokeBuf; strokeBuf = null;
+      if (!d.cur || !l || l.locked || l.type !== "raster" || !buf) { requestComposite(); break; }
       cow(l);
-      const buf = mkCanvas(Doc.w, Doc.h), x = buf.getContext("2d");
-      const [r1, g1, b1] = hex2rgba(FG), [r2, g2, b2] = hex2rgba(BG);
-      const c2 = T.gradToTrans ? `rgba(${r1},${g1},${b1},0)` : `rgb(${r2},${g2},${b2})`;
-      let g;
-      if (T.gradKind === "radial") {
-        const rad = Math.hypot(d.cur.x - d.start.x, d.cur.y - d.start.y) || 1;
-        g = x.createRadialGradient(d.start.x, d.start.y, 0, d.start.x, d.start.y, rad);
-      } else g = x.createLinearGradient(d.start.x, d.start.y, d.cur.x, d.cur.y);
-      g.addColorStop(0, `rgb(${r1},${g1},${b1})`);
-      g.addColorStop(1, c2);
-      x.fillStyle = g; x.fillRect(0, 0, Doc.w, Doc.h);
       clipToSelection(buf);
       l.canvas.getContext("2d").drawImage(buf, -l.x, -l.y);
       commit("Gradient");
       break;
     }
     case "crop": drawCropUi(); break;
+    case "penDrag":
+      renderVector(d.vl); requestComposite(); drawAnts();
+      break;
+    case "vecPt": case "vecShape":
+      commit("Edit path");
+      break;
+    case "vshape": {
+      if (!d.cur) break;
+      const vl = newVectorLayer();
+      vl.shapes.push(buildShape(TOOL, d.start, d.cur, { radius: VDEF.radius, sides: VDEF.sides, starIn: VDEF.starIn }));
+      renderVector(vl);
+      VEC.editing = true;
+      commit({ vrect: "Rectangle", vellipse: "Ellipse", vpoly: "Polygon", vstar: "Star", vline: "Line" }[TOOL]);
+      break;
+    }
   }
 });
 vp.addEventListener("dblclick", e => {
@@ -1144,8 +1403,12 @@ vp.addEventListener("dblclick", e => {
   if (TOOL === "poly" && polyPts) closePoly();
   if (TOOL === "move") {
     const p = docPt(e);
-    const hit = [...Doc.layers].reverse().find(t => t.type === "text" && inBounds(p, textBounds(t)));
-    if (hit) { Doc.active = Doc.layers.indexOf(hit); setTool("text"); renderLayersPanel(); setTimeout(() => $("txText")?.focus(), 50); }
+    const hit = hitTextLayer(p);
+    if (hit) {
+      Doc.active = Doc.layers.indexOf(hit);
+      setTool("text"); renderLayersPanel();
+      setTimeout(() => { const i = $("txText"); if (i) { i.focus(); i.select(); } }, 50);
+    }
   }
 });
 vp.addEventListener("wheel", e => {
@@ -1204,19 +1467,7 @@ function closePoly() {
   combine(m, polyPts.mode);
   polyPts = null;
 }
-function drawCropUi() {
-  const x = uiCtx();
-  if (!cropRect) return;
-  x.save();
-  x.fillStyle = "rgba(0,0,0,.5)";
-  x.fillRect(0, 0, Doc.w, Doc.h);
-  x.clearRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
-  x.strokeStyle = "var(--hot)"; x.strokeStyle = "#FFB25C";
-  x.lineWidth = 1.5 / View.z;
-  x.strokeRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
-  x.restore();
-  drawAnts();
-}
+function drawCropUi() { drawAnts(); }
 function applyCropTool() {
   if (!cropRect || cropRect.w < 4 || cropRect.h < 4) return toast("Drag a crop area first", "warn");
   const r = {
@@ -1244,6 +1495,19 @@ function applyCropTool() {
   $("sbDoc").textContent = `${Doc.w} × ${Doc.h}`;
   commit("Crop");
   fit();
+}
+function paintGradient(x, a, b) {
+  const [r1, g1, b1] = hex2rgba(FG), [r2, g2, b2] = hex2rgba(BG);
+  const c2 = T.gradToTrans ? `rgba(${r1},${g1},${b1},0)` : `rgb(${r2},${g2},${b2})`;
+  let g;
+  if (T.gradKind === "radial") {
+    const rad = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    g = x.createRadialGradient(a.x, a.y, 0, a.x, a.y, rad);
+  } else g = x.createLinearGradient(a.x, a.y, b.x, b.y);
+  g.addColorStop(0, `rgb(${r1},${g1},${b1})`);
+  g.addColorStop(1, c2);
+  x.fillStyle = g;
+  x.fillRect(0, 0, Doc.w, Doc.h);
 }
 function samplePoint(p) {
   composite();
@@ -1402,7 +1666,7 @@ function renderLayersPanel() {
       <span class="th ${i === Doc.active && !Doc.editingMask ? "mskSel" : ""}" data-th></span>
       ${l.mask ? `<span class="th msk ${l.maskEnabled ? "" : "off"} ${i === Doc.active && Doc.editingMask ? "mskSel" : ""}" data-mth title="Layer mask — click to edit, Shift-click to disable"></span>` : ""}
       <span class="nm">${esc(l.name)}</span>
-      ${l.type === "text" ? '<span class="tag">T</span>' : l.type === "adjust" ? '<span class="tag">◐</span>' : ""}
+      ${l.type === "text" ? '<span class="tag">T</span>' : l.type === "adjust" ? '<span class="tag">◐</span>' : l.type === "vector" ? '<span class="tag">◇</span>' : ""}
       ${l.locked ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10" style="color:var(--warn);flex:none"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>` : ""}
       <span class="op num">${Math.round(l.opacity * 100)}%</span>`;
     row.querySelector("[data-th]").appendChild(layerThumb(l));
@@ -1430,6 +1694,11 @@ function renderLayersPanel() {
     });
     row.addEventListener("dblclick", e => {
       if (e.target.closest(".th")) return;
+      if (l.type === "text") {
+        Doc.active = i; setTool("text"); renderLayersPanel();
+        setTimeout(() => { const inp = $("txText"); if (inp) { inp.focus(); inp.select(); } }, 40);
+        return;
+      }
       const nm = prompt("Layer name", l.name);
       if (nm) { l.name = nm; commit("Rename layer"); }
     });
@@ -1740,15 +2009,19 @@ function buildMenus() {
     mi("Open image…", "⌘O", () => $("fileImg").click()),
     mi("New document", "", () => newDoc(1280, 800, "untitled")),
     mi("Load sample", "", () => newDoc(1600, 1067, "sample.jpg", makeSample())),
+    mi("Open .kiln project…", "", () => $("fileProj").click()),
     "-",
+    mi("Save project (.kiln)", "⌘S", saveProject),
     { label: "Export as", sub: [
       mi("PNG", "", () => exportPNG("png")),
       mi("JPG", "", () => exportPNG("jpeg", .9)),
       mi("WebP", "⌘E", () => exportPNG("webp", .9)),
+      mi("SVG (vectors stay vector)", "", exportSVG),
     ] },
   ]);
   buildMenu($("mEdit"), [
     mi("Undo", "⌘Z", undo), mi("Redo", "⇧⌘Z", redo), "-",
+    mi("Free Transform", "⌘T", startFT), "-",
     mi("Fill with foreground", "⌥⌫", () => { const l = active(); if (l?.type === "raster" && !l.locked) { cow(l); const buf = mkCanvas(Doc.w, Doc.h); const x = buf.getContext("2d"); x.fillStyle = FG; x.fillRect(0, 0, Doc.w, Doc.h); clipToSelection(buf); l.canvas.getContext("2d").drawImage(buf, -l.x, -l.y); commit("Fill"); } }),
     mi("Clear selection contents", "⌫", clearSelArea),
   ]);
@@ -1777,6 +2050,13 @@ function buildMenus() {
     mi("Delete mask", "", () => removeMask(false)),
     "-",
     mi("Rasterise text", "", rasterizeText),
+    mi("Rasterise vector layer", "", () => {
+      const l = vecActive();
+      if (!l) return toast("Select a vector layer first", "warn");
+      l.type = "raster"; delete l.shapes;
+      VEC.editing = false;
+      commit("Rasterise vector");
+    }),
     mi("Merge down", "⌘E", mergeDown),
     mi("Flatten image", "", flattenAll),
   ]);
@@ -1885,6 +2165,8 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     document.querySelectorAll("[data-menu]").forEach(o => o.classList.remove("open"));
     $("ctx").classList.remove("on"); $("flyout").classList.remove("on");
+    if (FT) { ftCommit(false); return; }
+    if (VEC.penShape) { VEC.penShape = null; drawAnts(); return; }
     if (!$("fdlg").hidden) { $("fdlgX").click(); return; }
     if (polyPts) { polyPts = null; clearUi(); return; }
     if (cropRect) { cropRect = null; drawCropUi(); return; }
@@ -1898,8 +2180,10 @@ document.addEventListener("keydown", e => {
     else if (k === "d") { e.preventDefault(); setSelection(null); }
     else if (k === "i" && e.shiftKey) { e.preventDefault(); invertSelection(); }
     else if (k === "j") { e.preventDefault(); duplicateLayer(); }
+    else if (k === "t") { e.preventDefault(); startFT(); }
     else if (k === "n" && e.shiftKey) { e.preventDefault(); addRaster(); }
     else if (k === "e") { e.preventDefault(); exportPNG("webp", .9); }
+    else if (k === "s") { e.preventDefault(); saveProject(); }
     else if (k === "o") { e.preventDefault(); $("fileImg").click(); }
     else if (k === "0") { e.preventDefault(); fit(); }
     else if (k === "1") { e.preventDefault(); View.z = 1; applyView(); }
@@ -1908,19 +2192,37 @@ document.addEventListener("keydown", e => {
     return;
   }
   const tools = { v: "move", m: "marquee", l: "lasso", w: "wand", c: "crop", i: "eyedrop",
-    b: "brush", e: "eraser", g: "bucket", s: "clone", r: "smudge", o: "dodge", t: "text", h: "hand", z: "zoom" };
+    b: "brush", e: "eraser", g: "bucket", s: "clone", r: "smudge", o: "dodge", t: "text", h: "hand", z: "zoom",
+    p: "pen", a: "directsel", u: "vrect" };
   const k = e.key.toLowerCase();
   if (tools[k]) { setTool(tools[k]); return; }
   if (k === "x") { [FG, BG] = [BG, FG]; syncSwatches(); syncOptbar(); }
   if (k === "d") { FG = "#000000"; BG = "#ffffff"; syncSwatches(); syncOptbar(); }
-  if (k === "[") { T.brushSize = Math.max(1, Math.round(T.brushSize * .85)); T.eraserSize = Math.max(1, Math.round(T.eraserSize * .85)); syncOptbar(); }
-  if (k === "]") { T.brushSize = Math.min(400, Math.round(T.brushSize * 1.18)); T.eraserSize = Math.min(400, Math.round(T.eraserSize * 1.18)); syncOptbar(); }
+  if (k === "[") { T.brushSize = Math.max(1, Math.round(T.brushSize * .85)); T.eraserSize = Math.max(1, Math.round(T.eraserSize * .85)); syncOptbar(); drawAnts(); }
+  if (k === "]") { T.brushSize = Math.min(400, Math.round(T.brushSize * 1.18)); T.eraserSize = Math.min(400, Math.round(T.eraserSize * 1.18)); syncOptbar(); drawAnts(); }
   if (e.key === "Tab") { e.preventDefault(); $("app").classList.toggle("nopanels"); }
+  if (e.key === "Enter" && FT) { ftCommit(true); return; }
+  if (e.key === "Enter" && VEC.penShape) {
+    VEC.penShape = null;
+    commit("End path"); drawAnts();
+    return;
+  }
   if (e.key === "Enter" && polyPts) closePoly();
   if (e.key === "Enter" && TOOL === "crop" && cropRect) applyCropTool();
   if ((e.key === "Delete" || e.key === "Backspace")) {
     e.preventDefault();
-    if (e.altKey) { /* fill */ } else clearSelArea();
+    const vl = vecActive();
+    if (TOOL === "directsel" && vl && VEC.sel) {  // delete the selected anchor
+      const sh = vl.shapes[VEC.sel.si];
+      if (sh) {
+        sh.pts.splice(VEC.sel.pi, 1);
+        if (sh.pts.length < 2) vl.shapes.splice(VEC.sel.si, 1);
+        VEC.sel = null;
+        renderVector(vl); commit("Delete anchor"); drawAnts();
+      }
+      return;
+    }
+    clearSelArea();
   }
   // nudge active layer with arrows (move tool)
   if (TOOL === "move" && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
@@ -1965,6 +2267,12 @@ $("splitR").addEventListener("pointerdown", e => {
 })();
 
 $("fileImg").addEventListener("change", e => openImageFile(e.target.files[0]));
+(() => {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".kiln,application/json"; inp.id = "fileProj"; inp.hidden = true;
+  document.body.appendChild(inp);
+  inp.addEventListener("change", e => e.target.files[0] && loadProject(e.target.files[0]));
+})();
 $("dzOpen").addEventListener("click", e => { e.stopPropagation(); $("fileImg").click(); });
 $("dzSample").addEventListener("click", e => { e.stopPropagation(); newDoc(1600, 1067, "sample.jpg", makeSample()); });
 $("dzNew").addEventListener("click", e => { e.stopPropagation(); newDoc(1280, 800, "untitled"); });
@@ -1979,3 +2287,400 @@ buildMenus();
 renderAdjTree();
 setTool("move");
 syncSwatches();
+
+/* ============================================================
+   Free Transform (⌘T) — move / scale / rotate any layer
+   ============================================================ */
+let FT = null;
+function alphaBBox(c) {
+  const x = c.getContext("2d");
+  const d = x.getImageData(0, 0, c.width, c.height).data;
+  let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0, found = false;
+  for (let py = 0; py < c.height; py += 2) for (let px = 0; px < c.width; px += 2) {
+    if (d[(py * c.width + px) * 4 + 3] > 8) {
+      found = true;
+      if (px < x0) x0 = px; if (px > x1) x1 = px;
+      if (py < y0) y0 = py; if (py > y1) y1 = py;
+    }
+  }
+  return found ? { x: x0, y: y0, w: x1 - x0 + 2, h: y1 - y0 + 2 } : { x: 0, y: 0, w: c.width, h: c.height };
+}
+function startFT() {
+  const l = active();
+  if (!Doc.open || !l || l.locked || l.type === "adjust") return toast("Select an unlocked pixel, text or vector layer", "warn");
+  let b;
+  if (l.type === "text") b = textBounds(l);
+  else if (l.type === "vector") b = vecBBox(l);
+  else { const a = alphaBBox(l.canvas); b = { x: a.x + l.x, y: a.y + l.y, w: a.w, h: a.h }; }
+  FT = {
+    l, box: b, cx: b.x + b.w / 2, cy: b.y + b.h / 2,
+    sx: 1, sy: 1, rot: 0, dx: 0, dy: 0,
+    orig: l.type === "text" ? { tx: l.tx, ty: l.ty, size: l.size, angle: l.angle }
+        : l.type === "vector" ? { shapes: JSON.parse(JSON.stringify(l.shapes)) }
+        : { canvas: l.canvas, x: l.x, y: l.y },
+  };
+  setTool("move");
+  drawAnts();
+  toast("Free Transform — drag corners to scale, outside to rotate, Enter applies, Esc cancels");
+}
+function ftHandles() {
+  const b = FT.box, pts = [];
+  for (const [fx, fy] of [[0, 0], [.5, 0], [1, 0], [1, .5], [1, 1], [.5, 1], [0, 1], [0, .5]]) {
+    const px = b.x + b.w * fx - FT.cx, py = b.y + b.h * fy - FT.cy;
+    const c = Math.cos(FT.rot), s = Math.sin(FT.rot);
+    pts.push({
+      x: FT.cx + FT.dx + (px * FT.sx) * c - (py * FT.sy) * s,
+      y: FT.cy + FT.dy + (px * FT.sx) * s + (py * FT.sy) * c,
+      fx, fy,
+    });
+  }
+  return pts;
+}
+function drawFTBox(x) {
+  const h = ftHandles();
+  x.save();
+  x.strokeStyle = "#FFB25C"; x.lineWidth = 1 / View.z;
+  x.beginPath();
+  [0, 2, 4, 6].forEach((i, k) => k ? x.lineTo(h[i].x, h[i].y) : x.moveTo(h[i].x, h[i].y));
+  x.closePath(); x.stroke();
+  x.fillStyle = "#fff"; x.strokeStyle = "#B15A0F";
+  const r = 4 / View.z;
+  for (const p of h) { x.fillRect(p.x - r, p.y - r, r * 2, r * 2); x.strokeRect(p.x - r, p.y - r, r * 2, r * 2); }
+  x.restore();
+}
+function ftApplyLive() {
+  const l = FT.l;
+  if (l.type === "text") {
+    l.size = Math.max(4, FT.orig.size * Math.abs(FT.sy));
+    l.angle = FT.orig.angle + FT.rot * 180 / Math.PI;
+    l.tx = FT.orig.tx + FT.dx; l.ty = FT.orig.ty + FT.dy;
+    renderText(l);
+    requestComposite();
+  } else if (l.type === "vector") {
+    const o = FT.orig.shapes;
+    l.shapes = JSON.parse(JSON.stringify(o));
+    const c = Math.cos(FT.rot), s = Math.sin(FT.rot);
+    const tp = p => {
+      const px = (p.x - FT.cx) * FT.sx, py = (p.y - FT.cy) * FT.sy;
+      p.x = FT.cx + FT.dx + px * c - py * s;
+      p.y = FT.cy + FT.dy + px * s + py * c;
+    };
+    l.shapes.forEach(sh => sh.pts.forEach(pt => { tp(pt); if (pt.hin) tp(pt.hin); if (pt.hout) tp(pt.hout); }));
+    renderVector(l);
+    requestComposite();
+  }
+  drawAnts();
+}
+function ftCommit(apply) {
+  const l = FT.l, o = FT.orig;
+  if (!apply) {
+    if (l.type === "text") Object.assign(l, o), renderText(l);
+    else if (l.type === "vector") { l.shapes = o.shapes; renderVector(l); }
+    FT = null; drawAnts(); requestComposite();
+    return;
+  }
+  if (l.type === "raster") {
+    cow(l);
+    const c = mkCanvas(Doc.w, Doc.h), x = c.getContext("2d");
+    x.translate(FT.cx + FT.dx, FT.cy + FT.dy);
+    x.rotate(FT.rot);
+    x.scale(FT.sx, FT.sy);
+    x.translate(-FT.cx, -FT.cy);
+    x.drawImage(o.canvas, o.x, o.y);
+    l.canvas = c; l.x = 0; l.y = 0;
+  }
+  FT = null;
+  commit("Free Transform");
+}
+function ftPointer(kind, p, e) {
+  if (kind === "down") {
+    const h = ftHandles();
+    const r = 8 / View.z;
+    const hit = h.find(pt => Math.abs(pt.x - p.x) < r && Math.abs(pt.y - p.y) < r);
+    if (hit) { FT.drag = { mode: "scale", fx: hit.fx, fy: hit.fy, start: p, sx: FT.sx, sy: FT.sy }; return true; }
+    const b = FT.box;
+    const inside = inBounds(p, { x: b.x + FT.dx, y: b.y + FT.dy, w: b.w, h: b.h }, 10);
+    FT.drag = inside
+      ? { mode: "move", start: p, dx: FT.dx, dy: FT.dy }
+      : { mode: "rot", start: Math.atan2(p.y - FT.cy - FT.dy, p.x - FT.cx - FT.dx), rot: FT.rot };
+    return true;
+  }
+  if (kind === "move" && FT.drag) {
+    const d = FT.drag;
+    if (d.mode === "move") { FT.dx = d.dx + p.x - d.start.x; FT.dy = d.dy + p.y - d.start.y; }
+    else if (d.mode === "rot") {
+      FT.rot = d.rot + Math.atan2(p.y - FT.cy - FT.dy, p.x - FT.cx - FT.dx) - d.start;
+      if (e.shiftKey) FT.rot = Math.round(FT.rot / (Math.PI / 12)) * (Math.PI / 12);
+    } else {
+      const b = FT.box;
+      const ax = d.fx === 0 ? 1 : d.fx === 1 ? -1 : 0;   // scale axis sign
+      const ay = d.fy === 0 ? 1 : d.fy === 1 ? -1 : 0;
+      if (ax) FT.sx = clamp(d.sx - ax * (p.x - d.start.x) / (b.w / 2), .05, 20);
+      if (ay) FT.sy = clamp(d.sy - ay * (p.y - d.start.y) / (b.h / 2), .05, 20);
+      if (e.shiftKey || (ax && ay)) { const u = Math.max(Math.abs(FT.sx), Math.abs(FT.sy)); FT.sx = u * Math.sign(FT.sx); FT.sy = u * Math.sign(FT.sy); }
+    }
+    ftApplyLive();
+    return true;
+  }
+  if (kind === "up") { FT.drag = null; return true; }
+  return false;
+}
+
+/* ============================================================
+   VECTOR MODE — pen, shapes, direct selection, fill/stroke
+   Vector layers stay editable forever; rasterise on demand.
+   ============================================================ */
+const VEC = { editing: false, sel: null, penShape: null, snap: true };
+const VDEF = { fill: "#e2622a", stroke: "#211a14", sw: 0, radius: 0, sides: 5, starIn: 45 };
+
+function newVectorLayer(name) {
+  const l = newLayer("raster", name || "Shape " + (Doc.layers.filter(x => x.type === "vector").length + 1));
+  l.type = "vector";
+  l.shapes = [];
+  l.vfill = VDEF.fill; l.vstroke = VDEF.stroke; l.vsw = VDEF.sw;
+  Doc.layers.splice(Doc.active + 1, 0, l);
+  Doc.active++;
+  return l;
+}
+function vecActive() {
+  const l = active();
+  return l && l.type === "vector" ? l : null;
+}
+function shapePath2D(sh) {
+  const p = new Path2D();
+  const pts = sh.pts;
+  if (!pts.length) return p;
+  p.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i <= (sh.closed ? pts.length : pts.length - 1); i++) {
+    const a = pts[(i - 1) % pts.length], b = pts[i % pts.length];
+    if (a.hout || b.hin) {
+      const h1 = a.hout || { x: a.x, y: a.y }, h2 = b.hin || { x: b.x, y: b.y };
+      p.bezierCurveTo(h1.x, h1.y, h2.x, h2.y, b.x, b.y);
+    } else p.lineTo(b.x, b.y);
+  }
+  if (sh.closed) p.closePath();
+  return p;
+}
+function renderVector(l) {
+  if (!l.canvas) l.canvas = mkCanvas(Doc.w, Doc.h);
+  const x = l.canvas.getContext("2d");
+  x.clearRect(0, 0, Doc.w, Doc.h);
+  // Photoshop shape-layer semantics: subtract subpaths punch holes
+  const add = new Path2D(), useEvenOdd = l.shapes.some(s => s.op === "exclude");
+  for (const sh of l.shapes) {
+    if (sh.op === "sub") continue;
+    add.addPath(shapePath2D(sh));
+  }
+  const subs = l.shapes.filter(s => s.op === "sub");
+  if (l.vfill && l.vfill !== "none") {
+    x.fillStyle = l.vfill;
+    if (subs.length) {
+      x.save();
+      const holes = new Path2D();
+      holes.addPath(add);
+      subs.forEach(sh => holes.addPath(shapePath2D(sh)));
+      x.clip(holes, "evenodd");
+      x.fill(add, useEvenOdd ? "evenodd" : "nonzero");
+      x.restore();
+    } else x.fill(add, useEvenOdd ? "evenodd" : "nonzero");
+  }
+  if (l.vstroke && l.vstroke !== "none" && l.vsw > 0) {
+    x.strokeStyle = l.vstroke;
+    x.lineWidth = l.vsw;
+    x.lineJoin = "round";
+    l.shapes.forEach(sh => x.stroke(shapePath2D(sh)));
+  }
+}
+function vecBBox(l) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  l.shapes.forEach(sh => sh.pts.forEach(p => {
+    for (const q of [p, p.hin, p.hout]) if (q) {
+      if (q.x < x0) x0 = q.x; if (q.x > x1) x1 = q.x;
+      if (q.y < y0) y0 = q.y; if (q.y > y1) y1 = q.y;
+    }
+  }));
+  if (x1 < x0) return { x: 0, y: 0, w: 10, h: 10 };
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+function snapPt(p) {
+  if (!VEC.snap) return p;
+  const t = 6 / View.z;
+  const cand = [0, Doc.w / 2, Doc.w], candY = [0, Doc.h / 2, Doc.h];
+  let x = p.x, y = p.y;
+  for (const c of cand) if (Math.abs(p.x - c) < t) x = c;
+  for (const c of candY) if (Math.abs(p.y - c) < t) y = c;
+  return { x, y };
+}
+/* parametric shape builders → editable anchor points */
+function buildShape(kind, a, b, opts) {
+  const r = normRect(a, b), pts = [];
+  const K = .5523; // bezier circle constant
+  if (kind === "vrect") {
+    const rad = clamp(opts.radius, 0, Math.min(r.w, r.h) / 2);
+    if (rad <= 0) {
+      [[r.x, r.y], [r.x + r.w, r.y], [r.x + r.w, r.y + r.h], [r.x, r.y + r.h]]
+        .forEach(([x, y]) => pts.push({ x, y, hin: null, hout: null }));
+    } else {
+      const k = rad * K;
+      pts.push({ x: r.x + rad, y: r.y, hin: { x: r.x + rad - k, y: r.y }, hout: null });
+      pts.push({ x: r.x + r.w - rad, y: r.y, hin: null, hout: { x: r.x + r.w - rad + k, y: r.y } });
+      pts.push({ x: r.x + r.w, y: r.y + rad, hin: { x: r.x + r.w, y: r.y + rad - k }, hout: null });
+      pts.push({ x: r.x + r.w, y: r.y + r.h - rad, hin: null, hout: { x: r.x + r.w, y: r.y + r.h - rad + k } });
+      pts.push({ x: r.x + r.w - rad, y: r.y + r.h, hin: { x: r.x + r.w - rad + k, y: r.y + r.h }, hout: null });
+      pts.push({ x: r.x + rad, y: r.y + r.h, hin: null, hout: { x: r.x + rad - k, y: r.y + r.h } });
+      pts.push({ x: r.x, y: r.y + r.h - rad, hin: { x: r.x, y: r.y + r.h - rad + k }, hout: null });
+      pts.push({ x: r.x, y: r.y + rad, hin: null, hout: { x: r.x, y: r.y + rad - k } });
+    }
+  } else if (kind === "vellipse") {
+    const cx = r.x + r.w / 2, cy = r.y + r.h / 2, rx = r.w / 2, ry = r.h / 2;
+    pts.push({ x: cx, y: cy - ry, hin: { x: cx - rx * K, y: cy - ry }, hout: { x: cx + rx * K, y: cy - ry } });
+    pts.push({ x: cx + rx, y: cy, hin: { x: cx + rx, y: cy - ry * K }, hout: { x: cx + rx, y: cy + ry * K } });
+    pts.push({ x: cx, y: cy + ry, hin: { x: cx + rx * K, y: cy + ry }, hout: { x: cx - rx * K, y: cy + ry } });
+    pts.push({ x: cx - rx, y: cy, hin: { x: cx - rx, y: cy + ry * K }, hout: { x: cx - rx, y: cy - ry * K } });
+  } else if (kind === "vpoly" || kind === "vstar") {
+    const cx = r.x + r.w / 2, cy = r.y + r.h / 2, R = Math.max(r.w, r.h) / 2;
+    const n = opts.sides, inner = R * opts.starIn / 100;
+    const steps = kind === "vstar" ? n * 2 : n;
+    for (let i = 0; i < steps; i++) {
+      const rad = kind === "vstar" && i % 2 ? inner : R;
+      const ang = -Math.PI / 2 + i * 2 * Math.PI / steps;
+      pts.push({ x: cx + Math.cos(ang) * rad, y: cy + Math.sin(ang) * rad, hin: null, hout: null });
+    }
+  } else if (kind === "vline") {
+    pts.push({ x: a.x, y: a.y, hin: null, hout: null });
+    pts.push({ x: b.x, y: b.y, hin: null, hout: null });
+    return { kind, pts, closed: false, op: "add" };
+  }
+  return { kind, pts, closed: true, op: "add" };
+}
+/* vector overlays: anchors, handles, in-progress pen path */
+function drawVecUi(x) {
+  const l = vecActive();
+  if (!l) return;
+  x.save();
+  x.lineWidth = 1 / View.z;
+  const r = 3.5 / View.z;
+  l.shapes.forEach((sh, si) => {
+    x.strokeStyle = "rgba(226,98,42,.85)";
+    x.stroke(shapePath2D(sh));
+    if (TOOL !== "directsel" && !(VEC.penShape === sh)) return;
+    sh.pts.forEach((p, pi) => {
+      const selp = VEC.sel && VEC.sel.si === si && VEC.sel.pi === pi;
+      if (selp) {  // control handles for the selected anchor
+        x.strokeStyle = "rgba(255,178,92,.9)";
+        for (const h of [p.hin, p.hout]) if (h) {
+          x.beginPath(); x.moveTo(p.x, p.y); x.lineTo(h.x, h.y); x.stroke();
+          x.fillStyle = "#FFB25C";
+          x.beginPath(); x.arc(h.x, h.y, r * .8, 0, 7); x.fill();
+        }
+      }
+      x.fillStyle = selp ? "#E2622A" : "#fff";
+      x.strokeStyle = "#B15A0F";
+      x.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+      x.strokeRect(p.x - r, p.y - r, r * 2, r * 2);
+    });
+  });
+  x.restore();
+}
+function vecHit(l, p) {
+  const r = 7 / View.z;
+  for (let si = l.shapes.length - 1; si >= 0; si--) {
+    const sh = l.shapes[si];
+    for (let pi = 0; pi < sh.pts.length; pi++) {
+      const a = sh.pts[pi];
+      if (VEC.sel && VEC.sel.si === si && VEC.sel.pi === pi) {
+        if (a.hout && Math.hypot(a.hout.x - p.x, a.hout.y - p.y) < r) return { si, pi, part: "hout" };
+        if (a.hin && Math.hypot(a.hin.x - p.x, a.hin.y - p.y) < r) return { si, pi, part: "hin" };
+      }
+      if (Math.hypot(a.x - p.x, a.y - p.y) < r) return { si, pi, part: "pt" };
+    }
+  }
+  return null;
+}
+/* SVG + project export */
+function shapeToSvgD(sh) {
+  const pts = sh.pts;
+  if (!pts.length) return "";
+  const f = n => +n.toFixed(2);
+  let d = `M${f(pts[0].x)} ${f(pts[0].y)}`;
+  for (let i = 1; i <= (sh.closed ? pts.length : pts.length - 1); i++) {
+    const a = pts[(i - 1) % pts.length], b = pts[i % pts.length];
+    if (a.hout || b.hin) {
+      const h1 = a.hout || a, h2 = b.hin || b;
+      d += `C${f(h1.x)} ${f(h1.y)} ${f(h2.x)} ${f(h2.y)} ${f(b.x)} ${f(b.y)}`;
+    } else d += `L${f(b.x)} ${f(b.y)}`;
+  }
+  return d + (sh.closed ? "Z" : "");
+}
+function exportSVG() {
+  if (!Doc.open) return;
+  let out = `<svg xmlns="http://www.w3.org/2000/svg" width="${Doc.w}" height="${Doc.h}" viewBox="0 0 ${Doc.w} ${Doc.h}">\n`;
+  for (const l of Doc.layers) {
+    if (!l.visible) continue;
+    const op = l.opacity * l.fill;
+    if (l.type === "vector") {
+      out += `  <g opacity="${op}">`;
+      const subs = l.shapes.filter(s => s.op === "sub");
+      const dAll = l.shapes.filter(s => s.op !== "sub").map(shapeToSvgD).join(" ") +
+        " " + subs.map(shapeToSvgD).join(" ");
+      out += `<path d="${dAll.trim()}" fill-rule="evenodd" fill="${l.vfill || "none"}"` +
+        (l.vsw > 0 ? ` stroke="${l.vstroke}" stroke-width="${l.vsw}"` : "") + "/></g>\n";
+    } else if (l.type === "text") {
+      out += `  <text x="${l.tx}" y="${l.ty}" opacity="${op}" fill="${l.color}" ` +
+        `font-family="${esc(l.font)}" font-size="${l.size}" font-weight="${l.weight}"` +
+        `${l.italic ? ' font-style="italic"' : ""} text-anchor="${{ left: "start", center: "middle", right: "end" }[l.align]}"` +
+        `${l.angle ? ` transform="rotate(${l.angle} ${l.tx} ${l.ty})"` : ""}>${esc(l.text)}</text>\n`;
+    } else if (l.type === "raster" && l.canvas) {
+      out += `  <image x="${l.x}" y="${l.y}" width="${Doc.w}" height="${Doc.h}" opacity="${op}" href="${l.canvas.toDataURL("image/png")}"/>\n`;
+    }
+  }
+  out += "</svg>";
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([out], { type: "image/svg+xml" }));
+  a.download = Doc.name.replace(/\.[^.]+$/, "") + ".svg";
+  a.click();
+  toast("Exported SVG — vector layers stay true vectors");
+}
+function saveProject() {
+  if (!Doc.open) return;
+  const data = {
+    kiln: 1, w: Doc.w, h: Doc.h, name: Doc.name,
+    layers: Doc.layers.map(l => ({
+      ...l,
+      canvas: l.type === "raster" && l.canvas ? l.canvas.toDataURL("image/png") : null,
+      mask: l.mask ? l.mask.toDataURL("image/png") : null,
+    })),
+  };
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: "application/json" }));
+  a.download = Doc.name.replace(/\.[^.]+$/, "") + ".kiln";
+  a.click();
+  toast("Project saved — fully editable, reopen via File ▸ Open project");
+}
+function loadProject(file) {
+  const r = new FileReader();
+  r.onload = async () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!d.kiln) throw 0;
+      newDoc(d.w, d.h, d.name);
+      const loadImg = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.src = src; });
+      Doc.layers = [];
+      for (const s of d.layers) {
+        const l = { ...newLayer(s.type === "adjust" ? "adjust" : "raster"), ...s };
+        l.canvas = null; l.mask = null;
+        if (s.type !== "adjust") l.canvas = mkCanvas(d.w, d.h);
+        if (s.canvas) l.canvas.getContext("2d").drawImage(await loadImg(s.canvas), 0, 0);
+        if (s.mask) { l.mask = mkCanvas(d.w, d.h); l.mask.getContext("2d").drawImage(await loadImg(s.mask), 0, 0); }
+        if (l.type === "text") renderText(l);
+        if (l.type === "vector") renderVector(l);
+        Doc.layers.push(l);
+      }
+      Doc.active = Doc.layers.length - 1;
+      Hist.steps = []; Hist.i = -1;
+      commit("Open project");
+      fit();
+    } catch { toast("Not a valid .kiln project", "bad"); }
+  };
+  r.readAsText(file);
+}
