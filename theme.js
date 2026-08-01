@@ -43,7 +43,7 @@
   }
   apply();
   // while a page is left open, dusk should still change it
-  setInterval(() => { if (!mode && root.dataset.mode !== autoMode()) apply(); }, 60_000);
+  setInterval(() => { if (!mode && root.dataset.mode !== autoMode()) { apply(); refresh(); } }, 60_000);
 
   /* ------------------------------------------------------------
      Home button. Mounted into any [data-kiln-home] element, on every page
@@ -70,44 +70,76 @@
       slot.appendChild(a);
     }
   }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountHome);
-  else mountHome();
 
   /* ------------------------------------------------------------
-     Clock. Mounted into any [data-kiln-clock] element. Shows the reader's own
-     local time in their own locale's format, ticking on the minute rather than
-     every second — a second hand on a tool page is noise.
+     The "now" strip: local time and the region it belongs to. It sits next to
+     the light/dark control on every page, so wherever you are in the suite —
+     an image, a PDF, a video — the time and place are in the same corner as
+     the mode they explain.
+
+     The region comes from the browser's own IANA zone (Europe/Berlin -> Berlin),
+     which is the same clock the automatic light/dark rule reads, so the two can
+     never disagree. Ticks on the minute; a second hand on a tool page is noise.
      ------------------------------------------------------------ */
+  const zoneId = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } };
+  const zoneLabel = () => {
+    const z = zoneId();
+    if (z) return z.split("/").pop().replace(/_/g, " ");
+    const off = -new Date().getTimezoneOffset() / 60;      // fall back to the raw offset
+    return "GMT" + (off >= 0 ? "+" : "") + (Math.round(off * 10) / 10);
+  };
+
+  const nows = [];
+  function makeNow(slot) {
+    let el = slot.querySelector(".ktb-now");
+    if (el) return el;
+    el = document.createElement("div");
+    el.className = "ktb-now";
+    el.innerHTML = '<time class="ktb-clock"></time><span class="ktb-zone"></span>';
+    slot.appendChild(el);
+    return el;
+  }
   function mountClock() {
+    // an explicit slot wins (the homepage puts one before the search box);
+    // otherwise the strip rides along with the theme buttons
     const slots = document.querySelectorAll("[data-kiln-clock]");
-    if (!slots.length) return;
-    const els = [];
-    for (const slot of slots) {
-      let el = slot.querySelector(".ktb-clock");
-      if (!el) {
-        el = document.createElement("time");
-        el.className = "ktb-clock";
-        slot.appendChild(el);
-      }
-      els.push(el);
+    const hosts = slots.length ? slots : bars.map(b => b.bar);
+    for (const host of hosts) {
+      const el = makeNow(host);
+      if (!slots.length) host.insertBefore(el, host.firstChild);
+      if (!nows.includes(el)) nows.push(el);
     }
-    const tick = () => {
-      const now = new Date();
-      const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      const full = now.toLocaleString([], { dateStyle: "full", timeStyle: "short" });
-      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-      for (const el of els) {
-        el.textContent = time;
-        el.dateTime = now.toISOString();
-        el.title = zone ? `${full} · ${zone}` : full;
-      }
-      // land the next update on the minute boundary
-      setTimeout(tick, 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 20);
-    };
     tick();
   }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountClock);
-  else mountClock();
+  let clockTimer = 0;
+  function tick() {
+    if (!nows.length) return;
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const zone = zoneLabel(), id = zoneId();
+    const full = now.toLocaleString([], { dateStyle: "full", timeStyle: "short" });
+    for (const el of nows) {
+      const t = el.querySelector(".ktb-clock"), z = el.querySelector(".ktb-zone");
+      t.textContent = time;
+      t.dateTime = now.toISOString();
+      z.textContent = zone;
+      el.title = `${full}${id ? " · " + id : ""} — ${mode ? mode + " mode (your choice)" : "automatic: " + root.dataset.mode + " until " + (root.dataset.mode === "light" ? DAY_START + ":00" : DAY_END + ":00")}`;
+    }
+    // land the next update on the minute boundary
+    clearTimeout(clockTimer);
+    clockTimer = setTimeout(tick, 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 20);
+  }
+
+  /* ------------------------------------------------------------
+     Phones: a menubar too wide for the screen scrolls sideways, which would
+     clip an absolutely-positioned dropdown. The small-screen stylesheet drops
+     those to position:fixed instead, and needs to know where the bar ends.
+     ------------------------------------------------------------ */
+  function measureBar() {
+    const bar = document.querySelector(".menubar, .chrome");
+    if (bar) root.style.setProperty("--menubar-b", Math.round(bar.getBoundingClientRect().bottom) + "px");
+  }
+  addEventListener("resize", measureBar);
 
   const idx = () => THEMES.findIndex(t => t.id === theme);
   const cur = () => THEMES[idx()];
@@ -143,6 +175,7 @@
        <button class="ktb-btn" data-ktb-theme><span class="ktb-chip"></span></button>`;
     host.appendChild(bar);
     const rec = {
+      bar,
       modeBtn: bar.querySelector("[data-ktb-mode]"),
       themeBtn: bar.querySelector("[data-ktb-theme]"),
       chip: bar.querySelector(".ktb-chip"),
@@ -153,7 +186,7 @@
       // predictable rather than depending on what happens to be showing
       mode = mode === "light" ? "dark" : mode === "dark" ? null : "light";
       if (mode) store.set(KEY_M, mode); else { try { localStorage.removeItem(KEY_M); } catch {} }
-      apply(); refresh();
+      apply(); refresh(); tick();
       note(mode === null ? `Automatic — ${autoMode()} until ${autoMode() === "light" ? DAY_END + ":00" : DAY_START + ":00"}`
         : mode === "light" ? "Light mode" : "Dark mode");
     });
@@ -167,11 +200,12 @@
   }
 
   const mountAll = () => document.querySelectorAll("[data-kiln-themebar]").forEach(mount);
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountAll);
-  else mountAll();
+  const boot = () => { mountHome(); mountAll(); mountClock(); measureBar(); };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 
   window.KilnTheme = {
-    THEMES, mountAll, modeForHour, autoMode, DAY_START, DAY_END,
+    THEMES, mountAll, mountClock, modeForHour, autoMode, zoneLabel, DAY_START, DAY_END,
     get theme() { return theme; },
     get mode() { return root.dataset.mode; },        // what is showing
     get choice() { return mode; },                   // "light" | "dark" | null when following the clock

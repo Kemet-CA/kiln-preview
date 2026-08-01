@@ -516,9 +516,17 @@
   padding-top:12px;padding-bottom:12px;max-width:1120px}
 
 /* ---- clock: the reader's own local time ---- */
-.ktb-clock{font-family:var(--mono);font-size:11.5px;color:var(--t3);letter-spacing:.02em;
-  padding:4px 9px;border-radius:7px;border:var(--bw) solid var(--line);background:var(--s2);
-  font-variant-numeric:tabular-nums;white-space:nowrap;box-shadow:var(--hs)}
+/* time + region, one pill, sitting next to the light/dark control */
+.ktb-now{display:flex;align-items:center;gap:7px;padding:3px 9px;border-radius:7px;
+  border:var(--bw) solid var(--line);background:var(--s2);box-shadow:var(--hs);
+  white-space:nowrap;min-width:0}
+.ktb-clock{font-family:var(--mono);font-size:11.5px;color:var(--t2);letter-spacing:.02em;
+  font-variant-numeric:tabular-nums}
+.ktb-zone{font-size:11px;color:var(--t3);max-width:11ch;overflow:hidden;text-overflow:ellipsis;
+  border-left:1px solid var(--line);padding-left:7px}
+/* the place name holds on down to small phones, then the time carries alone */
+@media(max-width:520px){.ktb-now{padding:3px 7px;gap:6px}.ktb-zone{max-width:9ch;padding-left:6px}}
+@media(max-width:359px){.ktb-zone{display:none}}
 /* the mode button shows a dot while it is following the clock */
 .ktb-btn.ktb-auto{position:relative}
 .ktb-btn.ktb-auto::after{content:"";position:absolute;right:3px;bottom:3px;width:4px;height:4px;
@@ -547,4 +555,34 @@
 @media (prefers-color-scheme: light){
   :root:not([data-mode]) .ktb-moon{display:none}
   :root:not([data-mode]) .ktb-sun{display:block}
+}
+
+
+/* ============================================================
+   Small screens.
+   The workspaces are desktop-class tools and stay that way — this section
+   only makes sure their chrome never strands anything off the side of a
+   phone: the bar scrolls, home/time/theme stay pinned in view, and menus
+   open as a sheet under the bar instead of being clipped by the scroller.
+   ============================================================ */
+@media(max-width:760px){
+  /* the bars span the desktop grid, which is wider than a phone — hold them to
+     the viewport so their right-hand end is never clipped away, and let their
+     own contents swipe instead */
+  #app .menubar,#app .optbar,#app .ribbon,#app .statusbar{width:100vw;max-width:100vw}
+  #app .menubar{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #app .menubar::-webkit-scrollbar{display:none}
+  #app .menubar>*{flex:none}
+  /* the right-hand cluster rides along at the edge instead of scrolling away */
+  #app .menubar-r{position:sticky;right:0;padding-left:8px;background:var(--s1);
+    box-shadow:-10px 0 10px -6px var(--s1)}
+  /* fixed, so the bar's own overflow cannot clip it */
+  #app .menu.open>.menu-d{position:fixed;top:calc(var(--menubar-b,34px) + 4px);
+    left:8px;right:8px;min-width:0;max-height:min(68vh,540px);overflow-y:auto}
+  #app .doct{display:none}
+}
+@media(max-width:520px){
+  #app .brand{font-size:0;gap:0;margin-right:6px}   /* keep the mark, drop the word */
+  #app .brand .mark{font-size:13.5px}
+  #app .menu-t{padding:4px 7px}
 }
