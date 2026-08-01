@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiln — Translator</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E2622A'/%3E%3Crect x='9' y='9' width='14' height='14' rx='3' fill='%230B0A09'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);font-size:13px;
+  line-height:1.5;letter-spacing:-.008em;-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none;--rw:280px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left;padding:0}
+input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ember);outline-offset:1px;border-radius:4px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--scrl);border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+.num{font-variant-numeric:tabular-nums}
+
+#app{display:grid;height:100vh;height:100dvh;
+  grid-template-rows:34px 36px minmax(0,1fr) 24px;
+  grid-template-columns:minmax(0,1fr) var(--rw);
+  grid-template-areas:"menu menu" "opt opt" "stage panels" "status status"}
+
+/* ---------- menu bar ---------- */
+.menubar{grid-area:menu;display:flex;align-items:center;gap:2px;padding:0 8px;
+  border-bottom:1px solid var(--line);background:var(--s1)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:640;letter-spacing:-.03em;font-size:13.5px;margin-right:8px}
+.mark{width:18px;height:18px;border-radius:5px;position:relative;flex:none;
+  background:linear-gradient(150deg,var(--hot),var(--ember) 45%,var(--cherry));
+  box-shadow:0 0 12px color-mix(in srgb,var(--ember) 40%,transparent),inset 0 1px 0 rgba(255,255,255,.35)}
+.mark::after{content:"";position:absolute;inset:5px 5px 0;border-radius:4px 4px 0 0;background:rgba(11,10,9,.55)}
+.menu{position:relative}
+.menu-t{padding:4px 9px;border-radius:5px;font-size:12.5px;color:var(--t2)}
+.menu-t:hover,.menu.open .menu-t{background:var(--hov2);color:var(--text)}
+.menu-d{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:250px;z-index:80;padding:5px;
+  border:var(--bw) solid var(--line2);border-radius:9px;background:var(--popbg);
+  backdrop-filter:blur(20px);box-shadow:var(--popshadow)}
+.menu.open>.menu-d{display:block;animation:pop .12s var(--ez)}
+@keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.mi{width:100%;display:flex;align-items:center;gap:10px;padding:5.5px 9px;border-radius:6px;font-size:12.5px;color:var(--t2)}
+.mi:hover{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--text)}
+.mi .sc{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t4)}
+.msep{height:1px;background:var(--line);margin:4px 6px}
+.menubar-r{margin-left:auto;display:flex;align-items:center;gap:6px}
+
+/* ---------- language bar ---------- */
+.optbar{grid-area:opt;display:flex;align-items:center;gap:7px;padding:0 12px;
+  border-bottom:1px solid var(--line);background:var(--s1);overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.optbar::-webkit-scrollbar{display:none}
+.lang{padding:4px 9px;border-radius:7px;border:var(--bw) solid var(--line);background:var(--s2);
+  font-size:12px;color:var(--text);outline:0;box-shadow:var(--hs);min-width:168px}
+.swap{width:28px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--t2);
+  border:var(--bw) solid var(--line);background:var(--s2)}
+.swap:hover{color:var(--ember);border-color:var(--ember)}
+.tb{height:24px;padding:0 9px;border-radius:6px;display:grid;place-items:center;color:var(--t2);flex:none;font-size:11.5px}
+.tb:hover{background:var(--hov2);color:var(--text)}
+.tb.on{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--ember);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ember) 30%,transparent)}
+.optbar-r{margin-left:auto;display:flex;align-items:center;gap:7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:5px 12px;border-radius:6px;
+  font-size:12px;font-weight:550;border:1px solid transparent;cursor:pointer;flex:none}
+.btn-p{background:var(--btnp-bg);color:var(--btnp-fg);border:var(--bw) solid transparent;box-shadow:var(--btnp-sh)}
+.btn-p:hover{filter:brightness(1.07)}
+.btn-g{border:var(--bw) solid var(--line);color:var(--t2);box-shadow:var(--hs)}
+.btn-g:hover{border-color:var(--line2);color:var(--text);background:var(--hov)}
+:root[data-theme="neo"] .btn-p{border-color:#141414}
+
+/* ---------- the two panes ---------- */
+.stage{grid-area:stage;position:relative;overflow:hidden;padding:18px;display:grid;gap:14px;
+  grid-template-columns:1fr 1fr}
+@media(max-width:900px){.stage{grid-template-columns:1fr;grid-template-rows:1fr 1fr}}
+.pane{display:flex;flex-direction:column;min-height:0;border:var(--bw) solid var(--line);border-radius:12px;
+  background:var(--s1);overflow:hidden;box-shadow:var(--hs)}
+.pane-h{display:flex;align-items:center;gap:8px;padding:7px 11px;flex:none;border-bottom:1px solid var(--line);
+  background:var(--s2);font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
+.pane-h .sp{margin-left:auto;display:flex;align-items:center;gap:4px}
+.ph{width:24px;height:22px;border-radius:6px;display:grid;place-items:center;color:var(--t3);font-size:12px}
+.ph:hover{background:var(--hov2);color:var(--text)}
+textarea{flex:1;min-height:0;width:100%;resize:none;border:0;outline:0;background:none;color:var(--text);
+  padding:14px 15px;font-size:16px;line-height:1.6;font-family:var(--sans);user-select:text}
+textarea::placeholder{color:var(--t4)}
+#out{color:var(--text)}
+.pane-f{flex:none;display:flex;align-items:center;gap:8px;padding:6px 11px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:10px;color:var(--t4);background:var(--s2)}
+.pane-f .sp{margin-left:auto}
+.busy{display:none;align-items:center;gap:6px;color:var(--ember)}
+.busy.on{display:flex}
+.spin{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor;border-top-color:transparent;
+  animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ---------- side panel ---------- */
+#panels{grid-area:panels;background:var(--s1);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.ptabs{display:flex;flex:none;border-bottom:1px solid var(--line);background:var(--s2)}
+.ptab{padding:6px 11px;font-size:11.5px;color:var(--t3)}
+.ptab.on{color:var(--text);background:var(--s1);box-shadow:inset 0 -2px 0 var(--ember)}
+.pbody{flex:1;min-height:0;overflow-y:auto;display:none;padding:8px}
+.pbody.on{display:block}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3.5px 7px;font-size:12px}
+.kv span{color:var(--t3)}
+.kv b{font-family:var(--mono);font-weight:500;color:var(--t2);font-variant-numeric:tabular-nums}
+.ihead{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);
+  padding:12px 7px 5px;border-bottom:1px solid var(--line);margin-bottom:5px}
+.note{padding:6px 7px 10px;font-size:11.5px;color:var(--t4);line-height:1.65}
+.note b{color:var(--t3);font-weight:600}
+.hrow{width:100%;display:flex;flex-direction:column;gap:2px;padding:6px 8px;border-radius:7px;text-align:left}
+.hrow:hover{background:var(--hov)}
+.hrow .hs{font-size:11.5px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hrow .ht{font-size:11px;color:var(--t4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hrow .hl{font-family:var(--mono);font-size:9px;color:var(--ember)}
+.rowbtn{width:100%;padding:7px;margin-top:6px;border-radius:6px;font-size:11.5px;color:var(--t2);
+  border:var(--bw) solid var(--line);text-align:center;background:var(--s2)}
+.rowbtn:hover{color:var(--ember);border-color:var(--ember)}
+.empty{padding:24px 14px;text-align:center;color:var(--t4);font-size:12px;line-height:1.6}
+.prog{height:5px;border-radius:99px;background:var(--s3);overflow:hidden;margin:8px 7px}
+.prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .25s}
+
+/* ---------- status + toasts ---------- */
+.sbar{grid-area:status;display:flex;align-items:center;padding:0 10px;border-top:1px solid var(--line);
+  background:var(--s1);font-family:var(--mono);font-size:10.5px;color:var(--t3);overflow:hidden}
+.si{display:flex;align-items:center;gap:5px;padding:0 10px;border-right:1px solid var(--line);height:100%;white-space:nowrap}
+.si:first-child{padding-left:0}
+.si b{color:var(--t2);font-weight:500}
+.si.sp{margin-left:auto;border-right:0}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--ok);flex:none}
+.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.toasts{position:fixed;bottom:32px;right:14px;z-index:120;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:9px;font-size:12.5px;
+  border:var(--bw) solid var(--line2);background:var(--popbg);box-shadow:var(--popshadow);
+  animation:sin .24s var(--ez);transition:opacity .3s}
+@keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+<meta name="kiln-build" content="86c6f32-1851">
+</head>
+<body>
+<div id="app">
+  <div class="menubar">
+    <a class="brand" href="../" style="text-decoration:none;color:inherit" title="Back to all workspaces"><span class="mark"></span>Kiln</a>
+    <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d" id="mFile"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Edit</button><div class="menu-d" id="mEdit"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Language</button><div class="menu-d" id="mLang"></div></div>
+    <div class="menubar-r" data-kiln-themebar></div>
+  </div>
+
+  <div class="optbar">
+    <select class="lang" id="from" aria-label="Translate from"></select>
+    <button class="swap" id="swapBtn" title="Swap languages (⌘⇧S)">⇄</button>
+    <select class="lang" id="to" aria-label="Translate into"></select>
+    <button class="tb on" id="liveBtn" data-act="live" title="Translate as you type">Live</button>
+    <div class="optbar-r">
+      <button class="btn btn-g" data-act="openFile">Open .txt…</button>
+      <button class="btn btn-p" data-act="translate">Translate</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="pane">
+      <div class="pane-h"><span id="srcLabel">Source</span>
+        <span class="sp">
+          <button class="ph" data-act="paste" title="Paste">⎘</button>
+          <button class="ph" data-act="speakSrc" title="Read aloud">🔊</button>
+          <button class="ph" data-act="clear" title="Clear">✕</button>
+        </span></div>
+      <textarea id="src" placeholder="Type or paste text to translate…" spellcheck="false"></textarea>
+      <div class="pane-f"><span class="num" id="srcCount">0</span> characters
+        <span class="sp" id="detected"></span></div>
+    </div>
+
+    <div class="pane">
+      <div class="pane-h"><span id="outLabel">Translation</span>
+        <span class="sp">
+          <span class="busy" id="busy"><span class="spin"></span>translating</span>
+          <button class="ph" data-act="copy" title="Copy">⧉</button>
+          <button class="ph" data-act="speakOut" title="Read aloud">🔊</button>
+          <button class="ph" data-act="saveOut" title="Save as .txt">⭳</button>
+        </span></div>
+      <textarea id="out" placeholder="The translation appears here." readonly></textarea>
+      <div class="pane-f"><span class="num" id="outCount">0</span> characters<span class="sp" id="engineNote"></span></div>
+    </div>
+    <input type="file" id="fileIn" accept=".txt,.md,.csv,text/plain" hidden>
+  </div>
+
+  <aside id="panels">
+    <div class="ptabs">
+      <button class="ptab on" data-pt="pHist">History</button>
+      <button class="ptab" data-pt="pInfo">About</button>
+    </div>
+    <div class="pbody on" id="pHist"></div>
+    <div class="pbody" id="pInfo"></div>
+  </aside>
+
+  <div class="sbar">
+    <span class="si"><span class="dot" id="sbDot"></span><b id="sbStatus">Ready</b></span>
+    <span class="si">Pair <b id="sbPair">—</b></span>
+    <span class="si">Model <b id="sbModel">—</b></span>
+    <span class="si sp">On device <b id="sbPrivacy">yes</b></span>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<script type="module" src="engine.js"></script>
+</body>
+</html>

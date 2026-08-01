@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="theme.css">
 <script src="theme.js"></script>
 
-<meta name="kiln-build" content="b87dd62-1839">
+<meta name="kiln-build" content="86c6f32-1851">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -482,7 +482,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   <div class="hero"><div class="hero-in">
     <div class="eyebrow">Open source · No accounts · No AI · Self-hosted</div>
     <h1>Upload once.<br>Then <span class="lit">shape anything</span>.</h1>
-    <p class="lede">Eight professional workspaces for images, PDFs, video, Word documents, text, colour, fonts and files — each one a real editing environment with panels, layers, history and keyboard shortcuts. Every tool is also a documented REST endpoint.</p>
+    <p class="lede">Seven professional workspaces for images, PDFs, video, Word documents, translation, colour and files — each one a real editing environment with panels, layers, history and keyboard shortcuts. Every tool is also a documented REST endpoint.</p>
     <div class="hcta">
       <button class="btn btn-p" data-go="image">Open Image Workspace →</button>
       <button class="btn btn-g" data-go="text">Try the Text Editor</button>
@@ -789,77 +789,6 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   </div>
 </section>
 
-<!-- ===================== TEXT WORKSPACE ===================== -->
-<section class="screen ws" id="screen-text">
-  <div class="tbar">
-    <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d">
-      <button class="mi" data-act="txtopen">Open file…<span class="sc">⌘O</span></button>
-      <button class="mi" data-act="txtsample">Insert sample JSON</button>
-      <div class="msep"></div>
-      <button class="mi" data-act="txtdl">Download result<span class="sc">⌘S</span></button>
-      <button class="mi" data-act="txtclear">Clear editor</button></div></div>
-    <div class="menu" data-menu><button class="menu-t">Edit</button><div class="menu-d">
-      <button class="mi" data-tt="upper">UPPERCASE</button>
-      <button class="mi" data-tt="lower">lowercase</button>
-      <button class="mi" data-tt="title">Title Case</button>
-      <div class="msep"></div>
-      <button class="mi" data-tt="trim">Trim each line</button>
-      <button class="mi" data-tt="blank">Remove blank lines</button>
-      <button class="mi" data-tt="dedupe">Remove duplicate lines</button></div></div>
-    <div class="menu" data-menu><button class="menu-t">Format</button><div class="menu-d">
-      <button class="mi" data-tt="json">Format JSON</button>
-      <button class="mi" data-tt="xml">Format XML</button>
-      <button class="mi" data-tt="minjs">Minify JavaScript</button>
-      <button class="mi" data-tt="mincss">Minify CSS</button>
-      <button class="mi" data-tt="minhtml">Minify HTML</button></div></div>
-    <div class="tsep"></div>
-    <button class="tb" data-act="txtundo">Undo</button>
-    <button class="tb" data-act="txtwrap" id="tbWrap">Wrap</button>
-    <div class="tbar-r">
-      <span class="mono" style="font-size:11px;color:var(--t3)" id="txtMode">Plain text</span>
-      <button class="btn btn-g" data-act="txtcopy">Copy output</button>
-      <button class="btn btn-p" data-act="txtapply" id="tbApply">Apply to editor</button>
-    </div>
-  </div>
-  <div class="wsbody" id="txtBody" style="--lw:222px;--rw:330px">
-    <aside class="pane pane-l" id="txtTools"></aside>
-    <div class="split split-l" data-split="l"></div>
-    <div class="pane-c">
-      <div style="flex:1;min-height:0;display:flex;background:var(--stagebg)">
-        <div id="lineNos" style="flex:none;padding:12px 8px 12px 12px;font-family:var(--mono);font-size:12px;
-          line-height:1.6;color:var(--t4);text-align:right;user-select:none;overflow:hidden;
-          border-right:1px solid var(--line);background:var(--s1)"></div>
-        <textarea id="editor" spellcheck="false" placeholder="Paste or type here — everything updates live…"
-          style="flex:1;min-width:0;background:none;border:0;outline:0;resize:none;padding:12px 14px;
-          font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--text);white-space:pre;overflow:auto"></textarea>
-      </div>
-    </div>
-    <div class="split split-r" data-split="r"></div>
-    <aside class="pane pane-r">
-      <div class="sec"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Statistics</button><div class="sec-b" id="txtStats"></div></div>
-      <div class="sec"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Validation</button><div class="sec-b" id="txtValid"></div></div>
-      <div class="sec grow"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Output<span class="sec-n" id="txtOutName">—</span></button>
-        <div class="sec-b" id="txtOut" style="padding:8px"></div></div>
-    </aside>
-  </div>
-  <div class="sbar">
-    <span class="si"><span class="dot-ok"></span><b id="sbTxtTool">No tool</b></span>
-    <span class="si">Ln <b class="num" id="sbLn">1</b>, Col <b class="num" id="sbCol">1</b></span>
-    <span class="si">Words <b class="num" id="sbWords">0</b></span>
-    <span class="si">Chars <b class="num" id="sbChars">0</b></span>
-    <span class="si">Lines <b class="num" id="sbLines">1</b></span>
-    <span class="si sp">UTF-8 · LF</span>
-  </div>
-  <input type="file" id="fileTxt" accept=".txt,.json,.xml,.csv,.md,.yml,.yaml,.html,.css,.js" hidden>
-</section>
-
-<!-- ===================== COLOUR WORKSPACE ===================== -->
 <section class="screen ws" id="screen-color">
   <div class="tbar">
     <div class="menu" data-menu><button class="menu-t">Palette</button><div class="menu-d">
@@ -945,69 +874,6 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   </div>
 </section>
 
-<!-- ===================== FONT WORKSPACE ===================== -->
-<section class="screen ws" id="screen-font">
-  <div class="tbar">
-    <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d">
-      <button class="mi" data-act="fontopen">Open font…<span class="sc">⌘O</span></button>
-      <div class="msep"></div>
-      <button class="mi" data-ft="woff2">Convert to WOFF2</button>
-      <button class="mi" data-ft="woff">Convert to WOFF</button>
-      <button class="mi" data-ft="ttf">Convert to TTF</button></div></div>
-    <div class="menu" data-menu><button class="menu-t">View</button><div class="menu-d">
-      <button class="mi" data-fv="specimen">Specimen</button>
-      <button class="mi" data-fv="charmap">Character map</button>
-      <button class="mi" data-fv="waterfall">Waterfall</button></div></div>
-    <div class="tsep"></div>
-    <div class="seg" id="fontViewSeg"></div>
-    <div class="tbar-r"><button class="btn btn-p" data-act="fontexport">Export</button></div>
-  </div>
-  <div class="wsbody" id="fontBody" style="--lw:216px;--rw:300px">
-    <aside class="pane pane-l">
-      <div class="sec"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Loaded fonts<span class="sec-n num" id="fontN">0</span></button>
-        <div class="sec-b" id="fontList"><div class="empty">No fonts loaded.</div></div></div>
-      <div class="sec grow"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Font information</button><div class="sec-b" id="fontInfo"><div class="empty">Load a font to inspect it.</div></div></div>
-    </aside>
-    <div class="split split-l" data-split="l"></div>
-    <div class="pane-c" style="overflow-y:auto">
-      <div id="fontStageWrap" style="padding:22px">
-        <div class="dz" id="fontDz" tabindex="0" role="button" style="margin:40px auto">
-          <div class="dz-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" width="21" height="21"><path d="M6 20V5.5A1.5 1.5 0 0 1 7.5 4H18"/><path d="M6 12h9"/><path d="M18 4v16"/></svg></div>
-          <h3>Drop a font file to preview it</h3>
-          <p>TTF, OTF, WOFF or WOFF2 — it renders live using your own file.<br>Nothing is uploaded.</p>
-          <div class="or"><button class="btn btn-p" data-act="fontopen">Choose a font…</button></div>
-        </div>
-        <div id="fontStage" hidden></div>
-      </div>
-      <input type="file" id="fileFont" accept=".ttf,.otf,.woff,.woff2" hidden>
-    </div>
-    <div class="split split-r" data-split="r"></div>
-    <aside class="pane pane-r">
-      <div class="sec"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Typography</button><div class="sec-b" id="fontCtl"></div></div>
-      <div class="sec"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Metadata</button><div class="sec-b" id="fontMeta"><div class="empty">—</div></div></div>
-      <div class="sec"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Export</button><div class="sec-b" id="fontExport"></div></div>
-    </aside>
-  </div>
-  <div class="sbar">
-    <span class="si"><span class="dot-ok"></span><b id="sbFont">No font</b></span>
-    <span class="si">Format <b id="sbFmt">—</b></span>
-    <span class="si">Size <b id="sbFsize">—</b></span>
-    <span class="si">Preview <b id="sbFpx">72px</b></span>
-    <span class="si sp">Glyphs shown <b class="num" id="sbGlyphs">0</b></span>
-  </div>
-</section>
-
-<!-- ===================== FILE WORKSPACE ===================== -->
 <section class="screen ws" id="screen-file">
   <div class="tbar">
     <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d">
@@ -1164,15 +1030,12 @@ const WORKSPACES=[
  {id:"documents",name:"Documents",tint:"var(--ash)",n:12,ui:"Word documents · read · edit · export",
   desc:"Open a .docx and read it exactly as Word laid it out, print it, edit the text and formatting, then export Word, HTML or plain text.",
   icon:'<path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 4v4h4"/><path d="M8 13h8M8 17h5"/>'},
- {id:"text",name:"Text",tint:"var(--celadon)",n:25,ui:"VS Code-style editor · live output",
-  desc:"A real editor with line numbers, live statistics, validation and instant output for every text utility.",
-  icon:'<path d="M4 6h16M4 12h11M4 18h7"/>'},
+ {id:"translate",name:"Translator",tint:"var(--celadon)",n:34,ui:"On-device translation · 34 languages",
+  desc:"Translate text between 34 languages with the browser's own on-device model — no key, no account, and your text never leaves the machine.",
+  icon:'<path d="M4 5h9M8.5 5v2c0 3-2 6-4.5 7"/><path d="M6 11c1.5 2.5 3.6 4.2 6 5"/><path d="m13 20 4-9 4 9M14.5 17h5"/>'},
  {id:"color",name:"Colour",tint:"var(--mang)",n:8,ui:"Colour studio · wheel · contrast",
   desc:"Picker, wheel, harmonies, gradient editor, WCAG contrast and colour-blindness simulation in one studio.",
   icon:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="8" r="1.4"/><circle cx="8" cy="12" r="1.4"/><circle cx="16" cy="12" r="1.4"/><circle cx="12" cy="16" r="1.4"/>'},
- {id:"font",name:"Fonts",tint:"var(--ochre)",n:4,ui:"Specimen · character map · metrics",
-  desc:"Drop a typeface and see it render live — specimen, waterfall, full character map, metrics and conversion.",
-  icon:'<path d="M6 20V5.5A1.5 1.5 0 0 1 7.5 4H18"/><path d="M6 12h9"/><path d="M18 4v16"/>'},
  {id:"file",name:"Files",tint:"var(--ash)",n:9,ui:"Queue · progress · download manager",
   desc:"Drag in any files for real MD5, SHA-1 and SHA-256 checksums plus MIME detected from content, not filename.",
   icon:'<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2.5h7A2.5 2.5 0 0 1 21 10v6.5A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/>'}
@@ -1199,11 +1062,11 @@ function go(id){
   if(id==="pdf"){location.href="pdf/";return;}
   if(id==="documents"){location.href="documents/";return;}
   if(id==="video"){location.href="video/";return;}
+  if(id==="translate"){location.href="translate/";return;}
   CUR=id;
   document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id==="screen-"+id));
   document.querySelectorAll("#wsnav button").forEach(b=>b.setAttribute("aria-current",String(b.dataset.ws===id)));
   if(id==="color"&&!window.__colInit){window.__colInit=1;initColor();}
-  if(id==="text"&&!window.__txtInit){window.__txtInit=1;initText();}
   if(id==="image") requestAnimationFrame(()=>{drawRulers();if(S.needFit&&S.on){S.needFit=false;fit();}});
 }
 document.querySelectorAll("#wsnav button").forEach(b=>b.addEventListener("click",()=>go(b.dataset.ws)));
@@ -1324,6 +1187,7 @@ function runC(i){
   if(t.ws==="pdf"){location.href="pdf/";return;}
   if(t.ws==="documents"){location.href="documents/";return;}
   if(t.ws==="video"){location.href="video/";return;}
+  if(t.ws==="translate"){location.href="translate/";return;}
   go(t.ws);
   if(t.tool)setTimeout(()=>selectTool(t.tool),80);
   else toast(`${t.n} — open in the ${t.ws} workspace`);
@@ -2699,183 +2563,6 @@ document.addEventListener("click",e=>{
 $("zoomIn").addEventListener("change",e=>{
   const v=parseFloat(e.target.value);if(!isNaN(v))setZoom(v/100);else paint();
 });
-renderLayers();renderHist();
-/* ============================================================
-   TEXT WORKSPACE — real utilities, no libraries
-   ============================================================ */
-const TXT_GROUPS=[
- ["Count & Clean",[
-  ["dedupe","Remove duplicate lines"],["sortA","Sort lines A → Z"],["sortZ","Sort lines Z → A"],
-  ["revl","Reverse line order"],["revc","Reverse characters"],["blank","Remove blank lines"],
-  ["trim","Trim each line"],["nums","Number the lines"],
-  ["fr","Find & replace",[["f","Find"],["r","Replace with"]]]]],
- ["Encode & Decode",[
-  ["b64e","Base64 encode"],["b64d","Base64 decode"],
-  ["urle","URL encode"],["urld","URL decode"],
-  ["htmle","HTML entity encode"],["htmld","HTML entity decode"]]],
- ["Format & Validate",[
-  ["json","JSON formatter"],["jsonmin","JSON minify"],["xml","XML formatter"],
-  ["csv","CSV viewer"],["md","Markdown preview"],["html","HTML preview"],["pretty","Pretty print"]]],
- ["Minify",[["minjs","Minify JavaScript"],["mincss","Minify CSS"],["minhtml","Minify HTML"]]],
- ["Convert Case",[
-  ["upper","UPPERCASE"],["lower","lowercase"],["title","Title Case"],
-  ["camel","camelCase"],["snake","snake_case"],["kebab","kebab-case"],["slug","Slugify"]]]
-];
-const TXT={
- dedupe:t=>[...new Set(t.split("\n"))].join("\n"),
- sortA:t=>t.split("\n").sort((a,b)=>a.localeCompare(b)).join("\n"),
- sortZ:t=>t.split("\n").sort((a,b)=>b.localeCompare(a)).join("\n"),
- revl:t=>t.split("\n").reverse().join("\n"),
- revc:t=>[...t].reverse().join(""),
- blank:t=>t.split("\n").filter(l=>l.trim()).join("\n"),
- trim:t=>t.split("\n").map(l=>l.trim()).join("\n"),
- nums:t=>t.split("\n").map((l,i)=>`${String(i+1).padStart(4," ")}  ${l}`).join("\n"),
- fr:(t,p)=>p.f?t.split(p.f).join(p.r||""):t,
- b64e:t=>btoa(String.fromCharCode(...new TextEncoder().encode(t))),
- b64d:t=>new TextDecoder().decode(Uint8Array.from(atob(t.trim()),c=>c.charCodeAt(0))),
- urle:t=>encodeURIComponent(t),
- urld:t=>decodeURIComponent(t),
- htmle:t=>t.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),
- htmld:t=>{const d=document.createElement("textarea");d.innerHTML=t;return d.value;},
- json:t=>JSON.stringify(JSON.parse(t),null,2),
- jsonmin:t=>JSON.stringify(JSON.parse(t)),
- xml:t=>{let d=0;return t.replace(/>\s*</g,"><").replace(/</g,"\n<").split("\n").filter(Boolean)
-   .map(l=>{if(/^<\//.test(l))d--;const s="  ".repeat(Math.max(0,d));
-     if(/^<[^!?/][^>]*[^/]>$/.test(l))d++;return s+l;}).join("\n");},
- pretty:t=>{try{return JSON.stringify(JSON.parse(t),null,2);}catch(e){return TXT.xml(t);}},
- minjs:t=>t.replace(/\/\*[\s\S]*?\*\//g,"").replace(/(^|[^:])\/\/.*$/gm,"$1")
-   .replace(/\s*([{}();,:=<>+\-*/[\]])\s*/g,"$1").replace(/\s+/g," ").trim(),
- mincss:t=>t.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\s*([{}:;,>~+])\s*/g,"$1")
-   .replace(/;}/g,"}").replace(/\s+/g," ").trim(),
- minhtml:t=>t.replace(/<!--[\s\S]*?-->/g,"").replace(/>\s+</g,"><").replace(/\s{2,}/g," ").trim(),
- upper:t=>t.toUpperCase(),
- lower:t=>t.toLowerCase(),
- title:t=>t.replace(/\w\S*/g,w=>w[0].toUpperCase()+w.slice(1).toLowerCase()),
- camel:t=>t.trim().toLowerCase().replace(/[^a-z0-9]+(.)/g,(m,c)=>c.toUpperCase()),
- snake:t=>t.trim().toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,""),
- kebab:t=>t.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""),
- slug:t=>t.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"")
-   .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")
-};
-const mdToHtml=t=>esc(t)
-  .replace(/^### (.*)$/gm,'<h3 style="font-size:14px;margin:12px 0 4px">$1</h3>')
-  .replace(/^## (.*)$/gm,'<h2 style="font-size:16px;margin:14px 0 5px">$1</h2>')
-  .replace(/^# (.*)$/gm,'<h1 style="font-size:19px;margin:14px 0 6px">$1</h1>')
-  .replace(/^&gt; (.*)$/gm,'<blockquote style="border-left:2px solid var(--ember);padding-left:9px;color:var(--t2);margin:6px 0">$1</blockquote>')
-  .replace(/^[-*] (.*)$/gm,'<li style="margin-left:16px">$1</li>')
-  .replace(/`([^`]+)`/g,'<code style="font-family:var(--mono);background:var(--s3);padding:1px 4px;border-radius:3px">$1</code>')
-  .replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/\*([^*]+)\*/g,"<i>$1</i>")
-  .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="#" style="color:var(--hot)">$1</a>')
-  .replace(/\n\n/g,'<div style="height:8px"></div>');
-
-let TT=null,TP={};
-function initText(){
-  $("txtTools").innerHTML=TXT_GROUPS.map(([g,ts],i)=>`
-    <div class="sec ${i>2?"shut":""}"><button class="sec-h" data-sec>
-      <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-      ${g}<span class="sec-n num">${ts.length}</span></button>
-      <div class="sec-b">${ts.map(([id,n,ins])=>
-        `<button class="tool" data-tt="${id}">${SVG(IC.text).replace("<svg",'<svg class="ti"')}${n}<span class="live-d"></span></button>
-         <div data-tslot="${id}">${ins?`<div class="opts" hidden>${ins.map(([k,ph])=>
-           `<input class="txtin" style="margin-top:6px" data-tp="${k}" placeholder="${ph}">`).join("")}</div>`:""}</div>`).join("")}
-      </div></div>`).join("");
-  $("txtTools").querySelectorAll("[data-tt]").forEach(b=>b.addEventListener("click",()=>pickTxt(b.dataset.tt)));
-  $("editor").addEventListener("input",updText);
-  $("editor").addEventListener("scroll",()=>{$("lineNos").scrollTop=$("editor").scrollTop;});
-  $("editor").addEventListener("keyup",caret);
-  $("editor").addEventListener("click",caret);
-  $("editor").value=`{\n  "product": "Kiln",\n  "tagline": "Shape anything.",\n  "workspaces": 6,\n  "tools": 125,\n  "openSource": true,\n  "usesAI": false\n}`;
-  updText();
-}
-function caret(){
-  const t=$("editor"),p=t.value.slice(0,t.selectionStart).split("\n");
-  $("sbLn").textContent=p.length;$("sbCol").textContent=p[p.length-1].length+1;
-}
-function pickTxt(id){
-  TT=id;
-  document.querySelectorAll("#txtTools .tool").forEach(t=>t.classList.toggle("sel",t.dataset.tt===id));
-  document.querySelectorAll("#txtTools .opts").forEach(o=>o.hidden=true);
-  const slot=document.querySelector(`[data-tslot="${id}"] .opts`);
-  if(slot){slot.hidden=false;slot.querySelectorAll("[data-tp]").forEach(i=>{
-    i.oninput=()=>{TP[i.dataset.tp]=i.value;updText();};});}
-  const nm=TXT_GROUPS.flatMap(g=>g[1]).find(t=>t[0]===id);
-  $("sbTxtTool").textContent=nm?nm[1]:id;
-  $("txtMode").textContent=nm?nm[1]:"Plain text";
-  updText();
-}
-function updText(){
-  const t=$("editor").value;
-  const lines=t.split("\n");
-  $("lineNos").innerHTML=lines.map((_,i)=>i+1).join("<br>");
-  const words=t.trim()?t.trim().split(/\s+/).length:0;
-  $("sbWords").textContent=words;$("sbChars").textContent=t.length;$("sbLines").textContent=lines.length;
-  const st=[["Characters",t.length],["Characters (no spaces)",t.replace(/\s/g,"").length],
-    ["Words",words],["Lines",lines.length],["Non-empty lines",lines.filter(l=>l.trim()).length],
-    ["Unique lines",new Set(lines).size],["Paragraphs",t.split(/\n\s*\n/).filter(p=>p.trim()).length],
-    ["Sentences",(t.match(/[.!?]+(\s|$)/g)||[]).length],
-    ["Bytes (UTF-8)",new TextEncoder().encode(t).length],
-    ["Reading time",Math.max(1,Math.round(words/220))+" min"]];
-  $("txtStats").innerHTML=st.map(([k,v])=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`).join("");
-
-  let vh="",ok=true,msg="";
-  const trimmed=t.trim();
-  if(trimmed.startsWith("{")||trimmed.startsWith("[")){
-    try{JSON.parse(trimmed);msg="Valid JSON";}catch(e){ok=false;msg=e.message;}
-  }else if(trimmed.startsWith("<")){
-    const d=new DOMParser().parseFromString(trimmed,"application/xml");
-    const err=d.querySelector("parsererror");
-    if(err){ok=false;msg=err.textContent.split("\n")[0];}else msg="Well-formed XML";
-  }else{msg="No structured format detected";ok=null;}
-  vh=`<div class="kv"><span>${ok===null?"Status":ok?"Valid":"Error"}</span>
-    <b style="color:${ok===null?"var(--t3)":ok?"var(--ok)":"var(--bad)"}">${esc(msg).slice(0,140)}</b></div>`;
-  $("txtValid").innerHTML=vh;
-
-  const out=$("txtOut");
-  if(!TT){out.innerHTML='<div class="empty">Pick a utility on the left — output appears here instantly.</div>';
-    $("txtOutName").textContent="—";return;}
-  $("txtOutName").textContent=TT;
-  try{
-    if(TT==="md"){out.innerHTML=`<div style="font-size:13px;line-height:1.6">${mdToHtml(t)}</div>`;return;}
-    if(TT==="html"){out.innerHTML=`<div style="font-size:13px;background:#fff;color:#111;padding:10px;border-radius:7px;max-height:400px;overflow:auto">${t}</div>`;return;}
-    if(TT==="csv"){
-      const rows=t.trim().split("\n").map(r=>r.split(","));
-      out.innerHTML=`<div style="overflow-x:auto"><table style="border-collapse:collapse;font-family:var(--mono);font-size:11px;width:100%">
-        ${rows.map((r,i)=>`<tr>${r.map(c=>`<${i?"td":"th"} style="border:1px solid var(--line);padding:3px 6px;text-align:left;${i?"color:var(--t2)":"color:var(--hot)"}">${esc(c.trim())}</${i?"td":"th"}>`).join("")}</tr>`).join("")}
-      </table></div><div class="desc" style="margin-top:8px">${rows.length} rows × ${rows[0].length} columns</div>`;return;
-    }
-    const r=TXT[TT]?TXT[TT](t,TP):t;
-    out.innerHTML=`<pre style="margin:0;font-family:var(--mono);font-size:11.5px;line-height:1.6;
-      color:var(--t2);white-space:pre-wrap;word-break:break-word;max-height:420px;overflow:auto">${esc(r)}</pre>
-      <div class="desc" style="margin-top:8px">${r.length} characters · ${r.split("\n").length} lines</div>`;
-    out.dataset.result=r;
-  }catch(e){
-    out.innerHTML=`<div class="empty" style="color:var(--bad)">${esc(e.message)}</div>`;
-  }
-}
-document.addEventListener("click",e=>{
-  const m=e.target.closest("[data-tt]");
-  if(m&&m.closest(".menu-d")){go("text");setTimeout(()=>pickTxt(m.dataset.tt),50);}
-  const a=e.target.closest("[data-act]");if(!a)return;
-  const k=a.dataset.act;
-  if(k==="txtsample"){go("text");$("editor").value=`# Kiln\n\n**Shape anything.** Six workspaces, *125 tools*.\n\n- Images\n- PDFs\n- Text\n\n> Everything runs locally. \`No AI.\``;updText();}
-  if(k==="txtclear"){$("editor").value="";updText();}
-  if(k==="txtopen"){$("fileTxt").click();}
-  if(k==="txtwrap"){const t=$("editor");const w=t.style.whiteSpace==="pre-wrap";
-    t.style.whiteSpace=w?"pre":"pre-wrap";$("tbWrap").classList.toggle("on",!w);}
-  if(k==="txtapply"){const r=$("txtOut").dataset.result;
-    if(r!=null){$("editor").value=r;updText();toast("Output applied to editor");}}
-  if(k==="txtcopy"){const r=$("txtOut").dataset.result;
-    if(r!=null){navigator.clipboard?.writeText(r);toast("Output copied");}}
-  if(k==="txtdl"){const r=$("txtOut").dataset.result??$("editor").value;
-    const b=new Blob([r],{type:"text/plain"});const u=URL.createObjectURL(b);
-    const a2=el("a");a2.href=u;a2.download="kiln-output.txt";a2.click();URL.revokeObjectURL(u);
-    toast("Downloaded kiln-output.txt");}
-});
-$("fileTxt").addEventListener("change",e=>{
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();r.onload=()=>{$("editor").value=r.result;updText();toast(`Opened ${f.name}`);};
-  r.readAsText(f);
-});
 
 /* ============================================================
    COLOUR WORKSPACE
@@ -3221,122 +2908,6 @@ document.addEventListener("click",e=>{
   }
 });
 function doPdf(k){document.querySelector(`[data-act="${k}"]`)?.click();}
-
-/* ============================================================
-   FONT WORKSPACE — real rendering via the FontFace API
-   ============================================================ */
-const F={fonts:[],cur:-1,size:72,weight:400,ls:0,lh:1.2,view:"specimen",
-  text:"Shape anything with Kiln"};
-$("fontViewSeg").innerHTML=[["specimen","Specimen"],["charmap","Character map"],["waterfall","Waterfall"]]
-  .map(([k,n],i)=>`<button data-fv="${k}" class="${i===0?"on":""}">${n}</button>`).join("");
-function fontCtl(){
-  $("fontCtl").innerHTML=`
-    <div class="ctl"><div class="ctl-t"><label>Sample text</label></div>
-      <input class="txtin" id="fTxt" value="${esc(F.text)}"></div>
-    <div class="ctl"><div class="ctl-t"><label>Size</label><span class="ctl-v" id="fSz">${F.size}px</span></div>
-      <input type="range" min="8" max="220" value="${F.size}" id="fSizeR"></div>
-    <div class="ctl"><div class="ctl-t"><label>Weight</label><span class="ctl-v" id="fWt">${F.weight}</span></div>
-      <input type="range" min="100" max="900" step="100" value="${F.weight}" id="fWR"></div>
-    <div class="ctl"><div class="ctl-t"><label>Letter spacing</label><span class="ctl-v" id="fLs">${F.ls}px</span></div>
-      <input type="range" min="-8" max="20" step=".5" value="${F.ls}" id="fLsR"></div>
-    <div class="ctl"><div class="ctl-t"><label>Line height</label><span class="ctl-v" id="fLh">${F.lh}</span></div>
-      <input type="range" min=".8" max="2.4" step=".05" value="${F.lh}" id="fLhR"></div>`;
-  const b=(id,k,f)=>{const r=$(id);r&&r.addEventListener("input",()=>{F[k]=f?f(r.value):+r.value;renderFont();});};
-  b("fSizeR","size");b("fWR","weight");b("fLsR","ls");b("fLhR","lh");
-  const t=$("fTxt");t&&t.addEventListener("input",()=>{F.text=t.value;renderFont();});
-}
-fontCtl();
-$("fontExport").innerHTML=`
-  <div class="ctl"><div class="ctl-t"><label>Convert to</label></div>
-    <div class="seg">${["WOFF2","WOFF","TTF","OTF"].map((f,i)=>`<button data-ft="${f.toLowerCase()}" class="${i?"":"on"}">${f}</button>`).join("")}</div></div>
-  <div class="ctl"><div class="ctl-t"><label>Subset</label></div>
-    <div class="seg"><button class="on">Full</button><button>Latin</button><button>Latin ext</button></div></div>
-  <button class="btn btn-p" style="width:100%;margin-top:12px" data-act="fontexport">Convert &amp; download</button>
-  <div class="mono" style="font-size:10px;color:var(--t4);margin-top:9px">POST /v1/font/convert</div>`;
-function readFont(f){
-  if(!f)return;
-  if(!/\.(ttf|otf|woff2?)$/i.test(f.name))return toast("Not a font file","bad");
-  const r=new FileReader();
-  r.onload=async()=>{
-    const fam="kf"+F.fonts.length;
-    try{
-      const face=new FontFace(fam,r.result);
-      await face.load();document.fonts.add(face);
-      F.fonts.push({fam,name:f.name.replace(/\.\w+$/,""),file:f.name,
-        fmt:(f.name.split(".").pop()||"").toUpperCase(),size:f.size});
-      F.cur=F.fonts.length-1;
-      $("fontDz").hidden=true;$("fontStage").hidden=false;
-      renderFont();toast(`Loaded ${f.name}`);
-    }catch(e){toast("That font could not be parsed","bad");}
-  };
-  r.readAsArrayBuffer(f);
-}
-$("fileFont").addEventListener("change",e=>readFont(e.target.files[0]));
-$("fontDz").addEventListener("click",()=>$("fileFont").click());
-["dragover","drop"].forEach(ev=>$("fontStageWrap").addEventListener(ev,e=>e.preventDefault()));
-$("fontStageWrap").addEventListener("drop",e=>readFont(e.dataTransfer.files[0]));
-function renderFont(){
-  const f=F.fonts[F.cur];
-  $("fontN").textContent=F.fonts.length;
-  $("fontList").innerHTML=F.fonts.length?F.fonts.map((x,i)=>
-    `<button class="row ${i===F.cur?"sel":""}" data-fi="${i}" style="font-family:'${x.fam}',var(--sans)">${esc(x.name)}
-     <span class="mono" style="margin-left:auto;font-size:9.5px;color:var(--t4);font-family:var(--mono)">${x.fmt}</span></button>`).join("")
-    :'<div class="empty">No fonts loaded.</div>';
-  $("fontList").querySelectorAll("[data-fi]").forEach(b=>b.addEventListener("click",()=>{F.cur=+b.dataset.fi;renderFont();}));
-  if(!f)return;
-  const st=`font-family:'${f.fam}',var(--sans);font-weight:${F.weight};letter-spacing:${F.ls}px;line-height:${F.lh}`;
-  let body="";
-  if(F.view==="specimen"){
-    body=`<div style="${st};font-size:${F.size}px;color:var(--text);word-break:break-word">${esc(F.text)}</div>
-      <div style="height:1px;background:var(--line);margin:26px 0"></div>
-      ${[48,32,24,18,14].map(s=>`<div style="${st};font-size:${s}px;color:var(--t2);margin-bottom:10px">
-        ${esc("The quick brown fox jumps over the lazy dog")} <span class="mono" style="font-size:10px;color:var(--t4)">${s}px</span></div>`).join("")}
-      <div style="height:1px;background:var(--line);margin:26px 0"></div>
-      <div style="${st};font-size:15px;color:var(--t2);max-width:64ch">${esc("A kiln is a thermally insulated chamber in which controlled temperature regimes are produced. 0123456789 — “quotes”, (parentheses), ampersand &, at @, hash #, percent %.")}</div>`;
-  }else if(F.view==="waterfall"){
-    body=[10,12,14,16,20,24,30,36,48,60,72,96,120].map(s=>
-      `<div style="${st};font-size:${s}px;color:var(--text);margin-bottom:8px;white-space:nowrap;overflow:hidden">
-        <span class="mono" style="font-size:9.5px;color:var(--t4);margin-right:10px">${String(s).padStart(3)}</span>${esc(F.text)}</div>`).join("");
-  }else{
-    const set=[];
-    for(let i=33;i<127;i++)set.push(i);
-    for(let i=161;i<256;i++)set.push(i);
-    for(let i=0x100;i<0x180;i++)set.push(i);
-    $("sbGlyphs").textContent=set.length;
-    body=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px">
-      ${set.map(c=>`<div title="U+${c.toString(16).toUpperCase().padStart(4,"0")}"
-        style="aspect-ratio:1;display:grid;place-items:center;border:1px solid var(--line);border-radius:7px;
-        background:var(--s2);cursor:pointer" data-ch="${String.fromCharCode(c)}">
-        <span style="font-family:'${f.fam}',var(--sans);font-size:23px;color:var(--text)">${esc(String.fromCharCode(c))}</span>
-        <span class="mono" style="font-size:7px;color:var(--t4)">${c.toString(16).toUpperCase()}</span></div>`).join("")}</div>`;
-  }
-  $("fontStage").innerHTML=body;
-  $("fontStage").querySelectorAll("[data-ch]").forEach(b=>b.addEventListener("click",()=>{
-    navigator.clipboard?.writeText(b.dataset.ch);toast(`“${b.dataset.ch}” copied`);}));
-  if(F.view!=="charmap")$("sbGlyphs").textContent="—";
-  $("sbFont").textContent=f.name;$("sbFmt").textContent=f.fmt;
-  $("sbFsize").textContent=fmtB(f.size);$("sbFpx").textContent=F.size+"px";
-  $("fontInfo").innerHTML=[["Family",f.name],["File",f.file],["Format",f.fmt],["File size",fmtB(f.size)],
-    ["Rendered by","FontFace API"],["Weight shown",F.weight],["Size",F.size+"px"]]
-    .map(([k,v])=>`<div class="kv"><span>${k}</span><b>${esc(String(v))}</b></div>`).join("");
-  $("fontMeta").innerHTML=[["PostScript name",f.name.replace(/\s+/g,"")],["Units per em","1000"],
-    ["Ascender","800"],["Descender","−200"],["Cap height","700"],["x-height","520"],["Licence","see font file"]]
-    .map(([k,v])=>`<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("")
-    +`<div class="desc" style="margin-top:9px;font-size:11px;color:var(--t4)">Exact metrics are read from the font tables with fontkit server-side; these are the browser-visible defaults.</div>`;
-}
-document.addEventListener("click",e=>{
-  const v=e.target.closest("[data-fv]");
-  if(v){F.view=v.dataset.fv;go("font");
-    $("fontViewSeg").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.fv===F.view));
-    renderFont();}
-  const a=e.target.closest("[data-act]");
-  if(a&&a.dataset.act==="fontopen"){$("fileFont").click();}
-  if(a&&a.dataset.act==="fontexport"){
-    if(F.cur<0)return toast("Load a font first","warn");
-    toast(`Converted ${F.fonts[F.cur].name} — download queued`);}
-  const ft=e.target.closest("[data-ft]");
-  if(ft&&ft.closest(".seg")){ft.closest(".seg").querySelectorAll("button").forEach(b=>b.classList.remove("on"));ft.classList.add("on");}
-});
 
 /* ============================================================
    FILE WORKSPACE — real hashing and MIME sniffing
