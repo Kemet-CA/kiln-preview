@@ -486,6 +486,14 @@
   background-position:-1px -1px;
 }
 
+/* ---- home button: the way back to the workspace list ---- */
+.ktb-home{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--t3);
+  border:var(--bw) solid var(--line);background:var(--s2);box-shadow:var(--hs);
+  text-decoration:none;flex:none;transition:.15s var(--ez);margin-right:4px}
+.ktb-home:hover{color:var(--ember);border-color:var(--ember);background:var(--hov)}
+.ktb-home:active{transform:translateY(1px)}
+.ktb-home svg{width:14px;height:14px}
+
 /* ---- theme bar: two buttons on every Kiln page ---- */
 .ktb{display:flex;align-items:center;gap:6px}
 .ktb-btn{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;color:var(--t3);

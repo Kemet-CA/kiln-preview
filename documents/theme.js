@@ -35,6 +35,34 @@
   apply();
   matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => { if (!mode) apply(); });
 
+  /* ------------------------------------------------------------
+     Home button. Mounted into any [data-kiln-home] element, on every page
+     that has one, so a workspace always has a way back to the homepage.
+     The href is worked out from where the page sits: a workspace in its own
+     folder (/pdf/, /video/) goes up one; a page that is a file at the root
+     (editor.html) stays put.
+     ------------------------------------------------------------ */
+  function mountHome() {
+    const slots = document.querySelectorAll("[data-kiln-home]");
+    if (!slots.length) return;
+    const last = location.pathname.split("/").filter(Boolean).pop() || "";
+    const href = last.includes(".") ? "./" : "../";
+    for (const slot of slots) {
+      if (slot.querySelector(".ktb-home")) continue;
+      const a = document.createElement("a");
+      a.className = "ktb-home";
+      a.href = href;
+      a.title = "All workspaces (Home)";
+      a.setAttribute("aria-label", "Home — all workspaces");
+      a.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+        'stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-7 9 7"/>' +
+        '<path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>';
+      slot.appendChild(a);
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountHome);
+  else mountHome();
+
   const idx = () => THEMES.findIndex(t => t.id === theme);
   const cur = () => THEMES[idx()];
   const next = () => THEMES[(idx() + 1) % THEMES.length];

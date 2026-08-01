@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="theme.css">
 <script src="theme.js"></script>
 
-<meta name="kiln-build" content="895ff5c-1908">
+<meta name="kiln-build" content="955e17e-1920">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -419,10 +419,66 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .hstats{display:flex;gap:28px;margin-top:32px;padding-top:20px;border-top:1px solid var(--line)}
 .hstats b{display:block;font-size:20px;font-weight:660;letter-spacing:-.03em}
 .hstats span{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--t3)}
-.sect{padding:60px 0}
+.hero h1.shimmer{font-size:clamp(42px,8vw,92px);line-height:1.02;margin:6px 0 0;text-align:center;
+  font-weight:680;letter-spacing:-.035em;
+  background:linear-gradient(96deg,var(--hot),var(--ember) 42%,var(--cherry) 78%,var(--hot));
+  background-size:220% 100%;background-position:var(--shx,50%) var(--shy,50%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  transition:background-position .25s var(--ez);cursor:default;position:relative}
+.hero h1.shimmer::after{content:"";position:absolute;inset:-6% -2%;pointer-events:none;
+  background:radial-gradient(220px 140px at var(--gx,50%) var(--gy,50%),
+    color-mix(in srgb,var(--hot) 26%,transparent),transparent 70%);
+  opacity:0;transition:opacity .3s var(--ez);filter:blur(12px)}
+.hero:hover h1.shimmer::after{opacity:1}
+.hero-in .eyebrow,.hero-in .lede,.hero-in .hcta,.hero-in .hstats{text-align:center;justify-content:center}
+.hero-in .lede{margin-left:auto;margin-right:auto;max-width:60ch}
+.hero-in .lede.privacy{margin-top:8px;color:var(--t3);font-size:14px}
+.hero-in .lede.privacy b{color:var(--t2)}
+.hstats{justify-content:center}
+.sect{padding:60px 0 26px}
 .sect h2{font-size:clamp(22px,2.8vw,30px);margin-top:9px}
 .sect .sub{margin-top:9px;color:var(--t2);max-width:58ch;font-size:14px}
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:26px}
+/* ---- the shelf: cards stand like spines, and open on hover ---- */
+.shelf-wrap{position:relative;padding:6px 0 64px}
+.shelf-wrap::before,.shelf-wrap::after{content:"";position:absolute;top:0;bottom:64px;width:52px;z-index:2;pointer-events:none}
+.shelf-wrap::before{left:0;background:linear-gradient(90deg,var(--ground),transparent)}
+.shelf-wrap::after{right:0;background:linear-gradient(270deg,var(--ground),transparent)}
+.shelf{display:flex;gap:16px;align-items:stretch;overflow-x:auto;overflow-y:hidden;
+  padding:14px 26px 26px;scroll-snap-type:x proximity;perspective:1400px;
+  scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.shelf::-webkit-scrollbar{height:8px}
+.shelf::-webkit-scrollbar-thumb{background:var(--line2);border-radius:99px}
+.shelf::after{content:"";flex:0 0 6px}
+.card{position:relative;flex:0 0 132px;height:340px;border:1px solid var(--line);border-radius:14px;
+  padding:18px 16px;overflow:hidden;cursor:pointer;scroll-snap-align:center;
+  background:linear-gradient(165deg,var(--card1),var(--card2));
+  transform-origin:center left;transform-style:preserve-3d;
+  transition:flex-basis .42s var(--ez),transform .42s var(--ez),border-color .3s var(--ez),
+    box-shadow .42s var(--ez),background .3s var(--ez);
+  display:flex;flex-direction:column;box-shadow:0 10px 26px -20px rgba(0,0,0,.9)}
+.card::before{content:"";position:absolute;left:-30%;top:-40%;width:170%;height:80%;border-radius:50%;
+  background:var(--tint);opacity:0;filter:blur(52px);transition:opacity .38s var(--ez);pointer-events:none}
+/* the spine, shown while the card is closed */
+.card .spine{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:space-between;padding:18px 0 22px;transition:opacity .22s var(--ez)}
+.card .spine .sname{writing-mode:vertical-rl;transform:rotate(180deg);font-size:15px;font-weight:600;
+  letter-spacing:.02em;color:var(--t2)}
+.card .spine .snum{font-family:var(--mono);font-size:9.5px;color:var(--t4);letter-spacing:.1em}
+.card .open{opacity:0;transition:opacity .3s var(--ez) .08s;display:flex;flex-direction:column;height:100%;min-width:0}
+.card:hover,.card:focus-visible{flex-basis:352px;border-color:color-mix(in srgb,var(--tint) 45%,var(--line2));
+  transform:rotateY(-3deg) translateY(-4px);box-shadow:0 26px 54px -28px rgba(0,0,0,.95)}
+.card:hover::before,.card:focus-visible::before{opacity:.32}
+.card:hover .spine,.card:focus-visible .spine{opacity:0;pointer-events:none}
+.card:hover .open,.card:focus-visible .open{opacity:1}
+.card h3{margin-top:13px;font-size:16px;white-space:nowrap}
+.card p{margin-top:6px;font-size:12.5px;color:var(--t3);line-height:1.55}
+.card .ui{margin-top:auto;padding-top:12px;font-size:11px;color:var(--t4);font-family:var(--mono)}
+.card .go{margin-top:9px;display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--tint);white-space:nowrap}
+.card:hover .go{gap:9px}
+@media(prefers-reduced-motion:reduce){
+  .card{transition:flex-basis .01ms,border-color .01ms}
+  .card:hover,.card:focus-visible{transform:none}
+}
 .card{position:relative;border:1px solid var(--line);border-radius:13px;padding:20px;overflow:hidden;cursor:pointer;
   background:linear-gradient(180deg,var(--card1),var(--card2));
   transition:border-color .2s var(--ez),transform .2s var(--ez),background .2s var(--ez)}
@@ -443,11 +499,14 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   transition:color .18s,gap .18s;position:relative}
 .card:hover .go{color:var(--tint);gap:9px}
 .foot{border-top:1px solid var(--line);padding:22px 0;color:var(--t4);font-size:12px}
+.foot .kemet{display:flex;align-items:center;gap:8px;color:var(--t2)}
+.foot .kemet b{font-weight:640;letter-spacing:-.01em}
+.foot .fsep{color:var(--t4)}
+.foot .fdim{color:var(--t4)}
 .foot-in{max-width:1180px;margin:0 auto;padding:0 26px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 
 /* ================= responsive ================= */
 @media(max-width:1100px){
-  .cards{grid-template-columns:repeat(2,1fr)}
   .wsbody{grid-template-columns:var(--lw,230px) 5px minmax(0,1fr);}
   .wsbody .pane-r,.wsbody .split-r{display:none}
   .wsbody.showr{grid-template-columns:minmax(0,1fr) 5px var(--rw,280px)}
@@ -460,7 +519,8 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   .optbar{display:none}
 }
 @media(max-width:760px){
-  .cards{grid-template-columns:1fr}
+  .card{flex-basis:112px;height:300px}
+  .card:hover,.card:focus-visible{flex-basis:280px}
   .wsnav .lbl{display:none}
   .kbtn{display:none}
   .hstats{gap:18px}
@@ -479,32 +539,40 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 
 <!-- ===================== HOME ===================== -->
 <section class="screen" id="screen-home">
-  <div class="hero"><div class="hero-in">
-    <div class="eyebrow">Open source · No accounts · No AI · Self-hosted</div>
-    <h1>Upload once.<br>Then <span class="lit">shape anything</span>.</h1>
-    <p class="lede">Seven professional workspaces for images, PDFs, video, Word documents, translation, colour and files — each one a real editing environment with panels, layers, history and keyboard shortcuts. Every tool is also a documented REST endpoint.</p>
+  <div class="hero" id="hero"><div class="hero-in">
+    <div class="eyebrow">Open source · No accounts · Nothing uploaded</div>
+    <h1 class="shimmer" id="shimmer">Shape anything</h1>
+    <p class="lede">Every tool you need, free — image and video editors, PDF and Word workspaces,
+      a translator and a colour studio.</p>
+    <p class="lede privacy"><b>Nothing is uploaded.</b> No account, no server, no telemetry:
+      your files are opened, edited and saved by the browser, on your own device.</p>
     <div class="hcta">
-      <button class="btn btn-p" data-go="image">Open Image Workspace →</button>
-      <button class="btn btn-g" data-go="text">Try the Text Editor</button>
+      <a class="btn btn-p" href="https://buymeacoffee.com/kemetca" target="_blank" rel="noopener">
+        <span aria-hidden="true">☕</span> Buy us a coffee</a>
+      <button class="btn btn-g" data-go="image">Open the image editor →</button>
     </div>
     <div class="hstats">
       <div><b class="num">125</b><span>Tools</span></div>
-      <div><b class="num">6</b><span>Workspaces</span></div>
-      <div><b class="num">0</b><span>Files kept</span></div>
+      <div><b class="num">7</b><span>Workspaces</span></div>
+      <div><b>Private</b><span>Files stay on your device</span></div>
     </div>
   </div></div>
 
   <div class="home-wrap sect">
     <div class="eyebrow">Workspaces</div>
     <h2>Desktop software, running in a tab.</h2>
-    <p class="sub">Not a collection of forms. Each category opens a full application — resizable panels, a menu bar, live preview, undo history and a status bar. Your file loads once and stays loaded.</p>
-    <div class="cards" id="cards"></div>
+    <p class="sub">Each one opens a real application — panels, a menu bar, live preview, undo history.
+      Hover a spine to open it out; scroll sideways for the rest of the shelf.</p>
+  </div>
+  <div class="shelf-wrap">
+    <div class="shelf" id="cards" role="list" tabindex="0" aria-label="Workspaces, scroll sideways"></div>
   </div>
 
   <div class="foot"><div class="foot-in">
-    <span class="mark" style="width:15px;height:15px;border-radius:4px"></span>
-    <span>Kiln — interactive design preview</span>
-    <span style="margin-left:auto">MIT · self-hostable · no telemetry</span>
+    <span class="kemet"><span class="mark" style="width:17px;height:17px;border-radius:5px"></span>
+      <b>Kemet Studio</b></span>
+    <span class="fsep">·</span><span>Kiln — open source workspaces that run on your machine</span>
+    <span style="margin-left:auto" class="fdim">© Kemet CA</span>
   </div></div>
 </section>
 
@@ -973,17 +1041,51 @@ document.addEventListener("click",()=>$("ctx").classList.remove("on"));
 document.addEventListener("scroll",()=>$("ctx").classList.remove("on"),true);
 
 /* home cards */
-$("cards").innerHTML=WORKSPACES.filter(w=>w.id!=="home").map(w=>`
-  <div class="card" style="--tint:${w.tint}" data-go="${w.id}" role="button" tabindex="0">
-    <div class="card-t">
+$("cards").innerHTML=WORKSPACES.filter(w=>w.id!=="home").map((w,i)=>`
+  <div class="card" style="--tint:${w.tint}" data-go="${w.id}" role="listitem" tabindex="0"
+       aria-label="${w.name} Workspace">
+    <div class="spine">
       <span class="card-i">${SVG(w.icon)}</span>
-      <span class="mono" style="font-size:10.5px;color:var(--t3)">${w.n} tools</span>
+      <span class="sname">${w.name} Workspace</span>
+      <span class="snum">${String(i+1).padStart(2,"0")}</span>
     </div>
-    <h3>${w.name} Workspace</h3>
-    <p>${w.desc}</p>
-    <div class="ui">${w.ui}</div>
-    <div class="go">Open workspace ${SVG('<path d="M5 12h13M13 6l6 6-6 6"/>').replace("<svg","<svg width=12 height=12")}</div>
+    <div class="open">
+      <div class="card-t">
+        <span class="card-i">${SVG(w.icon)}</span>
+        <span class="mono" style="font-size:10.5px;color:var(--t3)">${w.n} tools</span>
+      </div>
+      <h3>${w.name} Workspace</h3>
+      <p>${w.desc}</p>
+      <div class="ui">${w.ui}</div>
+      <div class="go">Open workspace ${SVG('<path d="M5 12h13M13 6l6 6-6 6"/>').replace("<svg","<svg width=12 height=12")}</div>
+    </div>
   </div>`).join("");
+
+/* the shelf scrolls sideways from a normal wheel, so a trackpad or mouse both work */
+(()=>{const sh=$("cards");
+  sh.addEventListener("wheel",e=>{
+    if(Math.abs(e.deltaY)<=Math.abs(e.deltaX))return;
+    if((e.deltaY<0&&sh.scrollLeft<=0)||(e.deltaY>0&&sh.scrollLeft>=sh.scrollWidth-sh.clientWidth-1))return;
+    e.preventDefault();sh.scrollLeft+=e.deltaY;
+  },{passive:false});
+  sh.addEventListener("keydown",e=>{
+    if(e.key==="ArrowRight"){e.preventDefault();sh.scrollLeft+=180;}
+    if(e.key==="ArrowLeft"){e.preventDefault();sh.scrollLeft-=180;}
+  });
+})();
+
+/* the hero gradient follows the cursor */
+(()=>{const h=$("hero"),t=$("shimmer");if(!h||!t)return;
+  h.addEventListener("pointermove",e=>{
+    const r=t.getBoundingClientRect();
+    const x=((e.clientX-r.left)/r.width)*100, y=((e.clientY-r.top)/r.height)*100;
+    t.style.setProperty("--shx",Math.max(-20,Math.min(120,x))+"%");
+    t.style.setProperty("--shy",Math.max(0,Math.min(100,y))+"%");
+    t.style.setProperty("--gx",x+"%");t.style.setProperty("--gy",y+"%");
+  });
+  h.addEventListener("pointerleave",()=>{t.style.setProperty("--shx","50%");t.style.setProperty("--shy","50%");});
+})();
+
 document.querySelectorAll(".card").forEach(c=>c.addEventListener("keydown",e=>{
   if(e.key==="Enter"||e.key===" "){e.preventDefault();go(c.dataset.go);}
 }));
