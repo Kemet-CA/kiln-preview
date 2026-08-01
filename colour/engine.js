@@ -51,22 +51,69 @@ async function copy(text, label) {
   toast(`${label || text} copied`);
 }
 
+/* ---------------- the wheel ----------------
+   Hue is the angle, saturation is the distance out, and brightness is the
+   slider under it — so the disc dims as the slider comes down, which is what
+   a wheel is supposed to do. Painted per pixel into a canvas, and only when
+   the brightness or the size changes; moving the cursor around the disc does
+   not need a repaint. */
+let wheelV = -1, wheelPx = 0;
+function drawWheel() {
+  const c = $("wheel");
+  const box = c.getBoundingClientRect();
+  const px = Math.max(80, Math.round(box.width * (window.devicePixelRatio || 1)));
+  if (px === wheelPx && Math.abs(App.hsv.v - wheelV) < 0.5) return;
+  wheelPx = px; wheelV = App.hsv.v;
+  c.width = c.height = px;
+  const x = c.getContext("2d");
+  const img = x.createImageData(px, px);
+  const d = img.data, r0 = px / 2, v = App.hsv.v;
+  for (let y = 0; y < px; y++) {
+    const dy = y - r0 + 0.5;
+    for (let xi = 0; xi < px; xi++) {
+      const dx = xi - r0 + 0.5;
+      const dist = Math.sqrt(dx * dx + dy * dy) / r0;
+      const i = (y * px + xi) * 4;
+      if (dist > 1) { d[i + 3] = 0; continue; }
+      const h = (Math.atan2(dy, dx) * 180 / Math.PI + 360 + 90) % 360;
+      const rgbv = C.hsvToRgb({ h, s: Math.min(100, dist * 100), v });
+      d[i] = rgbv.r; d[i + 1] = rgbv.g; d[i + 2] = rgbv.b;
+      d[i + 3] = dist > 0.985 ? Math.round((1 - dist) / 0.015 * 255) : 255;   // soft edge
+    }
+  }
+  x.putImageData(img, 0, 0);
+}
+function placeWheelDot() {
+  const box = $("wheel").getBoundingClientRect();
+  const r = box.width / 2;
+  const a = (App.hsv.h - 90) * Math.PI / 180;
+  const dist = Math.min(1, App.hsv.s / 100) * r;
+  $("svDot").style.left = (r + Math.cos(a) * dist) + "px";
+  $("svDot").style.top = (r + Math.sin(a) * dist) + "px";
+}
+/* the wheel is square, and as large as the pane can give it */
+function sizeWheel() {
+  const pane = document.querySelector(".pick");
+  const wrap = document.querySelector(".wheelwrap");
+  const room = pane.clientHeight - 250;                 // circles, hex row, two sliders
+  const side = Math.max(150, Math.min(pane.clientWidth - 28, room));
+  wrap.style.width = wrap.style.height = side + "px";
+  wheelPx = 0;                                          // force a repaint at the new size
+  drawWheel();
+  placeWheelDot();
+}
+
+new ResizeObserver(() => sizeWheel()).observe(document.querySelector(".pick"));
+
 /* ---------------- the picker ---------------- */
 function paintPicker() {
   const c = rgb(), hex = C.toHex(c);
-  const pure = C.hsvToRgb({ h: App.hsv.h, s: 100, v: 100 });
-  $("sv").style.background = C.toHex(pure);
-  $("svDot").style.left = App.hsv.s + "%";
-  $("svDot").style.top = (100 - App.hsv.v) + "%";
-  $("hueKnob").style.left = (App.hsv.h / 360 * 100) + "%";
+  drawWheel();
+  placeWheelDot();
+  $("valKnob").style.left = App.hsv.v + "%";
+  $("valBar").style.setProperty("--cur", C.toHex(C.hsvToRgb({ h: App.hsv.h, s: App.hsv.s, v: 100 })));
   $("alphaKnob").style.left = (App.alpha * 100) + "%";
   $("alphaBar").style.setProperty("--cur", hex);
-  $("bigSwatch").style.background = css(c);
-  $("bigSwatch").style.color = C.readableOn(shown(c));
-  $("bigSwatch").textContent = hex;
-  const was = App.prev || hex;
-  $("prevSwatch").style.background = was;
-  $("prevSwatch").title = `Before: ${was} — click to go back`;
   if (document.activeElement !== $("hexIn")) $("hexIn").value = hex;
   $("sbHex").textContent = hex;
   $("sbCon").textContent = C.contrast(c, { r: 0, g: 0, b: 0 }).toFixed(2) + ":1";
@@ -281,7 +328,8 @@ const ACT = {
 const MENUS = {
   mFile: [["Copy the hex", "copyHex", "⌘C"], ["Copy the palette", "copyAll"], null,
           ["Export CSS variables", "exportCss"], ["Export JSON", "exportJson"], ["Export SVG…", "exportSvg"]],
-  mColour: [["Random colour", "randomColor", "R"], ["Pick from the screen…", "eyedropper"], null,
+  mColour: [["Random colour", "randomColor", "R"], ["Pick from the screen…", "eyedropper"],
+    ["Back to the previous colour", "revert"], null,
             ["Save as a swatch", "addSwatch", "S"]],
   mPalette: [["Generate a new palette", "randomise", "Space"], ["Save this palette", "savePalette", "⌘S"], null,
              ["Copy every colour", "copyAll"]],
@@ -369,8 +417,13 @@ function wire() {
     }
   });
 
-  dragOn($("sv"), (x, y) => { App.hsv.s = x * 100; App.hsv.v = (1 - y) * 100; });
-  dragOn($("hueBar"), x => { App.hsv.h = x * 360; });
+  dragOn($("wheel"), (x, y) => {
+    // back from a point on the disc to hue and saturation
+    const dx = x - 0.5, dy = y - 0.5;
+    App.hsv.h = (Math.atan2(dy, dx) * 180 / Math.PI + 360 + 90) % 360;
+    App.hsv.s = Math.min(100, Math.sqrt(dx * dx + dy * dy) * 2 * 100);
+  });
+  dragOn($("valBar"), x => { App.hsv.v = x * 100; });
   dragOn($("alphaBar"), x => { App.alpha = x; });
 
   $("hexIn").addEventListener("input", e => {

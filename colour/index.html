@@ -69,32 +69,25 @@ input,select{font:inherit;color:inherit}
 
 /* ---------- picker ---------- */
 .pick{grid-area:pick;background:var(--s1);border-right:1px solid var(--line);
-  display:flex;flex-direction:column;min-height:0;overflow-y:auto}
-.sv{position:relative;flex:1;min-height:170px;margin:2px 12px 10px;border-radius:9px;cursor:crosshair;
-  border:var(--bw) solid var(--line2);overflow:hidden}
-.sv i{position:absolute;inset:0}
-.sv .white{background:linear-gradient(90deg,#fff,rgba(255,255,255,0))}
-.sv .black{background:linear-gradient(0deg,#000,rgba(0,0,0,0))}
+  display:flex;flex-direction:column;justify-content:center;min-height:0;overflow-y:auto}
+/* the wheel: hue around the circle, saturation out from the middle. Brightness
+   is the slider under it, and the wheel dims with it. */
+.wheelwrap{position:relative;flex:none;margin:4px auto 12px;line-height:0;touch-action:none}
+#wheel{display:block;width:100%;height:auto;border-radius:50%;cursor:crosshair;
+  box-shadow:0 0 0 1px var(--line2),0 8px 22px -14px rgba(0,0,0,.6)}
 /* the cursor shows the colour under it — background:transparent on purpose,
-   because the status bar's .dot is green and this rule shares its name */
-.sv .dot{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid #fff;background:transparent;
-  box-shadow:0 0 0 1px rgba(0,0,0,.5),0 1px 4px rgba(0,0,0,.5);transform:translate(-50%,-50%);pointer-events:none;inset:auto}
+   because the status bar's .dot is green and would otherwise paint it */
+.wdot{position:absolute;width:15px;height:15px;border-radius:50%;border:2px solid #fff;background:transparent;
+  box-shadow:0 0 0 1px rgba(0,0,0,.55),0 1px 4px rgba(0,0,0,.5);
+  transform:translate(-50%,-50%);pointer-events:none}
 .slider{margin:0 12px 9px;height:14px;border-radius:99px;position:relative;cursor:pointer;flex:none;
   border:var(--bw) solid var(--line2)}
 .slider .knob{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:#fff;
   border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45),0 1px 4px rgba(0,0,0,.5);transform:translate(-50%,-50%);pointer-events:none}
-#hueBar{background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
+#valBar{background-image:linear-gradient(90deg,#000,var(--cur,#fff))}
 #alphaBar{background-image:linear-gradient(90deg,transparent,var(--cur)),
   repeating-conic-gradient(rgba(127,127,127,.35) 0 25%,transparent 0 50%);background-size:auto,10px 10px}
-/* the current colour, and the one it replaced, as two circles */
-.circles{display:flex;align-items:flex-end;gap:0;padding:14px 12px 10px;min-height:0}
-.circ{border-radius:50%;border:var(--bw) solid var(--line2);box-shadow:var(--hs);flex:none;
-  display:grid;place-items:center;font-family:var(--mono);letter-spacing:.03em;padding:0}
-.circ.now{width:104px;height:104px;font-size:13px;cursor:copy;z-index:2}
-.circ.was{width:56px;height:56px;font-size:0;margin-left:-16px;cursor:pointer;opacity:.9}
-.circ.was:hover{opacity:1;transform:translateY(-2px)}
-.circ:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
-.hexrow{display:flex;gap:6px;padding:0 12px 12px}
+.hexrow{display:flex;gap:6px;padding:12px 12px 10px}
 .hexin{flex:1;min-width:0;padding:6px 9px;border-radius:7px;border:var(--bw) solid var(--line);
   background:var(--s2);color:var(--text);font-family:var(--mono);font-size:13px;outline:0;text-transform:uppercase}
 .hexin:focus{border-color:var(--ember)}
@@ -203,7 +196,7 @@ input,select{font:inherit;color:inherit}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="3b4643a-1639">
+<meta name="kiln-build" content="f88c137-1650">
 </head>
 <body>
 <div id="app">
@@ -245,18 +238,16 @@ input,select{font:inherit;color:inherit}
   </div>
 
   <aside class="pick">
-    <!-- the colour itself first: what you have now, and what you had before it -->
-    <div class="circles">
-      <button class="circ now" id="bigSwatch" data-act="copyHex" title="Click to copy the hex"></button>
-      <button class="circ was" id="prevSwatch" data-act="revert" title="The colour before this one — click to go back"></button>
-    </div>
     <div class="hexrow">
       <input class="hexin" id="hexIn" value="#E2622A" spellcheck="false" aria-label="Hex value">
       <button class="ico" data-act="eyedropper" title="Pick a colour from the screen">⌖</button>
       <button class="ico" data-act="randomColor" title="Random colour">⚄</button>
     </div>
-    <div class="sv" id="sv"><i class="white"></i><i class="black"></i><span class="dot" id="svDot"></span></div>
-    <div class="slider" id="hueBar"><span class="knob" id="hueKnob"></span></div>
+    <div class="wheelwrap">
+      <canvas id="wheel" width="300" height="300" aria-label="Colour wheel — hue around, saturation out"></canvas>
+      <span class="wdot" id="svDot"></span>
+    </div>
+    <div class="slider" id="valBar"><span class="knob" id="valKnob"></span></div>
     <div class="slider" id="alphaBar"><span class="knob" id="alphaKnob"></span></div>
   </aside>
 
