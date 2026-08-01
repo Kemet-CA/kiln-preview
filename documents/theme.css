@@ -464,6 +464,17 @@
 
 @media(prefers-reduced-motion:reduce){.sec-h .cv,.pfold svg{transition:none}}
 
+/* ============================================================
+   Work-area surround.
+   The area *around* a document, frame or canvas stays the same neutral dark
+   grey in every theme and both modes — the way Photoshop and Premiere keep
+   their canvas surround neutral, so nothing around your work tints how you
+   judge its colour. Equal specificity to the palette blocks, declared after
+   them, so it wins everywhere without !important.
+   ============================================================ */
+:root,
+:root[data-theme][data-mode]{--stagebg:#2A2A2C}
+
 /* ---- theme bar: two buttons on every Kiln page ---- */
 .ktb{display:flex;align-items:center;gap:6px}
 .ktb-btn{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;color:var(--t3);
