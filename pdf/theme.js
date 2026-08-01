@@ -27,13 +27,23 @@
   let theme = THEMES.some(t => t.id === store.get(KEY_T)) ? store.get(KEY_T) : "ember";
   let mode = ["dark", "light"].includes(store.get(KEY_M)) ? store.get(KEY_M) : null;
 
+  /* ------------------------------------------------------------
+     Automatic mode follows the clock where the reader is: light through the
+     working day, dark after dusk. It uses the device's own local time, so it
+     is right in every region without asking for a location. A manual choice
+     always wins, and stays until it is cleared.
+     ------------------------------------------------------------ */
+  const DAY_START = 7, DAY_END = 19;                 // 07:00 → 18:59 is daylight
+  const modeForHour = h => (h >= DAY_START && h < DAY_END) ? "light" : "dark";
+  const autoMode = () => modeForHour(new Date().getHours());
+
   function apply() {
     root.dataset.theme = theme;
-    // no explicit choice yet → follow the operating system
-    root.dataset.mode = mode || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    root.dataset.mode = mode || autoMode();
   }
   apply();
-  matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => { if (!mode) apply(); });
+  // while a page is left open, dusk should still change it
+  setInterval(() => { if (!mode && root.dataset.mode !== autoMode()) apply(); }, 60_000);
 
   /* ------------------------------------------------------------
      Home button. Mounted into any [data-kiln-home] element, on every page
@@ -63,6 +73,42 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountHome);
   else mountHome();
 
+  /* ------------------------------------------------------------
+     Clock. Mounted into any [data-kiln-clock] element. Shows the reader's own
+     local time in their own locale's format, ticking on the minute rather than
+     every second — a second hand on a tool page is noise.
+     ------------------------------------------------------------ */
+  function mountClock() {
+    const slots = document.querySelectorAll("[data-kiln-clock]");
+    if (!slots.length) return;
+    const els = [];
+    for (const slot of slots) {
+      let el = slot.querySelector(".ktb-clock");
+      if (!el) {
+        el = document.createElement("time");
+        el.className = "ktb-clock";
+        slot.appendChild(el);
+      }
+      els.push(el);
+    }
+    const tick = () => {
+      const now = new Date();
+      const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const full = now.toLocaleString([], { dateStyle: "full", timeStyle: "short" });
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      for (const el of els) {
+        el.textContent = time;
+        el.dateTime = now.toISOString();
+        el.title = zone ? `${full} · ${zone}` : full;
+      }
+      // land the next update on the minute boundary
+      setTimeout(tick, 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 20);
+    };
+    tick();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountClock);
+  else mountClock();
+
   const idx = () => THEMES.findIndex(t => t.id === theme);
   const cur = () => THEMES[idx()];
   const next = () => THEMES[(idx() + 1) % THEMES.length];
@@ -78,7 +124,11 @@
       b.chip.style.background = `linear-gradient(120deg,${bg} 55%,${t.accent} 55%)`;
       b.themeBtn.title = `Theme: ${t.name} — click for ${n.name}`;
       b.themeBtn.setAttribute("aria-label", `Theme ${t.name}, click to switch to ${n.name}`);
-      b.modeBtn.title = root.dataset.mode === "light" ? "Switch to dark" : "Switch to light";
+      b.modeBtn.title = mode === null
+        ? `Automatic — following your local time (${root.dataset.mode} now). Click for light`
+        : mode === "light" ? "Light mode. Click for dark"
+        : "Dark mode. Click to follow your local time";
+      b.modeBtn.classList.toggle("ktb-auto", mode === null);
     }
   }
   const note = msg => { if (typeof window.toast === "function") window.toast(msg); };
@@ -99,10 +149,13 @@
     };
     bars.push(rec);
     rec.modeBtn.addEventListener("click", () => {
-      mode = root.dataset.mode === "light" ? "dark" : "light";
-      store.set(KEY_M, mode);
+      // light → dark → automatic, in that order every time, so the button is
+      // predictable rather than depending on what happens to be showing
+      mode = mode === "light" ? "dark" : mode === "dark" ? null : "light";
+      if (mode) store.set(KEY_M, mode); else { try { localStorage.removeItem(KEY_M); } catch {} }
       apply(); refresh();
-      note(mode === "light" ? "Light mode" : "Dark mode");
+      note(mode === null ? `Automatic — ${autoMode()} until ${autoMode() === "light" ? DAY_END + ":00" : DAY_START + ":00"}`
+        : mode === "light" ? "Light mode" : "Dark mode");
     });
     rec.themeBtn.addEventListener("click", () => {
       theme = next().id;
@@ -118,9 +171,10 @@
   else mountAll();
 
   window.KilnTheme = {
-    THEMES, mountAll,
+    THEMES, mountAll, modeForHour, autoMode, DAY_START, DAY_END,
     get theme() { return theme; },
-    get mode() { return root.dataset.mode; },
+    get mode() { return root.dataset.mode; },        // what is showing
+    get choice() { return mode; },                   // "light" | "dark" | null when following the clock
     cycle() { theme = next().id; store.set(KEY_T, theme); apply(); refresh(); },
   };
 })();

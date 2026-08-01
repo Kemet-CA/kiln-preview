@@ -515,6 +515,15 @@
 :root[data-theme="retro"] .foot-in{background:var(--s1);border:2px solid var(--line2);
   padding-top:12px;padding-bottom:12px;max-width:1120px}
 
+/* ---- clock: the reader's own local time ---- */
+.ktb-clock{font-family:var(--mono);font-size:11.5px;color:var(--t3);letter-spacing:.02em;
+  padding:4px 9px;border-radius:7px;border:var(--bw) solid var(--line);background:var(--s2);
+  font-variant-numeric:tabular-nums;white-space:nowrap;box-shadow:var(--hs)}
+/* the mode button shows a dot while it is following the clock */
+.ktb-btn.ktb-auto{position:relative}
+.ktb-btn.ktb-auto::after{content:"";position:absolute;right:3px;bottom:3px;width:4px;height:4px;
+  border-radius:50%;background:var(--ember)}
+
 /* ---- home button: the way back to the workspace list ---- */
 .ktb-home{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--t3);
   border:var(--bw) solid var(--line);background:var(--s2);box-shadow:var(--hs);
