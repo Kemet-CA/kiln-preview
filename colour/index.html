@@ -70,12 +70,14 @@ input,select{font:inherit;color:inherit}
 /* ---------- picker ---------- */
 .pick{grid-area:pick;background:var(--s1);border-right:1px solid var(--line);
   display:flex;flex-direction:column;min-height:0;overflow-y:auto}
-.sv{position:relative;height:172px;margin:2px 12px 10px;border-radius:9px;cursor:crosshair;flex:none;
+.sv{position:relative;flex:1;min-height:170px;margin:2px 12px 10px;border-radius:9px;cursor:crosshair;
   border:var(--bw) solid var(--line2);overflow:hidden}
 .sv i{position:absolute;inset:0}
 .sv .white{background:linear-gradient(90deg,#fff,rgba(255,255,255,0))}
 .sv .black{background:linear-gradient(0deg,#000,rgba(0,0,0,0))}
-.sv .dot{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid #fff;
+/* the cursor shows the colour under it — background:transparent on purpose,
+   because the status bar's .dot is green and this rule shares its name */
+.sv .dot{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid #fff;background:transparent;
   box-shadow:0 0 0 1px rgba(0,0,0,.5),0 1px 4px rgba(0,0,0,.5);transform:translate(-50%,-50%);pointer-events:none;inset:auto}
 .slider{margin:0 12px 9px;height:14px;border-radius:99px;position:relative;cursor:pointer;flex:none;
   border:var(--bw) solid var(--line2)}
@@ -201,7 +203,7 @@ input,select{font:inherit;color:inherit}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="40d7630-1632">
+<meta name="kiln-build" content="3b4643a-1639">
 </head>
 <body>
 <div id="app">
