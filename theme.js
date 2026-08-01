@@ -157,9 +157,9 @@
       b.themeBtn.title = `Theme: ${t.name} — click for ${n.name}`;
       b.themeBtn.setAttribute("aria-label", `Theme ${t.name}, click to switch to ${n.name}`);
       b.modeBtn.title = mode === null
-        ? `Automatic — following your local time (${root.dataset.mode} now). Click for light`
-        : mode === "light" ? "Light mode. Click for dark"
-        : "Dark mode. Click to follow your local time";
+        ? `Automatic — following your local time (${root.dataset.mode} now). Click for ${root.dataset.mode === "light" ? "dark" : "light"}`
+        : mode === "light" ? "Light mode, kept until you change it. Click for dark · ⌥-click to follow your local time"
+        : "Dark mode, kept until you change it. Click for light · ⌥-click to follow your local time";
       b.modeBtn.classList.toggle("ktb-auto", mode === null);
     }
   }
@@ -181,14 +181,20 @@
       chip: bar.querySelector(".ktb-chip"),
     };
     bars.push(rec);
-    rec.modeBtn.addEventListener("click", () => {
-      // light → dark → automatic, in that order every time, so the button is
-      // predictable rather than depending on what happens to be showing
-      mode = mode === "light" ? "dark" : mode === "dark" ? null : "light";
-      if (mode) store.set(KEY_M, mode); else { try { localStorage.removeItem(KEY_M); } catch {} }
+    rec.modeBtn.addEventListener("click", e => {
+      // A choice is a choice: the button flips to the opposite of what is
+      // showing and that stays, through reloads, until it is changed again.
+      // The clock only decides for a reader who has never chosen.
+      if (e.altKey) {                                  // the way back to automatic
+        mode = null;
+        try { localStorage.removeItem(KEY_M); } catch {}
+      } else {
+        mode = root.dataset.mode === "light" ? "dark" : "light";
+        store.set(KEY_M, mode);
+      }
       apply(); refresh(); tick();
       note(mode === null ? `Automatic — ${autoMode()} until ${autoMode() === "light" ? DAY_END + ":00" : DAY_START + ":00"}`
-        : mode === "light" ? "Light mode" : "Dark mode");
+        : mode === "light" ? "Light mode — kept until you change it" : "Dark mode — kept until you change it");
     });
     rec.themeBtn.addEventListener("click", () => {
       theme = next().id;
