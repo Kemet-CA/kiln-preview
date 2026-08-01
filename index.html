@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="theme.css">
 <script src="theme.js"></script>
 
-<meta name="kiln-build" content="955e17e-1920">
+<meta name="kiln-build" content="e89e7cb-1938">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -438,66 +438,50 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .sect{padding:60px 0 26px}
 .sect h2{font-size:clamp(22px,2.8vw,30px);margin-top:9px}
 .sect .sub{margin-top:9px;color:var(--t2);max-width:58ch;font-size:14px}
-/* ---- the shelf: cards stand like spines, and open on hover ---- */
-.shelf-wrap{position:relative;padding:6px 0 64px}
-.shelf-wrap::before,.shelf-wrap::after{content:"";position:absolute;top:0;bottom:64px;width:52px;z-index:2;pointer-events:none}
-.shelf-wrap::before{left:0;background:linear-gradient(90deg,var(--ground),transparent)}
-.shelf-wrap::after{right:0;background:linear-gradient(270deg,var(--ground),transparent)}
-.shelf{display:flex;gap:16px;align-items:stretch;overflow-x:auto;overflow-y:hidden;
-  padding:14px 26px 26px;scroll-snap-type:x proximity;perspective:1400px;
-  scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
-.shelf::-webkit-scrollbar{height:8px}
-.shelf::-webkit-scrollbar-thumb{background:var(--line2);border-radius:99px}
-.shelf::after{content:"";flex:0 0 6px}
-.card{position:relative;flex:0 0 132px;height:340px;border:1px solid var(--line);border-radius:14px;
-  padding:18px 16px;overflow:hidden;cursor:pointer;scroll-snap-align:center;
-  background:linear-gradient(165deg,var(--card1),var(--card2));
-  transform-origin:center left;transform-style:preserve-3d;
-  transition:flex-basis .42s var(--ez),transform .42s var(--ez),border-color .3s var(--ez),
-    box-shadow .42s var(--ez),background .3s var(--ez);
-  display:flex;flex-direction:column;box-shadow:0 10px 26px -20px rgba(0,0,0,.9)}
-.card::before{content:"";position:absolute;left:-30%;top:-40%;width:170%;height:80%;border-radius:50%;
-  background:var(--tint);opacity:0;filter:blur(52px);transition:opacity .38s var(--ez);pointer-events:none}
-/* the spine, shown while the card is closed */
-.card .spine{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
-  justify-content:space-between;padding:18px 0 22px;transition:opacity .22s var(--ez)}
-.card .spine .sname{writing-mode:vertical-rl;transform:rotate(180deg);font-size:15px;font-weight:600;
-  letter-spacing:.02em;color:var(--t2)}
-.card .spine .snum{font-family:var(--mono);font-size:9.5px;color:var(--t4);letter-spacing:.1em}
-.card .open{opacity:0;transition:opacity .3s var(--ez) .08s;display:flex;flex-direction:column;height:100%;min-width:0}
-.card:hover,.card:focus-visible{flex-basis:352px;border-color:color-mix(in srgb,var(--tint) 45%,var(--line2));
-  transform:rotateY(-3deg) translateY(-4px);box-shadow:0 26px 54px -28px rgba(0,0,0,.95)}
-.card:hover::before,.card:focus-visible::before{opacity:.32}
-.card:hover .spine,.card:focus-visible .spine{opacity:0;pointer-events:none}
-.card:hover .open,.card:focus-visible .open{opacity:1}
-.card h3{margin-top:13px;font-size:16px;white-space:nowrap}
-.card p{margin-top:6px;font-size:12.5px;color:var(--t3);line-height:1.55}
-.card .ui{margin-top:auto;padding-top:12px;font-size:11px;color:var(--t4);font-family:var(--mono)}
-.card .go{margin-top:9px;display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--tint);white-space:nowrap}
-.card:hover .go{gap:9px}
-@media(prefers-reduced-motion:reduce){
-  .card{transition:flex-basis .01ms,border-color .01ms}
-  .card:hover,.card:focus-visible{transform:none}
+/* ---- the carousel: the chosen workspace stands upright, its neighbours
+   turn away into the distance. One transform per card, driven from JS. ---- */
+.cover-wrap{padding:6px 0 70px}
+.cover{position:relative;height:360px;perspective:1500px;perspective-origin:50% 45%;
+  outline:0;touch-action:pan-y;cursor:grab;user-select:none}
+.cover:active{cursor:grabbing}
+.cover .card{position:absolute;left:50%;top:50%;width:248px;height:248px;margin:-124px 0 0 -124px;
+  border-radius:26px;overflow:hidden;cursor:pointer;border:1px solid rgba(255,255,255,.14);
+  background:
+    radial-gradient(120% 90% at 20% 0%,color-mix(in srgb,var(--tint) 92%,white 8%),transparent 62%),
+    radial-gradient(120% 100% at 85% 100%,color-mix(in srgb,var(--tint) 60%,black),transparent 65%),
+    linear-gradient(158deg,color-mix(in srgb,var(--tint) 80%,black),
+      color-mix(in srgb,var(--tint) 42%,black) 70%,color-mix(in srgb,var(--tint) 22%,black));
+  box-shadow:0 30px 60px -30px rgba(0,0,0,.95);
+  transition:transform .5s var(--ez),opacity .5s var(--ez),filter .5s var(--ez),box-shadow .5s var(--ez);
+  display:flex;flex-direction:column;justify-content:space-between;padding:20px;will-change:transform}
+.cover .card::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 80% at 50% -10%,rgba(255,255,255,.22),transparent 60%)}
+.cover .card .ci{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;
+  background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.18);color:#fff;backdrop-filter:blur(6px)}
+.cover .card .ci svg{width:23px;height:23px}
+.cover .card .cmeta{display:flex;flex-direction:column;gap:3px}
+.cover .card .cn{font-size:18px;font-weight:660;letter-spacing:-.02em;color:#fff;
+  text-shadow:0 2px 14px rgba(0,0,0,.55);line-height:1.15}
+.cover .card .ct{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.8);letter-spacing:.05em}
+.cover .card.on{border-color:color-mix(in srgb,var(--tint) 70%,transparent);
+  box-shadow:0 44px 80px -34px rgba(0,0,0,1),0 0 0 1px color-mix(in srgb,var(--tint) 40%,transparent),
+    0 0 70px -18px color-mix(in srgb,var(--tint) 60%,transparent)}
+.cover-cap{text-align:center;margin-top:22px;padding:0 26px}
+.cover-cap h2{font-size:clamp(24px,3.4vw,38px);letter-spacing:-.03em;margin:0;
+  background:linear-gradient(96deg,var(--hot),var(--ember) 60%,var(--cherry));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.cover-cap p{margin:9px auto 0;max-width:54ch;color:var(--t3);font-size:13.5px;line-height:1.6;min-height:44px}
+.cover-cta{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px}
+.cover-count{font-size:11px;color:var(--t4)}
+.cover-dots{display:flex;gap:7px;justify-content:center;margin-top:18px}
+.cover-dots button{width:7px;height:7px;border-radius:50%;background:var(--line2);padding:0;
+  transition:.25s var(--ez)}
+.cover-dots button.on{background:var(--ember);width:20px;border-radius:99px}
+@media(max-width:760px){
+  .cover{height:290px}
+  .cover .card{width:190px;height:190px;margin:-95px 0 0 -95px}
 }
-.card{position:relative;border:1px solid var(--line);border-radius:13px;padding:20px;overflow:hidden;cursor:pointer;
-  background:linear-gradient(180deg,var(--card1),var(--card2));
-  transition:border-color .2s var(--ez),transform .2s var(--ez),background .2s var(--ez)}
-.card::before{content:"";position:absolute;left:20px;top:-66px;width:170px;height:170px;border-radius:50%;
-  background:var(--tint);opacity:0;filter:blur(44px);transition:opacity .28s var(--ez)}
-.card:hover{transform:translateY(-3px);border-color:var(--line2);
-  background:linear-gradient(180deg,var(--card1),var(--card1))}
-.card:hover::before{opacity:.3}
-.card-t{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;position:relative}
-.card-i{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;color:var(--tint);
-  background:color-mix(in srgb,var(--tint) 16%,transparent);
-  border:1px solid color-mix(in srgb,var(--tint) 30%,transparent)}
-.card-i svg{width:17px;height:17px}
-.card h3{margin-top:14px;font-size:15px}
-.card p{margin-top:5px;font-size:12.5px;color:var(--t3);line-height:1.55;position:relative}
-.card .ui{margin-top:13px;font-size:11.5px;color:var(--t4);font-family:var(--mono);position:relative}
-.card .go{margin-top:12px;display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t3);
-  transition:color .18s,gap .18s;position:relative}
-.card:hover .go{color:var(--tint);gap:9px}
+@media(prefers-reduced-motion:reduce){.cover .card{transition:opacity .01ms}}
 .foot{border-top:1px solid var(--line);padding:22px 0;color:var(--t4);font-size:12px}
 .foot .kemet{display:flex;align-items:center;gap:8px;color:var(--t2)}
 .foot .kemet b{font-weight:640;letter-spacing:-.01em}
@@ -562,10 +546,19 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
     <div class="eyebrow">Workspaces</div>
     <h2>Desktop software, running in a tab.</h2>
     <p class="sub">Each one opens a real application — panels, a menu bar, live preview, undo history.
-      Hover a spine to open it out; scroll sideways for the rest of the shelf.</p>
+      Click through the deck, or drag it sideways.</p>
   </div>
-  <div class="shelf-wrap">
-    <div class="shelf" id="cards" role="list" tabindex="0" aria-label="Workspaces, scroll sideways"></div>
+  <div class="cover-wrap">
+    <div class="cover" id="cover" tabindex="0" role="listbox" aria-label="Workspaces"></div>
+    <div class="cover-cap">
+      <h2 id="coverName">Image Workspace</h2>
+      <p id="coverDesc"></p>
+      <div class="cover-cta">
+        <button class="btn btn-p" id="coverOpen">Open workspace →</button>
+        <span class="cover-count mono" id="coverCount"></span>
+      </div>
+      <div class="cover-dots" id="coverDots"></div>
+    </div>
   </div>
 
   <div class="foot"><div class="foot-in">
@@ -930,7 +923,7 @@ const WORKSPACES=[
  {id:"video",name:"Video",tint:"var(--cherry)",n:30,ui:"Timeline · multi-track · real export",
   desc:"Import footage, cut and arrange it on a multi-track timeline with transitions, text, filters, keyframes and audio, then export MP4 or WebM up to 4K.",
   icon:'<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 12 5-3v9l-5-3z"/>'},
- {id:"documents",name:"Documents",tint:"var(--ash)",n:12,ui:"Word documents · read · edit · export",
+ {id:"documents",name:"Documents",tint:"color-mix(in srgb,var(--ash) 45%,var(--cobalt))",n:12,ui:"Word documents · read · edit · export",
   desc:"Open a .docx and read it exactly as Word laid it out, print it, edit the text and formatting, then export Word, HTML or plain text.",
   icon:'<path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 4v4h4"/><path d="M8 13h8M8 17h5"/>'},
  {id:"translate",name:"Translator",tint:"var(--celadon)",n:34,ui:"On-device translation · 34 languages",
@@ -1041,54 +1034,104 @@ document.addEventListener("click",()=>$("ctx").classList.remove("on"));
 document.addEventListener("scroll",()=>$("ctx").classList.remove("on"),true);
 
 /* home cards */
-$("cards").innerHTML=WORKSPACES.filter(w=>w.id!=="home").map((w,i)=>`
-  <div class="card" style="--tint:${w.tint}" data-go="${w.id}" role="listitem" tabindex="0"
-       aria-label="${w.name} Workspace">
-    <div class="spine">
-      <span class="card-i">${SVG(w.icon)}</span>
-      <span class="sname">${w.name} Workspace</span>
-      <span class="snum">${String(i+1).padStart(2,"0")}</span>
-    </div>
-    <div class="open">
-      <div class="card-t">
-        <span class="card-i">${SVG(w.icon)}</span>
-        <span class="mono" style="font-size:10.5px;color:var(--t3)">${w.n} tools</span>
-      </div>
-      <h3>${w.name} Workspace</h3>
-      <p>${w.desc}</p>
-      <div class="ui">${w.ui}</div>
-      <div class="go">Open workspace ${SVG('<path d="M5 12h13M13 6l6 6-6 6"/>').replace("<svg","<svg width=12 height=12")}</div>
-    </div>
+/* ============================================================
+   Workspace carousel — the active card faces you, its neighbours turn away.
+   Every position is one transform, recomputed when the selection moves, so
+   there is a single place that decides what "third card to the left" looks like.
+   ============================================================ */
+const WS=WORKSPACES.filter(w=>w.id!=="home");
+let coverAt=0;
+
+$("cover").innerHTML=WS.map((w,i)=>`
+  <div class="card" style="--tint:${w.tint}" data-cover="${i}" data-ws="${w.id}"
+       role="option" aria-label="${w.name} Workspace">
+    <span class="ci">${SVG(w.icon)}</span>
+    <span class="cmeta"><span class="cn">${w.name}</span><span class="ct">${w.n} tools</span></span>
   </div>`).join("");
+$("coverDots").innerHTML=WS.map((w,i)=>`<button data-dot="${i}" aria-label="${w.name}"></button>`).join("");
 
-/* the shelf scrolls sideways from a normal wheel, so a trackpad or mouse both work */
-(()=>{const sh=$("cards");
-  sh.addEventListener("wheel",e=>{
-    if(Math.abs(e.deltaY)<=Math.abs(e.deltaX))return;
-    if((e.deltaY<0&&sh.scrollLeft<=0)||(e.deltaY>0&&sh.scrollLeft>=sh.scrollWidth-sh.clientWidth-1))return;
-    e.preventDefault();sh.scrollLeft+=e.deltaY;
-  },{passive:false});
-  sh.addEventListener("keydown",e=>{
-    if(e.key==="ArrowRight"){e.preventDefault();sh.scrollLeft+=180;}
-    if(e.key==="ArrowLeft"){e.preventDefault();sh.scrollLeft-=180;}
+function layoutCover(){
+  const cards=$("cover").querySelectorAll("[data-cover]");
+  cards.forEach((el,i)=>{
+    const d=i-coverAt, ad=Math.abs(d);
+    const x=d*152+Math.sign(d)*(ad>1?(ad-1)*30:0);
+    const rot=clamp(-d*30,-46,46);
+    const scale=Math.max(.62,1-ad*.11);
+    const z=-ad*140;
+    el.style.transform=`translateX(${x}px) translateZ(${z}px) rotateY(${rot}deg) scale(${scale})`;
+    el.style.opacity=ad>3?0:1-ad*.11;
+    el.style.filter=`brightness(${1-Math.min(.3,ad*.1)}) saturate(${1-Math.min(.35,ad*.12)})`;
+    el.style.zIndex=String(50-ad);
+    el.style.pointerEvents=ad>3?"none":"auto";
+    el.classList.toggle("on",d===0);
+    el.setAttribute("aria-selected",String(d===0));
   });
-})();
+  const w=WS[coverAt];
+  $("coverName").textContent=w.name+" Workspace";
+  $("coverDesc").textContent=w.desc;
+  $("coverCount").textContent=`${coverAt+1} of ${WS.length} · ${w.n} tools`;
+  $("coverDots").querySelectorAll("[data-dot]").forEach((b,i)=>b.classList.toggle("on",i===coverAt));
+  $("cover").setAttribute("aria-activedescendant",String(coverAt));
+}
+const coverGo=n=>{coverAt=clamp(n,0,WS.length-1);layoutCover();};
+layoutCover();
 
-/* the hero gradient follows the cursor */
+/* click a neighbour to bring it forward; click the front one to open it */
+$("cover").addEventListener("click",e=>{
+  const c=e.target.closest("[data-cover]");
+  if(!c)return;
+  const i=+c.dataset.cover;
+  if(i===coverAt)go(WS[i].id); else coverGo(i);
+});
+$("coverOpen").addEventListener("click",()=>go(WS[coverAt].id));
+$("coverDots").addEventListener("click",e=>{
+  const b=e.target.closest("[data-dot]");if(b)coverGo(+b.dataset.dot);
+});
+
+/* wheel, trackpad and arrow keys all move the selection */
+let wheelLock=0;
+$("cover").addEventListener("wheel",e=>{
+  const d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;
+  if(Math.abs(d)<2)return;
+  const now=Date.now();
+  if(now-wheelLock<220)  {e.preventDefault();return;}
+  const next=coverAt+(d>0?1:-1);
+  if(next<0||next>WS.length-1)return;     // let the page scroll past the ends
+  e.preventDefault();wheelLock=now;coverGo(next);
+},{passive:false});
+$("cover").addEventListener("keydown",e=>{
+  if(e.key==="ArrowRight"){e.preventDefault();coverGo(coverAt+1);}
+  if(e.key==="ArrowLeft"){e.preventDefault();coverGo(coverAt-1);}
+  if(e.key==="Enter"||e.key===" "){e.preventDefault();go(WS[coverAt].id);}
+});
+
+/* the hero gradient follows the cursor, with a soft bloom behind the letters */
 (()=>{const h=$("hero"),t=$("shimmer");if(!h||!t)return;
   h.addEventListener("pointermove",e=>{
     const r=t.getBoundingClientRect();
     const x=((e.clientX-r.left)/r.width)*100, y=((e.clientY-r.top)/r.height)*100;
-    t.style.setProperty("--shx",Math.max(-20,Math.min(120,x))+"%");
-    t.style.setProperty("--shy",Math.max(0,Math.min(100,y))+"%");
+    t.style.setProperty("--shx",clamp(x,-20,120)+"%");
+    t.style.setProperty("--shy",clamp(y,0,100)+"%");
     t.style.setProperty("--gx",x+"%");t.style.setProperty("--gy",y+"%");
   });
-  h.addEventListener("pointerleave",()=>{t.style.setProperty("--shx","50%");t.style.setProperty("--shy","50%");});
+  h.addEventListener("pointerleave",()=>{
+    t.style.setProperty("--shx","50%");t.style.setProperty("--shy","50%");
+  });
 })();
 
-document.querySelectorAll(".card").forEach(c=>c.addEventListener("keydown",e=>{
-  if(e.key==="Enter"||e.key===" "){e.preventDefault();go(c.dataset.go);}
-}));
+/* drag or swipe across the carousel */
+(()=>{const el=$("cover");let x0=null,moved=0;
+  el.addEventListener("pointerdown",e=>{x0=e.clientX;moved=0;});
+  el.addEventListener("pointermove",e=>{
+    if(x0===null)return;
+    const dx=e.clientX-x0;
+    if(Math.abs(dx)>60){coverGo(coverAt+(dx<0?1:-1));x0=e.clientX;moved=1;}
+  });
+  el.addEventListener("pointerup",()=>{x0=null;setTimeout(()=>{moved=0;},0);});
+  el.addEventListener("click",e=>{if(moved){e.stopPropagation();e.preventDefault();}},true);
+})();
+
+
 
 /* ============================================================
    Command palette
