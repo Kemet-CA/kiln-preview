@@ -70,23 +70,29 @@ input,select{font:inherit;color:inherit}
 /* ---------- picker ---------- */
 .pick{grid-area:pick;background:var(--s1);border-right:1px solid var(--line);
   display:flex;flex-direction:column;min-height:0;overflow-y:auto}
-.sv{position:relative;height:190px;margin:10px;border-radius:9px;cursor:crosshair;flex:none;
+.sv{position:relative;height:172px;margin:2px 12px 10px;border-radius:9px;cursor:crosshair;flex:none;
   border:var(--bw) solid var(--line2);overflow:hidden}
 .sv i{position:absolute;inset:0}
 .sv .white{background:linear-gradient(90deg,#fff,rgba(255,255,255,0))}
 .sv .black{background:linear-gradient(0deg,#000,rgba(0,0,0,0))}
 .sv .dot{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid #fff;
   box-shadow:0 0 0 1px rgba(0,0,0,.5),0 1px 4px rgba(0,0,0,.5);transform:translate(-50%,-50%);pointer-events:none;inset:auto}
-.slider{margin:0 10px 8px;height:14px;border-radius:99px;position:relative;cursor:pointer;flex:none;
+.slider{margin:0 12px 9px;height:14px;border-radius:99px;position:relative;cursor:pointer;flex:none;
   border:var(--bw) solid var(--line2)}
 .slider .knob{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:#fff;
   border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45),0 1px 4px rgba(0,0,0,.5);transform:translate(-50%,-50%);pointer-events:none}
 #hueBar{background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
 #alphaBar{background-image:linear-gradient(90deg,transparent,var(--cur)),
   repeating-conic-gradient(rgba(127,127,127,.35) 0 25%,transparent 0 50%);background-size:auto,10px 10px}
-.swatchbig{height:74px;margin:2px 10px 10px;border-radius:9px;border:var(--bw) solid var(--line2);
-  display:grid;place-items:center;font-family:var(--mono);font-size:15px;letter-spacing:.04em;cursor:copy}
-.hexrow{display:flex;gap:6px;padding:0 10px 10px}
+/* the current colour, and the one it replaced, as two circles */
+.circles{display:flex;align-items:flex-end;gap:0;padding:14px 12px 10px;min-height:0}
+.circ{border-radius:50%;border:var(--bw) solid var(--line2);box-shadow:var(--hs);flex:none;
+  display:grid;place-items:center;font-family:var(--mono);letter-spacing:.03em;padding:0}
+.circ.now{width:104px;height:104px;font-size:13px;cursor:copy;z-index:2}
+.circ.was{width:56px;height:56px;font-size:0;margin-left:-16px;cursor:pointer;opacity:.9}
+.circ.was:hover{opacity:1;transform:translateY(-2px)}
+.circ:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+.hexrow{display:flex;gap:6px;padding:0 12px 12px}
 .hexin{flex:1;min-width:0;padding:6px 9px;border-radius:7px;border:var(--bw) solid var(--line);
   background:var(--s2);color:var(--text);font-family:var(--mono);font-size:13px;outline:0;text-transform:uppercase}
 .hexin:focus{border-color:var(--ember)}
@@ -97,10 +103,12 @@ input,select{font:inherit;color:inherit}
 .phead .sp{margin-left:auto;color:var(--t4);text-transform:none;letter-spacing:0;font-size:10px}
 
 /* ---------- formats list ---------- */
-.fmt{display:flex;align-items:center;gap:8px;padding:5px 12px;font-size:12px;cursor:copy;border-radius:0}
+.fmt{display:flex;align-items:center;gap:8px;padding:5px 12px;font-size:12px;cursor:copy;border-radius:0;
+  width:100%}   /* a button shrinks to fit, and a long value would run past the panel */
 .fmt:hover{background:var(--hov)}
 .fmt .k{color:var(--t3);width:104px;flex:none;font-size:11px}
-.fmt .v{font-family:var(--mono);font-size:11.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.fmt .v{font-family:var(--mono);font-size:11.5px;color:var(--text);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}   /* min-width:0 or a long value pushes past the panel */
 .fmt .c{opacity:0;color:var(--t4);font-size:10px;flex:none}
 .fmt:hover .c{opacity:1}
 .fmt.copied{background:color-mix(in srgb,var(--ok) 18%,transparent)}
@@ -193,7 +201,7 @@ input,select{font:inherit;color:inherit}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="97c8908-1622">
+<meta name="kiln-build" content="40d7630-1632">
 </head>
 <body>
 <div id="app">
@@ -235,17 +243,19 @@ input,select{font:inherit;color:inherit}
   </div>
 
   <aside class="pick">
-    <div class="sv" id="sv"><i class="white"></i><i class="black"></i><span class="dot" id="svDot"></span></div>
-    <div class="slider" id="hueBar"><span class="knob" id="hueKnob"></span></div>
-    <div class="slider" id="alphaBar"><span class="knob" id="alphaKnob"></span></div>
-    <div class="swatchbig" id="bigSwatch" data-act="copyHex" title="Click to copy the hex"></div>
+    <!-- the colour itself first: what you have now, and what you had before it -->
+    <div class="circles">
+      <button class="circ now" id="bigSwatch" data-act="copyHex" title="Click to copy the hex"></button>
+      <button class="circ was" id="prevSwatch" data-act="revert" title="The colour before this one — click to go back"></button>
+    </div>
     <div class="hexrow">
       <input class="hexin" id="hexIn" value="#E2622A" spellcheck="false" aria-label="Hex value">
       <button class="ico" data-act="eyedropper" title="Pick a colour from the screen">⌖</button>
       <button class="ico" data-act="randomColor" title="Random colour">⚄</button>
     </div>
-    <div class="phead">All values<span class="sp">click any row to copy</span></div>
-    <div id="formats"></div>
+    <div class="sv" id="sv"><i class="white"></i><i class="black"></i><span class="dot" id="svDot"></span></div>
+    <div class="slider" id="hueBar"><span class="knob" id="hueKnob"></span></div>
+    <div class="slider" id="alphaBar"><span class="knob" id="alphaKnob"></span></div>
   </aside>
 
   <div class="stage">
@@ -270,11 +280,16 @@ input,select{font:inherit;color:inherit}
 
   <aside id="panels">
     <div class="ptabs">
-      <button class="ptab on" data-pt="pSwatches">Swatches</button>
+      <button class="ptab on" data-pt="pValues">Values</button>
+      <button class="ptab" data-pt="pSwatches">Swatches</button>
       <button class="ptab" data-pt="pPalettes">Palettes</button>
       <button class="ptab" data-pt="pContrast">Contrast</button>
     </div>
-    <div class="pbody on" id="pSwatches"></div>
+    <div class="pbody on" id="pValues">
+      <div class="phead">All values<span class="sp">click any row to copy</span></div>
+      <div id="formats"></div>
+    </div>
+    <div class="pbody" id="pSwatches"></div>
     <div class="pbody" id="pPalettes"></div>
     <div class="pbody" id="pContrast"></div>
   </aside>

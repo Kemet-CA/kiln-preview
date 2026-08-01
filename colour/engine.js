@@ -18,6 +18,7 @@ const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } cat
 const App = {
   hsv: { h: 21, s: 81, v: 89 },      // the picker's own state; rgb derives from it
   alpha: 1,
+  prev: null,                        // the colour before the current one
   palette: [],
   locks: [],
   scheme: "golden",
@@ -63,11 +64,19 @@ function paintPicker() {
   $("bigSwatch").style.background = css(c);
   $("bigSwatch").style.color = C.readableOn(shown(c));
   $("bigSwatch").textContent = hex;
+  const was = App.prev || hex;
+  $("prevSwatch").style.background = was;
+  $("prevSwatch").title = `Before: ${was} — click to go back`;
   if (document.activeElement !== $("hexIn")) $("hexIn").value = hex;
   $("sbHex").textContent = hex;
   $("sbCon").textContent = C.contrast(c, { r: 0, g: 0, b: 0 }).toFixed(2) + ":1";
 }
-function setColor(c, { silent } = {}) {
+function setColor(c, { silent, keepPrev } = {}) {
+  // remember what it was, so the small circle can put it back
+  if (!keepPrev) {
+    const now = C.toHex(rgb());
+    if (now !== C.toHex(c)) App.prev = now;
+  }
   App.hsv = C.rgbToHsv(c);
   paintAll();
   if (!silent) $("sbStatus").textContent = "Ready";
@@ -206,6 +215,14 @@ const ACT = {
   randomise,
   randomColor: () => setColor(C.randomPalette(1, App.scheme)[0]),
   copyHex: () => copy(C.toHex(rgb()), "Hex"),
+  revert: () => {
+    if (!App.prev) return toast("Nothing to go back to", "warn");
+    const back = App.prev;
+    setColor(C.parseHex(back), { keepPrev: true });
+    App.prev = null;
+    paintAll();
+    toast(`Back to ${back}`);
+  },
   addSwatch: () => {
     const hex = C.toHex(rgb());
     if (App.swatches.includes(hex)) return toast("Already saved", "warn");
