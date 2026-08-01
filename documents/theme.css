@@ -473,7 +473,18 @@
    them, so it wins everywhere without !important.
    ============================================================ */
 :root,
-:root[data-theme][data-mode]{--stagebg:#2A2A2C}
+:root[data-theme][data-mode]{--stagebg:#2A2A2C;--stagedot:rgba(255,255,255,.07)}
+
+/* A fine dot grid over that grey — enough to read as a surface and to show
+   that a page is floating on it, faint enough to ignore while you work.
+   Declared here so every workspace gets the same one; the apps only lay the
+   element out and leave its background alone. */
+.stage{
+  background-color:var(--stagebg);
+  background-image:radial-gradient(var(--stagedot) 1px,transparent 1px);
+  background-size:18px 18px;
+  background-position:-1px -1px;
+}
 
 /* ---- theme bar: two buttons on every Kiln page ---- */
 .ktb{display:flex;align-items:center;gap:6px}
