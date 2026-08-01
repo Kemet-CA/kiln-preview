@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiln — Colour</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E2622A'/%3E%3Crect x='9' y='9' width='14' height='14' rx='3' fill='%230B0A09'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);font-size:13px;
+  line-height:1.5;letter-spacing:-.008em;-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none;--lw:300px;--rw:300px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left;padding:0}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ember);outline-offset:1px;border-radius:4px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--scrl);border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+.num{font-variant-numeric:tabular-nums}
+
+#app{display:grid;height:100vh;height:100dvh;
+  grid-template-rows:34px 36px minmax(0,1fr) 24px;
+  grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);
+  grid-template-areas:"menu menu menu" "opt opt opt" "pick stage panels" "status status status"}
+
+/* ---------- chrome ---------- */
+.menubar{grid-area:menu;display:flex;align-items:center;gap:2px;padding:0 8px;
+  border-bottom:1px solid var(--line);background:var(--s1)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:640;letter-spacing:-.03em;font-size:13.5px;margin-right:8px}
+.mark{width:18px;height:18px;border-radius:5px;position:relative;flex:none;
+  background:linear-gradient(150deg,var(--hot),var(--ember) 45%,var(--cherry));
+  box-shadow:0 0 12px color-mix(in srgb,var(--ember) 40%,transparent),inset 0 1px 0 rgba(255,255,255,.35)}
+.mark::after{content:"";position:absolute;inset:5px 5px 0;border-radius:4px 4px 0 0;background:rgba(11,10,9,.55)}
+.menu{position:relative}
+.menu-t{padding:4px 9px;border-radius:5px;font-size:12.5px;color:var(--t2)}
+.menu-t:hover,.menu.open .menu-t{background:var(--hov2);color:var(--text)}
+.menu-d{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:250px;z-index:90;padding:5px;
+  border:var(--bw) solid var(--line2);border-radius:9px;background:var(--popbg);
+  backdrop-filter:blur(20px);box-shadow:var(--popshadow)}
+.menu.open>.menu-d{display:block;animation:pop .12s var(--ez)}
+@keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.mi{width:100%;display:flex;align-items:center;gap:10px;padding:5.5px 9px;border-radius:6px;font-size:12.5px;color:var(--t2)}
+.mi:hover{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--text)}
+.mi .sc{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t4)}
+.msep{height:1px;background:var(--line);margin:4px 6px}
+.menubar-r{margin-left:auto;display:flex;align-items:center;gap:6px}
+.optbar{grid-area:opt;display:flex;align-items:center;gap:6px;padding:0 10px;
+  border-bottom:1px solid var(--line);background:var(--s1);overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.optbar::-webkit-scrollbar{display:none}
+.tb{height:24px;padding:0 9px;border-radius:6px;display:grid;place-items:center;color:var(--t2);flex:none;font-size:11.5px}
+.tb:hover{background:var(--hov2);color:var(--text)}
+.tb.on{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--ember);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ember) 30%,transparent)}
+.obsep{width:1px;height:17px;background:var(--line);flex:none;margin:0 3px}
+.sel{padding:3.5px 8px;border-radius:6px;border:var(--bw) solid var(--line);background:var(--s2);
+  font-size:11.5px;color:var(--text);outline:0;box-shadow:var(--hs)}
+.optbar-r{margin-left:auto;display:flex;align-items:center;gap:7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:5px 12px;border-radius:6px;
+  font-size:12px;font-weight:550;border:1px solid transparent;cursor:pointer;flex:none}
+.btn-p{background:var(--btnp-bg);color:var(--btnp-fg);border:var(--bw) solid transparent;box-shadow:var(--btnp-sh)}
+.btn-p:hover{filter:brightness(1.07)}
+.btn-g{border:var(--bw) solid var(--line);color:var(--t2);box-shadow:var(--hs)}
+.btn-g:hover{border-color:var(--line2);color:var(--text);background:var(--hov)}
+:root[data-theme="neo"] .btn-p{border-color:#141414}
+
+/* ---------- picker ---------- */
+.pick{grid-area:pick;background:var(--s1);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;min-height:0;overflow-y:auto}
+.sv{position:relative;height:190px;margin:10px;border-radius:9px;cursor:crosshair;flex:none;
+  border:var(--bw) solid var(--line2);overflow:hidden}
+.sv i{position:absolute;inset:0}
+.sv .white{background:linear-gradient(90deg,#fff,rgba(255,255,255,0))}
+.sv .black{background:linear-gradient(0deg,#000,rgba(0,0,0,0))}
+.sv .dot{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid #fff;
+  box-shadow:0 0 0 1px rgba(0,0,0,.5),0 1px 4px rgba(0,0,0,.5);transform:translate(-50%,-50%);pointer-events:none;inset:auto}
+.slider{margin:0 10px 8px;height:14px;border-radius:99px;position:relative;cursor:pointer;flex:none;
+  border:var(--bw) solid var(--line2)}
+.slider .knob{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:#fff;
+  border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45),0 1px 4px rgba(0,0,0,.5);transform:translate(-50%,-50%);pointer-events:none}
+#hueBar{background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
+#alphaBar{background-image:linear-gradient(90deg,transparent,var(--cur)),
+  repeating-conic-gradient(rgba(127,127,127,.35) 0 25%,transparent 0 50%);background-size:auto,10px 10px}
+.swatchbig{height:74px;margin:2px 10px 10px;border-radius:9px;border:var(--bw) solid var(--line2);
+  display:grid;place-items:center;font-family:var(--mono);font-size:15px;letter-spacing:.04em;cursor:copy}
+.hexrow{display:flex;gap:6px;padding:0 10px 10px}
+.hexin{flex:1;min-width:0;padding:6px 9px;border-radius:7px;border:var(--bw) solid var(--line);
+  background:var(--s2);color:var(--text);font-family:var(--mono);font-size:13px;outline:0;text-transform:uppercase}
+.hexin:focus{border-color:var(--ember)}
+.ico{width:32px;border-radius:7px;border:var(--bw) solid var(--line);background:var(--s2);display:grid;place-items:center;color:var(--t2)}
+.ico:hover{color:var(--ember);border-color:var(--ember)}
+.phead{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);
+  padding:10px 12px 6px;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.phead .sp{margin-left:auto;color:var(--t4);text-transform:none;letter-spacing:0;font-size:10px}
+
+/* ---------- formats list ---------- */
+.fmt{display:flex;align-items:center;gap:8px;padding:5px 12px;font-size:12px;cursor:copy;border-radius:0}
+.fmt:hover{background:var(--hov)}
+.fmt .k{color:var(--t3);width:104px;flex:none;font-size:11px}
+.fmt .v{font-family:var(--mono);font-size:11.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.fmt .c{opacity:0;color:var(--t4);font-size:10px;flex:none}
+.fmt:hover .c{opacity:1}
+.fmt.copied{background:color-mix(in srgb,var(--ok) 18%,transparent)}
+.fmt.copied .c{opacity:1;color:var(--ok)}
+
+/* ---------- centre: harmonies + palette ---------- */
+.stage{grid-area:stage;overflow-y:auto;padding:14px 16px 22px}
+.sec-h{display:flex;align-items:center;gap:10px;margin:16px 2px 8px}
+.sec-h:first-child{margin-top:2px}
+.sec-h h2{margin:0;font-size:13px;font-weight:600;letter-spacing:-.01em}
+.sec-h .sp{margin-left:auto;display:flex;gap:6px}
+.hint{font-size:11.5px;color:var(--t4)}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+.hcard{border:var(--bw) solid var(--line);border-radius:10px;overflow:hidden;background:var(--s1);box-shadow:var(--hs)}
+.hcard h3{margin:0;padding:7px 10px;font-size:11px;font-weight:550;color:var(--t2);text-transform:capitalize;
+  border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px}
+.hcard h3 .use{margin-left:auto;font-size:10px;color:var(--t4);opacity:0}
+.hcard:hover h3 .use{opacity:1}
+.hrow{display:flex;height:56px}
+.hrow i{flex:1;cursor:copy;position:relative;transition:flex .15s var(--ez)}
+.hrow i:hover{flex:1.5}
+.hrow i::after{content:attr(data-hex);position:absolute;left:0;right:0;bottom:3px;text-align:center;
+  font-family:var(--mono);font-size:8.5px;opacity:0;color:var(--lbl)}
+.hrow i:hover::after{opacity:.9}
+
+/* palette strip */
+.palette{display:flex;gap:8px;height:210px}
+.pcol{flex:1;border-radius:10px;border:var(--bw) solid var(--line2);position:relative;display:flex;
+  flex-direction:column;justify-content:flex-end;padding:10px;cursor:copy;overflow:hidden}
+.pcol .hexlab{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em}
+.pcol .namelab{font-size:10.5px;opacity:.8}
+.pcol .tools{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0}
+.pcol:hover .tools{opacity:1}
+.pcol.locked .tools{opacity:1}
+.ptool{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:11px;
+  background:rgba(0,0,0,.25);color:#fff}
+.ptool:hover{background:rgba(0,0,0,.5)}
+.pcol.locked .ptool.lock{background:var(--ember);color:#fff}
+
+/* ramps */
+.ramp{display:flex;height:44px;border-radius:9px;overflow:hidden;border:var(--bw) solid var(--line2)}
+.ramp i{flex:1;cursor:copy;position:relative}
+.ramp i:hover{outline:2px solid var(--ember);outline-offset:-2px;z-index:2}
+
+/* ---------- right panel ---------- */
+#panels{grid-area:panels;background:var(--s1);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.ptabs{display:flex;flex:none;border-bottom:1px solid var(--line);background:var(--s2)}
+.ptab{padding:6px 11px;font-size:11.5px;color:var(--t3)}
+.ptab.on{color:var(--text);background:var(--s1);box-shadow:inset 0 -2px 0 var(--ember)}
+.pbody{flex:1;min-height:0;overflow-y:auto;display:none;padding:8px}
+.pbody.on{display:block}
+.swgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:6px;padding:6px}
+.sw{aspect-ratio:1;border-radius:8px;border:var(--bw) solid var(--line2);position:relative;cursor:pointer}
+.sw:hover{transform:scale(1.06)}
+.sw .x{position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:var(--bad);
+  color:#fff;font-size:10px;display:none;place-items:center}
+.sw:hover .x{display:grid}
+.plist{padding:4px}
+.pitem{border:var(--bw) solid var(--line);border-radius:9px;margin-bottom:7px;overflow:hidden;background:var(--s2)}
+.pitem .strip{display:flex;height:34px;cursor:pointer}
+.pitem .strip i{flex:1}
+.pitem .meta{display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:11px;color:var(--t3)}
+.pitem .meta .sp{margin-left:auto;display:flex;gap:4px}
+.pitem .meta button{color:var(--t4);padding:2px 5px;border-radius:5px;font-size:10.5px}
+.pitem .meta button:hover{color:var(--ember);background:var(--hov2)}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:4px 8px;font-size:12px}
+.kv span{color:var(--t3)}
+.kv b{font-family:var(--mono);font-weight:500;color:var(--t2);font-variant-numeric:tabular-nums}
+.grade{padding:1px 7px;border-radius:99px;font-size:10px;font-family:var(--mono)}
+.grade.pass{background:color-mix(in srgb,var(--ok) 22%,transparent);color:var(--ok)}
+.grade.fail{background:color-mix(in srgb,var(--bad) 22%,transparent);color:var(--bad)}
+.note{padding:6px 8px 10px;font-size:11.5px;color:var(--t4);line-height:1.6}
+.rowbtn{width:100%;padding:7px;margin-top:6px;border-radius:6px;font-size:11.5px;color:var(--t2);
+  border:var(--bw) solid var(--line);text-align:center;background:var(--s2)}
+.rowbtn:hover{color:var(--ember);border-color:var(--ember)}
+.empty{padding:22px 14px;text-align:center;color:var(--t4);font-size:12px;line-height:1.6}
+
+/* ---------- status + toasts ---------- */
+.sbar{grid-area:status;display:flex;align-items:center;padding:0 10px;border-top:1px solid var(--line);
+  background:var(--s1);font-family:var(--mono);font-size:10.5px;color:var(--t3);overflow:hidden}
+.si{display:flex;align-items:center;gap:5px;padding:0 10px;border-right:1px solid var(--line);height:100%;white-space:nowrap}
+.si:first-child{padding-left:0}
+.si b{color:var(--t2);font-weight:500}
+.si.sp{margin-left:auto;border-right:0}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--ok);flex:none}
+.toasts{position:fixed;bottom:32px;right:14px;z-index:120;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:9px;font-size:12.5px;
+  border:var(--bw) solid var(--line2);background:var(--popbg);box-shadow:var(--popshadow);
+  animation:sin .24s var(--ez);transition:opacity .3s}
+@keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+<meta name="kiln-build" content="895ff5c-1908">
+</head>
+<body>
+<div id="app">
+  <div class="menubar">
+    <a class="brand" href="../" style="text-decoration:none;color:inherit" title="Back to all workspaces"><span class="mark"></span>Kiln</a>
+    <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d" id="mFile"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Colour</button><div class="menu-d" id="mColour"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Palette</button><div class="menu-d" id="mPalette"></div></div>
+    <div class="menubar-r" data-kiln-themebar></div>
+  </div>
+
+  <div class="optbar">
+    <button class="tb" data-act="randomise" title="New palette (Space)">⟳ Generate</button>
+    <select class="sel" id="scheme" title="Palette style"></select>
+    <select class="sel" id="count" title="How many colours">
+      <option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option>
+    </select>
+    <div class="obsep"></div>
+    <button class="tb" data-act="savePalette" title="Save this palette">★ Save palette</button>
+    <button class="tb" data-act="addSwatch" title="Save the current colour">＋ Swatch</button>
+    <div class="obsep"></div>
+    <span style="font-size:11px;color:var(--t3)">Vision</span>
+    <select class="sel" id="cvd" title="Simulate colour blindness">
+      <option value="">Normal</option>
+      <option value="protanopia">Protanopia</option>
+      <option value="deuteranopia">Deuteranopia</option>
+      <option value="tritanopia">Tritanopia</option>
+      <option value="achromatopsia">Achromatopsia</option>
+    </select>
+    <div class="optbar-r">
+      <button class="btn btn-g" data-act="exportCss">Export CSS</button>
+      <button class="btn btn-p" data-act="copyAll">Copy palette</button>
+    </div>
+  </div>
+
+  <aside class="pick">
+    <div class="sv" id="sv"><i class="white"></i><i class="black"></i><span class="dot" id="svDot"></span></div>
+    <div class="slider" id="hueBar"><span class="knob" id="hueKnob"></span></div>
+    <div class="slider" id="alphaBar"><span class="knob" id="alphaKnob"></span></div>
+    <div class="swatchbig" id="bigSwatch" data-act="copyHex" title="Click to copy the hex"></div>
+    <div class="hexrow">
+      <input class="hexin" id="hexIn" value="#E2622A" spellcheck="false" aria-label="Hex value">
+      <button class="ico" data-act="eyedropper" title="Pick a colour from the screen">⌖</button>
+      <button class="ico" data-act="randomColor" title="Random colour">⚄</button>
+    </div>
+    <div class="phead">All values<span class="sp">click any row to copy</span></div>
+    <div id="formats"></div>
+  </aside>
+
+  <div class="stage">
+    <div class="sec-h"><h2>Palette</h2>
+      <span class="hint">click a colour to copy · lock the ones you like · press Space for a new set</span>
+      <span class="sp"><button class="tb" data-act="randomise">⟳ Generate</button></span></div>
+    <div class="palette" id="palette"></div>
+
+    <div class="sec-h"><h2>Harmonies</h2>
+      <span class="hint">built from the current colour · click a swatch to copy, the title to use it</span></div>
+    <div class="hgrid" id="harmonies"></div>
+
+    <div class="sec-h"><h2>Shades</h2><span class="hint">same hue, dark to light</span></div>
+    <div class="ramp" id="shades"></div>
+
+    <div class="sec-h"><h2>Tints</h2><span class="hint">softened toward white</span></div>
+    <div class="ramp" id="tints"></div>
+
+    <div class="sec-h"><h2>Monochromatic</h2><span class="hint">one hue, five steps</span></div>
+    <div class="ramp" id="mono"></div>
+  </div>
+
+  <aside id="panels">
+    <div class="ptabs">
+      <button class="ptab on" data-pt="pSwatches">Swatches</button>
+      <button class="ptab" data-pt="pPalettes">Palettes</button>
+      <button class="ptab" data-pt="pContrast">Contrast</button>
+    </div>
+    <div class="pbody on" id="pSwatches"></div>
+    <div class="pbody" id="pPalettes"></div>
+    <div class="pbody" id="pContrast"></div>
+  </aside>
+
+  <div class="sbar">
+    <span class="si"><span class="dot"></span><b id="sbStatus">Ready</b></span>
+    <span class="si">Colour <b id="sbHex">#E2622A</b></span>
+    <span class="si">Swatches <b class="num" id="sbSw">0</b></span>
+    <span class="si">Palettes <b class="num" id="sbPal">0</b></span>
+    <span class="si sp">On black <b id="sbCon">—</b></span>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<script type="module" src="engine.js"></script>
+</body>
+</html>
