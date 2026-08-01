@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en" data-kiln-cat="voice" data-kiln-app="Voice">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiln — Voice</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E2622A'/%3E%3Crect x='9' y='9' width='14' height='14' rx='3' fill='%230B0A09'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="search.css">
+<script src="theme.js"></script>
+<script src="search.js"></script>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);font-size:13px;
+  line-height:1.5;letter-spacing:-.008em;-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none;--rw:300px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left;padding:0}
+input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ember);outline-offset:1px;border-radius:4px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--scrl);border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+.num{font-variant-numeric:tabular-nums}
+
+#app{display:grid;height:100vh;height:100dvh;
+  grid-template-rows:34px 36px minmax(0,1fr) 186px 24px;
+  grid-template-columns:minmax(0,1fr) var(--rw);
+  grid-template-areas:"menu menu" "opt opt" "stage panels" "tl tl" "status status"}
+body.foldR{--rw:30px}
+body.foldR #panels .pbody,body.foldR #panels .ptab{display:none}
+body.foldR #panels .ptabs{padding-left:0;justify-content:center}
+
+/* ---------- menu bar ---------- */
+.menubar{grid-area:menu;display:flex;align-items:center;gap:2px;padding:0 8px;
+  border-bottom:1px solid var(--line);background:var(--s1)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:640;letter-spacing:-.03em;font-size:13.5px;margin-right:8px}
+.mark{width:18px;height:18px;border-radius:5px;position:relative;flex:none;background:var(--ember)}
+.mark::after{content:"";position:absolute;inset:5px 5px 0;border-radius:4px 4px 0 0;background:rgba(11,10,9,.55)}
+.menu{position:relative}
+.menu-t{padding:4px 9px;border-radius:5px;font-size:12.5px;color:var(--t2)}
+.menu-t:hover,.menu.open .menu-t{background:var(--hov2);color:var(--text)}
+.menu-d{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:250px;z-index:80;padding:5px;
+  border:var(--bw) solid var(--line2);border-radius:9px;background:var(--popbg);
+  backdrop-filter:blur(20px);box-shadow:var(--popshadow)}
+.menu.open>.menu-d{display:block;animation:pop .12s var(--ez)}
+@keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.mi{width:100%;display:flex;align-items:center;gap:10px;padding:5.5px 9px;border-radius:6px;font-size:12.5px;color:var(--t2)}
+.mi:hover{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--text)}
+.mi .sc{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t4)}
+.mi[aria-disabled="true"]{opacity:.35;pointer-events:none}
+.msep{height:1px;background:var(--line);margin:4px 6px}
+.menubar-r{margin-left:auto;display:flex;align-items:center;gap:6px}
+
+/* ---------- options bar ---------- */
+.optbar{grid-area:opt;display:flex;align-items:center;gap:7px;padding:0 10px;
+  border-bottom:1px solid var(--line);background:var(--s1);font-size:12px;color:var(--t3);
+  overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.optbar::-webkit-scrollbar{display:none}
+.obsep{width:1px;height:16px;background:var(--line);flex:none}
+.tb{height:24px;padding:0 9px;border-radius:6px;display:flex;align-items:center;gap:5px;color:var(--t2);flex:none;font-size:11.5px}
+.tb:hover{background:var(--hov2);color:var(--text)}
+.tb.on{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--ember);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ember) 30%,transparent)}
+.tb[aria-disabled="true"]{opacity:.35;pointer-events:none}
+.optbar-r{margin-left:auto;display:flex;align-items:center;gap:7px}
+/* the select control. Not ".sel" on a clip: that is the selected-clip state,
+   and this rule's max-width would silently shrink it. */
+.sel{height:24px;padding:0 6px;border-radius:6px;border:var(--bw) solid var(--line);background:var(--s2);
+  font-size:11.5px;color:var(--text);outline:0;max-width:210px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:5px 12px;border-radius:6px;
+  font-size:12px;font-weight:550;border:1px solid transparent;cursor:pointer;flex:none}
+.btn-p{background:var(--btnp-bg);color:var(--btnp-fg);border:var(--bw) solid transparent;box-shadow:var(--btnp-sh)}
+.btn-p:hover{filter:brightness(1.07)}
+.btn-g{border:var(--bw) solid var(--line);color:var(--t2);box-shadow:var(--hs)}
+.btn-g:hover{border-color:var(--line2);color:var(--text);background:var(--hov)}
+:root[data-theme="neo"] .btn-p{border-color:#141414}
+
+/* ---------- the recorder ---------- */
+.stage{grid-area:stage;position:relative;overflow:hidden;padding:16px;display:flex}
+.rec{flex:1;min-width:0;display:flex;flex-direction:column;border:var(--bw) solid var(--line);
+  border-radius:14px;background:var(--s1);overflow:hidden;box-shadow:var(--hs)}
+.rec-h{display:flex;align-items:center;gap:9px;padding:8px 13px;flex:none;border-bottom:1px solid var(--line);
+  background:var(--s2);font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
+.rec-h .sp{margin-left:auto;display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-family:var(--sans);font-size:11.5px}
+.scope{flex:1;min-height:0;position:relative;background:var(--stagebg);
+  background-image:radial-gradient(var(--stagedot) 1px,transparent 1px);
+  background-size:18px 18px;background-position:-1px -1px}
+#wave{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scope-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--t3);
+  font-size:13px;line-height:1.7;padding:20px;pointer-events:none}
+.scope-empty[hidden]{display:none}      /* display:grid outranks the hidden attribute */
+.scope-empty b{display:block;color:var(--text);font-size:15px;font-weight:600;margin-bottom:4px}
+.rec-f{flex:none;display:flex;align-items:center;gap:14px;padding:12px 16px;border-top:1px solid var(--line);background:var(--s2)}
+.recbtn{width:56px;height:56px;border-radius:50%;flex:none;display:grid;place-items:center;
+  border:2px solid color-mix(in srgb,var(--bad) 55%,transparent);background:color-mix(in srgb,var(--bad) 16%,transparent);
+  transition:transform .12s var(--ez),background .16s var(--ez)}
+.recbtn i{display:block;width:20px;height:20px;border-radius:50%;background:var(--bad)}
+.recbtn:hover{transform:scale(1.05)}
+.recbtn.on i{border-radius:4px;width:17px;height:17px}
+.recbtn.on{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--bad) 45%,transparent)}
+  50%{box-shadow:0 0 0 9px transparent}}
+.tbtn{width:38px;height:38px;border-radius:10px;flex:none;display:grid;place-items:center;color:var(--t2);
+  border:var(--bw) solid var(--line);background:var(--s1)}
+.tbtn:hover{color:var(--ember);border-color:var(--ember)}
+.tbtn svg{width:16px;height:16px}
+.timer{font-family:var(--mono);font-size:29px;letter-spacing:-.02em;color:var(--text);font-variant-numeric:tabular-nums}
+.timer small{font-size:14px;color:var(--t3)}
+.meter{flex:1;min-width:60px;height:9px;border-radius:99px;background:var(--s3);overflow:hidden;position:relative}
+.meter i{position:absolute;inset:0 100% 0 0;background:linear-gradient(90deg,var(--ok),var(--warn) 78%,var(--bad));
+  transition:right .06s linear}
+.meter.over{box-shadow:inset 0 0 0 1px var(--bad)}   /* not .clip: that is a timeline clip */
+.recinfo{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--t4);min-width:96px}
+.recinfo b{font-family:var(--mono);color:var(--t2);font-weight:500;font-size:11.5px}
+
+/* ---------- timeline ---------- */
+.tl{grid-area:tl;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--line);background:var(--s1)}
+.tl-h{flex:none;display:flex;align-items:center;gap:7px;padding:0 10px;height:28px;border-bottom:1px solid var(--line);
+  background:var(--s2);font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
+.tl-h .sp{margin-left:auto;display:flex;align-items:center;gap:5px;text-transform:none;letter-spacing:0}
+.tl-scroll{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;position:relative}
+.tl-inner{position:relative;height:100%;min-width:100%}
+.ruler{position:sticky;top:0;height:20px;border-bottom:1px solid var(--line);background:var(--s2);z-index:2}
+#rulerC{display:block;height:20px}
+.track{position:relative;height:96px;margin:8px 0 0;background:var(--s2);
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.track-lab{position:absolute;left:6px;top:5px;z-index:3;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--t4);pointer-events:none}
+.clip{position:absolute;top:6px;height:84px;border-radius:8px;overflow:hidden;cursor:grab;
+  border:1px solid color-mix(in srgb,var(--ember) 45%,transparent);
+  background:color-mix(in srgb,var(--ember) 12%,var(--s1))}
+.clip.on{border-color:var(--ember);box-shadow:0 0 0 1px var(--ember),0 6px 16px -8px rgba(0,0,0,.6)}
+.clip.dragging{cursor:grabbing;opacity:.85}
+.clip canvas{position:absolute;inset:0;width:100%;height:100%}
+.clip .cname{position:absolute;left:6px;top:4px;right:6px;font-size:10.5px;color:var(--text);
+  text-shadow:0 1px 2px rgba(0,0,0,.5);pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clip .cfx{position:absolute;right:5px;bottom:4px;font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;
+  color:var(--hot);pointer-events:none}
+.clip .edge{position:absolute;top:0;bottom:0;width:7px;cursor:col-resize;z-index:2}
+.clip .edge.l{left:0}.clip .edge.r{right:0}
+.clip .edge:hover{background:color-mix(in srgb,var(--ember) 35%,transparent)}
+.playhead{position:absolute;top:0;bottom:0;width:1px;background:var(--hot);z-index:5;pointer-events:none}
+.playhead::before{content:"";position:absolute;top:0;left:-4px;border:4px solid transparent;border-top-color:var(--hot)}
+.tl-empty{position:absolute;inset:28px 0 0;display:grid;place-items:center;color:var(--t4);font-size:12px;pointer-events:none}
+.tl-empty[hidden]{display:none}
+
+/* ---------- panels ---------- */
+#panels{grid-area:panels;background:var(--s1);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.ptabs{display:flex;flex:none;border-bottom:1px solid var(--line);background:var(--s2);overflow-x:auto;scrollbar-width:none}
+.ptabs::-webkit-scrollbar{display:none}
+.ptab{padding:6px 10px;font-size:11.5px;color:var(--t3);white-space:nowrap}
+.ptab.on{color:var(--text);background:var(--s1);box-shadow:inset 0 -2px 0 var(--ember)}
+.pfold{margin-left:auto;width:24px;display:grid;place-items:center;color:var(--t3);flex:none}
+.pfold:hover{color:var(--ember)}
+.pbody{flex:1;min-height:0;overflow-y:auto;display:none;padding:9px}
+.pbody.on{display:block}
+.ihead{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);
+  padding:11px 4px 6px}
+.ihead:first-child{padding-top:2px}
+.row{display:flex;align-items:center;gap:8px;padding:4px}
+.row label{flex:1;font-size:11.5px;color:var(--t2)}
+.row .v{font-family:var(--mono);font-size:10.5px;color:var(--t3);min-width:44px;text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;height:3px;border-radius:99px;background:var(--s4);flex:1.3;outline:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+  background:var(--ember);border:2px solid var(--s1);cursor:pointer}
+.chk{display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:11.5px;color:var(--t2);cursor:pointer}
+.chk input{accent-color:var(--ember)}
+.voices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:2px}
+.voice{padding:7px 8px;border-radius:8px;border:var(--bw) solid var(--line);background:var(--s2);
+  font-size:11.5px;color:var(--t2);text-align:left;line-height:1.3}
+.voice small{display:block;font-size:9.5px;color:var(--t4);margin-top:2px}
+.voice:hover{border-color:var(--ember);color:var(--text)}
+.voice.on{border-color:var(--ember);color:var(--ember);background:color-mix(in srgb,var(--ember) 12%,var(--s2))}
+.voice .rm{float:right;color:var(--t4);font-size:11px}
+.rowbtn{width:100%;padding:7px;margin-top:7px;border-radius:7px;font-size:11.5px;color:var(--t2);
+  border:var(--bw) solid var(--line);text-align:center;background:var(--s2)}
+.rowbtn:hover{color:var(--ember);border-color:var(--ember)}
+.note{padding:7px 5px 10px;font-size:11.5px;color:var(--t4);line-height:1.65}
+.note b{color:var(--t3);font-weight:600}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3.5px 5px;font-size:12px}
+.kv span{color:var(--t3)}
+.kv b{font-family:var(--mono);font-weight:500;color:var(--t2);font-variant-numeric:tabular-nums}
+.empty{padding:22px 12px;text-align:center;color:var(--t4);font-size:12px;line-height:1.6}
+.prog{height:5px;border-radius:99px;background:var(--s3);overflow:hidden;margin:8px 5px}
+.prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
+
+/* ---------- status + toasts ---------- */
+.sbar{grid-area:status;display:flex;align-items:center;padding:0 10px;border-top:1px solid var(--line);
+  background:var(--s1);font-family:var(--mono);font-size:10.5px;color:var(--t3);overflow:hidden}
+.si{display:flex;align-items:center;gap:5px;padding:0 10px;border-right:1px solid var(--line);height:100%;white-space:nowrap}
+.si:first-child{padding-left:0}
+.si b{color:var(--t2);font-weight:500}
+.si.sp{margin-left:auto;border-right:0}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--ok);flex:none}
+.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.toasts{position:fixed;bottom:32px;right:14px;z-index:120;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:9px;font-size:12.5px;
+  border:var(--bw) solid var(--line2);background:var(--popbg);box-shadow:var(--popshadow);
+  animation:sin .24s var(--ez);transition:opacity .3s}
+@keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  .recbtn.on{animation:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="menubar">
+    <span class="brand"><span class="mark"></span>Kiln</span>
+    <span data-kiln-home></span>
+    <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d" id="mFile"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Edit</button><div class="menu-d" id="mEdit"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Voice</button><div class="menu-d" id="mVoice"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Clip</button><div class="menu-d" id="mClip"></div></div>
+    <div class="menubar-r">
+      <span data-kiln-search></span>
+      <span data-kiln-clock></span>
+      <span data-kiln-themebar></span>
+    </div>
+  </div>
+
+  <div class="optbar">
+    <button class="tb" data-act="record" id="obRec" title="Record (R)">● Record</button>
+    <button class="tb" data-act="play" id="obPlay" title="Play / pause (Space)">▶ Play</button>
+    <button class="tb" data-act="stop" title="Stop (⇧Space)">■ Stop</button>
+    <span class="obsep"></span>
+    <select class="sel" id="devSel" title="Input device" aria-label="Input device"></select>
+    <button class="tb" data-act="monitor" id="obMon" title="Hear yourself while recording">Monitor</button>
+    <span class="obsep"></span>
+    <button class="tb" data-act="split" title="Split at playhead (S)">Split</button>
+    <button class="tb" data-act="delete" title="Delete clip (⌫)">Delete</button>
+    <button class="tb" data-act="duplicate" title="Duplicate clip (⌘D)">Duplicate</button>
+    <span class="obsep"></span>
+    <button class="tb" data-act="zoomOut" title="Zoom out">−</button>
+    <span class="num" id="zoomV" style="min-width:52px;text-align:center">40 px/s</span>
+    <button class="tb" data-act="zoomIn" title="Zoom in">+</button>
+    <button class="tb" data-act="zoomFit" title="Fit the whole recording">Fit</button>
+    <div class="optbar-r">
+      <button class="btn btn-g" data-act="import">Import audio…</button>
+      <button class="btn btn-p" data-act="export">Export WAV</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="rec">
+      <div class="rec-h"><span id="recTitle">Recorder</span>
+        <span class="sp">
+          <span id="recVoice">Voice: Natural</span>
+        </span></div>
+      <div class="scope">
+        <canvas id="wave"></canvas>
+        <div class="scope-empty" id="scopeEmpty">
+          <div><b>Press record and talk</b>
+            Nothing is uploaded — the microphone stream is decoded, edited and
+            saved in this tab.<br>Already have a file? Import a WAV, MP3, M4A or WebM.</div>
+        </div>
+      </div>
+      <div class="rec-f">
+        <button class="recbtn" id="recBtn" data-act="record" title="Record (R)" aria-label="Record"><i></i></button>
+        <button class="tbtn" data-act="play" title="Play / pause (Space)" aria-label="Play">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="tbtn" data-act="stop" title="Stop" aria-label="Stop">
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
+        <div class="timer"><span id="timer">00:00</span><small id="timerMs">.0</small></div>
+        <div class="meter" id="meter"><i id="meterFill"></i></div>
+        <div class="recinfo">
+          <span>Level <b id="lvlDb">−∞ dB</b></span>
+          <span>Pitch <b id="pitchHz">—</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl">
+    <div class="tl-h"><span>Timeline</span>
+      <span class="sp">
+        <span class="num" id="tlPos">0:00.0</span>
+        <span style="color:var(--t4)">of</span>
+        <span class="num" id="tlLen">0:00.0</span>
+      </span></div>
+    <div class="tl-scroll" id="tlScroll">
+      <div class="tl-inner" id="tlInner">
+        <div class="ruler"><canvas id="rulerC"></canvas></div>
+        <div class="track" id="track">
+          <span class="track-lab">Take</span>
+        </div>
+        <div class="playhead" id="playhead" style="left:0"></div>
+        <div class="tl-empty" id="tlEmpty">Recordings land here. Drag to move, drag an edge to trim, S to split.</div>
+      </div>
+    </div>
+  </div>
+
+  <aside id="panels">
+    <div class="ptabs">
+      <button class="ptab on" data-pt="pVoice">Voice</button>
+      <button class="ptab" data-pt="pClean">Clean up</button>
+      <button class="ptab" data-pt="pSpace">Space</button>
+      <button class="ptab" data-pt="pClip">Clip</button>
+      <button class="pfold" data-act="foldR" title="Collapse this panel">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
+    </div>
+
+    <div class="pbody on" id="pVoice">
+      <div class="ihead">Voices</div>
+      <div class="voices" id="voiceList"></div>
+      <button class="rowbtn" data-act="saveVoice">Save these settings as a voice…</button>
+      <div class="ihead">Shape</div>
+      <div class="row"><label for="fxPitch">Pitch</label>
+        <input type="range" id="fxPitch" data-fx="pitch" min="-12" max="12" step="0.5" value="0">
+        <span class="v" id="vPitch">0 st</span></div>
+      <div class="row"><label for="fxFormant">Formant</label>
+        <input type="range" id="fxFormant" data-fx="formant" min="-12" max="12" step="0.5" value="0">
+        <span class="v" id="vFormant">0 st</span></div>
+      <div class="row"><label for="fxWhisper">Whisper</label>
+        <input type="range" id="fxWhisper" data-fx="whisper" min="0" max="100" step="1" value="0">
+        <span class="v" id="vWhisper">0%</span></div>
+      <div class="row"><label for="fxRobot">Robot</label>
+        <input type="range" id="fxRobot" data-fx="robot" min="0" max="100" step="1" value="0">
+        <span class="v" id="vRobot">0%</span></div>
+      <div class="note"><b>Pitch</b> moves the whole voice up or down.
+        <b>Formant</b> then moves the resonances of the throat and mouth on their
+        own — that is what turns a shifted voice into a different person rather
+        than a tape played fast.</div>
+    </div>
+
+    <div class="pbody" id="pClean">
+      <div class="ihead">Noise</div>
+      <div class="row"><label for="fxDenoise">Remove background</label>
+        <input type="range" id="fxDenoise" data-fx="denoise" min="0" max="100" step="1" value="0">
+        <span class="v" id="vDenoise">0%</span></div>
+      <button class="rowbtn" data-act="learnNoise">Learn the room from the selection</button>
+      <div class="row"><label for="fxGate">Gate below</label>
+        <input type="range" id="fxGate" data-fx="gate" min="-80" max="-20" step="1" value="-80">
+        <span class="v" id="vGate">off</span></div>
+      <div class="ihead">Voice cleanup</div>
+      <div class="row"><label for="fxDeEss">De-ess</label>
+        <input type="range" id="fxDeEss" data-fx="deEss" min="0" max="100" step="1" value="0">
+        <span class="v" id="vDeEss">0%</span></div>
+      <div class="row"><label for="fxLow">Low</label>
+        <input type="range" id="fxLow" data-fx="low" min="-12" max="12" step="0.5" value="0">
+        <span class="v" id="vLow">0 dB</span></div>
+      <div class="row"><label for="fxMid">Mid</label>
+        <input type="range" id="fxMid" data-fx="mid" min="-12" max="12" step="0.5" value="0">
+        <span class="v" id="vMid">0 dB</span></div>
+      <div class="row"><label for="fxHigh">High</label>
+        <input type="range" id="fxHigh" data-fx="high" min="-12" max="12" step="0.5" value="0">
+        <span class="v" id="vHigh">0 dB</span></div>
+      <div class="row"><label for="fxComp">Compress</label>
+        <input type="range" id="fxComp" data-fx="compress" min="0" max="100" step="1" value="0">
+        <span class="v" id="vComp">0%</span></div>
+      <label class="chk"><input type="checkbox" id="fxHum" data-fx="hum"> Remove mains hum
+        <select class="sel" id="humHz" style="height:20px;padding:0 4px"><option value="50">50 Hz</option><option value="60">60 Hz</option></select></label>
+      <label class="chk"><input type="checkbox" id="fxNorm" data-fx="normalize" checked> Normalise to −1 dB</label>
+      <button class="rowbtn" data-act="trimSilence">Trim silence from both ends</button>
+      <button class="rowbtn" data-act="cleanPreset">Clean up this recording</button>
+    </div>
+
+    <div class="pbody" id="pSpace">
+      <div class="ihead">Room</div>
+      <div class="row"><label for="fxReverb">Reverb</label>
+        <input type="range" id="fxReverb" data-fx="reverb" min="0" max="100" step="1" value="0">
+        <span class="v" id="vReverb">0%</span></div>
+      <div class="row"><label for="fxSize">Room size</label>
+        <input type="range" id="fxSize" data-fx="size" min="10" max="100" step="1" value="40">
+        <span class="v" id="vSize">1.6 s</span></div>
+      <div class="ihead">Echo</div>
+      <div class="row"><label for="fxDelay">Echo</label>
+        <input type="range" id="fxDelay" data-fx="delay" min="0" max="100" step="1" value="0">
+        <span class="v" id="vDelay">0%</span></div>
+      <div class="row"><label for="fxDelayMs">Time</label>
+        <input type="range" id="fxDelayMs" data-fx="delayMs" min="40" max="900" step="10" value="260">
+        <span class="v" id="vDelayMs">260 ms</span></div>
+      <div class="ihead">Colour</div>
+      <div class="row"><label for="fxTele">Telephone</label>
+        <input type="range" id="fxTele" data-fx="telephone" min="0" max="100" step="1" value="0">
+        <span class="v" id="vTele">0%</span></div>
+      <div class="row"><label for="fxDrive">Drive</label>
+        <input type="range" id="fxDrive" data-fx="drive" min="0" max="100" step="1" value="0">
+        <span class="v" id="vDrive">0%</span></div>
+      <div class="note">Reverb is a real convolution against a generated room, not an
+        echo pretending to be one.</div>
+    </div>
+
+    <div class="pbody" id="pClip">
+      <div class="ihead">Selected clip</div>
+      <div id="clipInfo"><div class="empty">No clip selected.</div></div>
+      <div class="ihead">Export</div>
+      <div class="row"><label for="expBits">Depth</label>
+        <select class="sel" id="expBits"><option value="16">16-bit</option><option value="24">24-bit</option></select></div>
+      <label class="chk"><input type="checkbox" id="expSel"> Only the selected clip</label>
+      <button class="rowbtn" data-act="export">Export WAV</button>
+      <div class="prog" id="expProg" hidden><i id="expBar"></i></div>
+      <div class="note">WAV, because it is exact and needs no encoder. A minute of
+        mono at 48 kHz is about 5.5 MB.</div>
+    </div>
+  </aside>
+
+  <div class="sbar">
+    <span class="si"><span class="dot" id="sbDot"></span><b id="sbStatus">Ready</b></span>
+    <span class="si">Clips <b id="sbClips">0</b></span>
+    <span class="si">Length <b id="sbLen">0:00</b></span>
+    <span class="si">Rate <b id="sbRate">—</b></span>
+    <span class="si sp">On device <b>yes</b></span>
+  </div>
+</div>
+
+<input type="file" id="fileIn" accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm,.flac" hidden>
+<div class="toasts" id="toasts"></div>
+<script type="module" src="engine.js"></script>
+</body>
+</html>

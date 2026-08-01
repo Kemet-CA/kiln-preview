@@ -593,7 +593,7 @@
    Kiln has three kinds of work, and each kind gets one hue so a workspace
    is recognisable before you have read its label:
 
-     visual    Image (cyan), Video (blue)
+     visual    Photo (cyan), Video (blue), Voice (teal)
      document  PDF (orange), Writer (amber)
      neutral   Translator, Colour, Files — utilities, deliberately quiet
 
@@ -606,6 +606,7 @@
 :root{
   --cat-image:#31A8C4;
   --cat-video:#5B8FD6;
+  --cat-voice:#2CB5A6;
   --cat-pdf:#E0762F;
   --cat-documents:#D3A429;
   --cat-translate:#96A3B0;
@@ -616,6 +617,7 @@
 :root[data-mode="light"]{
   --cat-image:#0E7490;
   --cat-video:#2F5FA6;
+  --cat-voice:#0F766E;
   --cat-pdf:#B4530F;
   --cat-documents:#87640F;
   --cat-translate:#516272;
@@ -625,12 +627,13 @@
 }
 @media (prefers-color-scheme: light){
   :root:not([data-mode]){
-    --cat-image:#0E7490; --cat-video:#2F5FA6; --cat-pdf:#B4530F; --cat-documents:#87640F;
+    --cat-image:#0E7490; --cat-video:#2F5FA6; --cat-voice:#0F766E; --cat-pdf:#B4530F; --cat-documents:#87640F;
     --cat-translate:#516272; --cat-color:#5A6169; --cat-file:#8D949B; --cat-neutral:#5D666F;
   }
 }
 :root[data-kiln-cat="image"]{--cat:var(--cat-image)}
 :root[data-kiln-cat="video"]{--cat:var(--cat-video)}
+:root[data-kiln-cat="voice"]{--cat:var(--cat-voice)}
 :root[data-kiln-cat="pdf"]{--cat:var(--cat-pdf)}
 :root[data-kiln-cat="documents"]{--cat:var(--cat-documents)}
 :root[data-kiln-cat="translate"]{--cat:var(--cat-translate)}
