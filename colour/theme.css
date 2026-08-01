@@ -38,7 +38,7 @@
   --hov:rgba(255,255,255,.055); --hov2:rgba(255,255,255,.09); --card1:rgba(255,255,255,.028); --card2:rgba(255,255,255,.012);
   --popbg:rgba(26,24,23,.96); --scrl:rgba(255,255,255,.14); --scrl2:rgba(255,255,255,.26); --gridln:rgba(255,242,232,.045); --checker:rgba(255,255,255,.03);
   --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.85);
-  --btnp-bg:linear-gradient(180deg,#FFB25C,#E2622A); --btnp-fg:#0C0806; --btnp-sh:0 1px 0 rgba(255,255,255,.24) inset,0 5px 16px -8px rgba(0,0,0,.55);
+  --btnp-bg:#E2622A; --btnp-fg:#140C07; --btnp-sh:none;
 }
 @media (prefers-color-scheme: light){
   :root:not([data-mode]){
@@ -69,7 +69,7 @@
     --hov:rgba(20,20,20,.06); --hov2:rgba(20,20,20,.11); --card1:rgba(255,255,255,.75); --card2:rgba(255,255,255,.4);
     --popbg:rgba(252,250,246,.97); --scrl:rgba(20,20,20,.18); --scrl2:rgba(20,20,20,.32); --gridln:rgba(20,20,20,.055); --checker:rgba(20,20,20,.055);
     --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.3);
-    --btnp-bg:linear-gradient(180deg,#C9511C,#8A2E0E); --btnp-fg:#FFF6EC; --btnp-sh:0 1px 0 rgba(255,255,255,.24) inset,0 5px 16px -8px rgba(0,0,0,.55);
+    --btnp-bg:#C9511C; --btnp-fg:#FFF6EC; --btnp-sh:none;
   }
 }
 :root[data-theme="ember"][data-mode="light"]{
@@ -100,7 +100,7 @@
   --hov:rgba(20,20,20,.06); --hov2:rgba(20,20,20,.11); --card1:rgba(255,255,255,.75); --card2:rgba(255,255,255,.4);
   --popbg:rgba(252,250,246,.97); --scrl:rgba(20,20,20,.18); --scrl2:rgba(20,20,20,.32); --gridln:rgba(20,20,20,.055); --checker:rgba(20,20,20,.055);
   --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.3);
-  --btnp-bg:linear-gradient(180deg,#C9511C,#8A2E0E); --btnp-fg:#FFF6EC; --btnp-sh:0 1px 0 rgba(255,255,255,.24) inset,0 5px 16px -8px rgba(0,0,0,.55);
+  --btnp-bg:#C9511C; --btnp-fg:#FFF6EC; --btnp-sh:none;
 }
 :root[data-theme="neo"][data-mode="dark"]{
   --ground:#131316;
@@ -129,8 +129,8 @@
   --bad:#E0655F;
   --hov:rgba(255,255,255,.055); --hov2:rgba(255,255,255,.09); --card1:rgba(255,255,255,.028); --card2:rgba(255,255,255,.012);
   --popbg:#1C1C21; --scrl:rgba(255,255,255,.14); --scrl2:rgba(255,255,255,.26); --gridln:rgba(255,242,232,.045); --checker:rgba(255,255,255,.03);
-  --bw:2px; --hs:3px 3px 0 #F5F5F0; --popshadow:6px 6px 0 #F5F5F0;
-  --btnp-bg:#F2BE22; --btnp-fg:#141414; --btnp-sh:3px 3px 0 #F5F5F0;
+  --bw:2px; --hs:2px 2px 0 #F5F5F0; --popshadow:3px 3px 0 #F5F5F0;
+  --btnp-bg:#F2BE22; --btnp-fg:#141414; --btnp-sh:2px 2px 0 #F5F5F0;
 }
 :root[data-theme="neo"][data-mode="light"]{
   --ground:#F6EFDF;
@@ -159,8 +159,8 @@
   --bad:#B03A34;
   --hov:rgba(20,20,20,.06); --hov2:rgba(20,20,20,.11); --card1:rgba(255,255,255,.75); --card2:rgba(255,255,255,.4);
   --popbg:#FFFDF6; --scrl:rgba(20,20,20,.18); --scrl2:rgba(20,20,20,.32); --gridln:rgba(20,20,20,.055); --checker:rgba(20,20,20,.055);
-  --bw:2px; --hs:3px 3px 0 #141414; --popshadow:6px 6px 0 #141414;
-  --btnp-bg:#E88A1A; --btnp-fg:#141414; --btnp-sh:3px 3px 0 #141414;
+  --bw:2px; --hs:2px 2px 0 #141414; --popshadow:3px 3px 0 #141414;
+  --btnp-bg:#E88A1A; --btnp-fg:#141414; --btnp-sh:2px 2px 0 #141414;
 }
 :root[data-theme="retro"][data-mode="dark"]{
   --ground:#1C1C1C;
@@ -254,7 +254,7 @@
   --hov:rgba(255,255,255,.055); --hov2:rgba(255,255,255,.09); --card1:rgba(255,255,255,.028); --card2:rgba(255,255,255,.012);
   --popbg:rgba(26,24,23,.96); --scrl:rgba(255,255,255,.14); --scrl2:rgba(255,255,255,.26); --gridln:rgba(255,242,232,.045); --checker:rgba(255,255,255,.03);
   --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.85);
-  --btnp-bg:linear-gradient(180deg,#6FE3EC,#19A7BE); --btnp-fg:#0C0806; --btnp-sh:0 1px 0 rgba(255,255,255,.24) inset,0 5px 16px -8px rgba(0,0,0,.55);
+  --btnp-bg:#19A7BE; --btnp-fg:#04191E; --btnp-sh:none;
 }
 :root[data-theme="ocean"][data-mode="light"]{
   --ground:#EDF4F8;
@@ -284,7 +284,7 @@
   --hov:rgba(20,20,20,.06); --hov2:rgba(20,20,20,.11); --card1:rgba(255,255,255,.75); --card2:rgba(255,255,255,.4);
   --popbg:rgba(252,250,246,.97); --scrl:rgba(20,20,20,.18); --scrl2:rgba(20,20,20,.32); --gridln:rgba(20,20,20,.055); --checker:rgba(20,20,20,.055);
   --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.3);
-  --btnp-bg:linear-gradient(180deg,#0E7C90,#073F4C); --btnp-fg:#FFF6EC; --btnp-sh:0 1px 0 rgba(255,255,255,.24) inset,0 5px 16px -8px rgba(0,0,0,.55);
+  --btnp-bg:#0E7C90; --btnp-fg:#FFF6EC; --btnp-sh:none;
 }
 :root[data-theme="mono"][data-mode="dark"]{
   --ground:#101010;
@@ -314,7 +314,7 @@
   --hov:rgba(255,255,255,.055); --hov2:rgba(255,255,255,.09); --card1:rgba(255,255,255,.028); --card2:rgba(255,255,255,.012);
   --popbg:rgba(26,24,23,.96); --scrl:rgba(255,255,255,.14); --scrl2:rgba(255,255,255,.26); --gridln:rgba(255,242,232,.045); --checker:rgba(255,255,255,.03);
   --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.85);
-  --btnp-bg:#E6E6E6; --btnp-fg:#111; --btnp-sh:0 5px 16px -8px rgba(0,0,0,.5);
+  --btnp-bg:#E6E6E6; --btnp-fg:#111; --btnp-sh:none;
 }
 :root[data-theme="mono"][data-mode="light"]{
   --ground:#F4F4F4;
@@ -344,7 +344,7 @@
   --hov:rgba(20,20,20,.06); --hov2:rgba(20,20,20,.11); --card1:rgba(255,255,255,.75); --card2:rgba(255,255,255,.4);
   --popbg:rgba(252,250,246,.97); --scrl:rgba(20,20,20,.18); --scrl2:rgba(20,20,20,.32); --gridln:rgba(20,20,20,.055); --checker:rgba(20,20,20,.055);
   --bw:1px; --hs:none; --popshadow:0 22px 50px -18px rgba(0,0,0,.3);
-  --btnp-bg:#2B2B2B; --btnp-fg:#fff; --btnp-sh:0 5px 16px -8px rgba(0,0,0,.5);
+  --btnp-bg:#2B2B2B; --btnp-fg:#fff; --btnp-sh:none;
 }
 
 /* ---- Neo Pop: chunky outlines ---- */
@@ -485,6 +485,35 @@
   background-size:18px 18px;
   background-position:-1px -1px;
 }
+
+/* ---- Retro OS: the whole page reads as paper, not just the buttons ---- */
+:root[data-theme="retro"] body{
+  background-image:
+    linear-gradient(var(--retro-rule,rgba(0,0,0,.05)) 1px,transparent 1px),
+    radial-gradient(var(--retro-dot,rgba(0,0,0,.10)) 1px,transparent 1px);
+  background-size:100% 28px,18px 18px;
+  background-position:0 0,0 0;
+  background-attachment:fixed;
+}
+:root[data-theme="retro"][data-mode="light"]{--retro-rule:rgba(0,60,60,.07);--retro-dot:rgba(0,50,50,.13)}
+:root[data-theme="retro"][data-mode="dark"]{--retro-rule:rgba(255,255,255,.045);--retro-dot:rgba(255,255,255,.075)}
+/* squared corners and hard edges belong to this family */
+:root[data-theme="retro"] .wcard,
+:root[data-theme="retro"] .btn{border-radius:0}
+/* On the teal desktop, body text must sit on a panel to stay readable —
+   which is also exactly how an operating system of that era looked. */
+:root[data-theme="retro"] .hero-in,
+:root[data-theme="retro"] .wgrid-wrap{
+  background:var(--s1);
+  border:2px solid var(--line2);
+  box-shadow:inset 1px 1px 0 var(--bev-hi),inset -1px -1px 0 var(--bev-lo),2px 2px 0 rgba(0,0,0,.32);
+  margin:26px auto;
+  max-width:1120px;
+}
+:root[data-theme="retro"] .hero{border-bottom:0}
+:root[data-theme="retro"] .wcard{background:var(--s2);backdrop-filter:none}
+:root[data-theme="retro"] .foot-in{background:var(--s1);border:2px solid var(--line2);
+  padding-top:12px;padding-bottom:12px;max-width:1120px}
 
 /* ---- home button: the way back to the workspace list ---- */
 .ktb-home{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--t3);

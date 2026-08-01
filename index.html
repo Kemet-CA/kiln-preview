@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="theme.css">
 <script src="theme.js"></script>
 
-<meta name="kiln-build" content="e89e7cb-1938">
+<meta name="kiln-build" content="a3bc9ff-2116">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -34,7 +34,7 @@ p{margin:0}
   backdrop-filter:saturate(160%) blur(18px);-webkit-backdrop-filter:saturate(160%) blur(18px);z-index:40}
 .brand{display:flex;align-items:center;gap:8px;font-weight:640;letter-spacing:-.03em;font-size:14px;flex:none}
 .mark{width:19px;height:19px;border-radius:5px;flex:none;position:relative;
-  background:linear-gradient(150deg,var(--hot),var(--ember) 45%,var(--cherry));
+  background:var(--ember);
   box-shadow:0 0 14px rgba(226,98,42,.42),inset 0 1px 0 rgba(255,255,255,.35)}
 .mark::after{content:"";position:absolute;inset:5px 5px 0;border-radius:4px 4px 0 0;background:rgba(11,10,9,.55)}
 .wsnav{display:flex;gap:1px;overflow-x:auto;scrollbar-width:none}
@@ -161,9 +161,8 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .acts{display:flex;gap:6px;margin-top:12px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 11px;border-radius:6px;
   font-size:12px;font-weight:550;border:1px solid transparent;transition:.15s var(--ez);white-space:nowrap}
-.btn-p{background:linear-gradient(180deg,#F0743A,var(--ember));color:#1A0B04;
-  box-shadow:0 1px 0 rgba(255,255,255,.26) inset,0 5px 16px -8px rgba(226,98,42,.85)}
-.btn-p:hover{filter:brightness(1.08)}
+.btn-p{background:var(--btnp-bg);color:var(--btnp-fg);box-shadow:var(--btnp-sh)}
+.btn-p:hover{filter:brightness(1.06)}
 .btn-g{border-color:var(--line);color:var(--t2)}
 .btn-g:hover{border-color:var(--line2);color:var(--text);background:var(--hov)}
 .btn:disabled{opacity:.35;cursor:not-allowed;filter:none}
@@ -400,89 +399,50 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   box-shadow:0 18px 40px -18px rgba(0,0,0,.9);animation:sin .26s var(--ez)}
 @keyframes sin{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
 
-/* ================= HOME ================= */
-.home-wrap{max-width:1180px;margin:0 auto;padding:0 26px}
-.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
-.hero::before{content:"";position:absolute;left:-8%;top:-300px;width:76%;height:600px;
-  background:radial-gradient(50% 50% at 50% 50%,rgba(226,98,42,.19),transparent 70%);filter:blur(30px)}
-.hero::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
-  background-image:linear-gradient(var(--gridln) 1px,transparent 1px),
-    linear-gradient(90deg,var(--gridln) 1px,transparent 1px);background-size:60px 60px;
-  mask-image:radial-gradient(68% 58% at 28% 24%,#000 10%,transparent 74%);
-  -webkit-mask-image:radial-gradient(68% 58% at 28% 24%,#000 10%,transparent 74%)}
-.hero-in{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:66px 26px 62px}
-.hero h1{font-size:clamp(34px,5vw,58px);line-height:1.03;margin-top:14px}
-.hero h1 .lit{background:linear-gradient(96deg,var(--hot),var(--ember) 60%,var(--cherry));
-  -webkit-background-clip:text;background-clip:text;color:transparent}
-.lede{margin-top:17px;max-width:52ch;font-size:15px;color:var(--t2);line-height:1.65}
-.hcta{display:flex;flex-wrap:wrap;gap:9px;margin-top:24px}
-.hstats{display:flex;gap:28px;margin-top:32px;padding-top:20px;border-top:1px solid var(--line)}
-.hstats b{display:block;font-size:20px;font-weight:660;letter-spacing:-.03em}
-.hstats span{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--t3)}
-.hero h1.shimmer{font-size:clamp(42px,8vw,92px);line-height:1.02;margin:6px 0 0;text-align:center;
-  font-weight:680;letter-spacing:-.035em;
-  background:linear-gradient(96deg,var(--hot),var(--ember) 42%,var(--cherry) 78%,var(--hot));
-  background-size:220% 100%;background-position:var(--shx,50%) var(--shy,50%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  transition:background-position .25s var(--ez);cursor:default;position:relative}
-.hero h1.shimmer::after{content:"";position:absolute;inset:-6% -2%;pointer-events:none;
-  background:radial-gradient(220px 140px at var(--gx,50%) var(--gy,50%),
-    color-mix(in srgb,var(--hot) 26%,transparent),transparent 70%);
-  opacity:0;transition:opacity .3s var(--ez);filter:blur(12px)}
-.hero:hover h1.shimmer::after{opacity:1}
-.hero-in .eyebrow,.hero-in .lede,.hero-in .hcta,.hero-in .hstats{text-align:center;justify-content:center}
-.hero-in .lede{margin-left:auto;margin-right:auto;max-width:60ch}
-.hero-in .lede.privacy{margin-top:8px;color:var(--t3);font-size:14px}
-.hero-in .lede.privacy b{color:var(--t2)}
-.hstats{justify-content:center}
-.sect{padding:60px 0 26px}
-.sect h2{font-size:clamp(22px,2.8vw,30px);margin-top:9px}
-.sect .sub{margin-top:9px;color:var(--t2);max-width:58ch;font-size:14px}
-/* ---- the carousel: the chosen workspace stands upright, its neighbours
-   turn away into the distance. One transform per card, driven from JS. ---- */
-.cover-wrap{padding:6px 0 70px}
-.cover{position:relative;height:360px;perspective:1500px;perspective-origin:50% 45%;
-  outline:0;touch-action:pan-y;cursor:grab;user-select:none}
-.cover:active{cursor:grabbing}
-.cover .card{position:absolute;left:50%;top:50%;width:248px;height:248px;margin:-124px 0 0 -124px;
-  border-radius:26px;overflow:hidden;cursor:pointer;border:1px solid rgba(255,255,255,.14);
-  background:
-    radial-gradient(120% 90% at 20% 0%,color-mix(in srgb,var(--tint) 92%,white 8%),transparent 62%),
-    radial-gradient(120% 100% at 85% 100%,color-mix(in srgb,var(--tint) 60%,black),transparent 65%),
-    linear-gradient(158deg,color-mix(in srgb,var(--tint) 80%,black),
-      color-mix(in srgb,var(--tint) 42%,black) 70%,color-mix(in srgb,var(--tint) 22%,black));
-  box-shadow:0 30px 60px -30px rgba(0,0,0,.95);
-  transition:transform .5s var(--ez),opacity .5s var(--ez),filter .5s var(--ez),box-shadow .5s var(--ez);
-  display:flex;flex-direction:column;justify-content:space-between;padding:20px;will-change:transform}
-.cover .card::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:radial-gradient(120% 80% at 50% -10%,rgba(255,255,255,.22),transparent 60%)}
-.cover .card .ci{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;
-  background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.18);color:#fff;backdrop-filter:blur(6px)}
-.cover .card .ci svg{width:23px;height:23px}
-.cover .card .cmeta{display:flex;flex-direction:column;gap:3px}
-.cover .card .cn{font-size:18px;font-weight:660;letter-spacing:-.02em;color:#fff;
-  text-shadow:0 2px 14px rgba(0,0,0,.55);line-height:1.15}
-.cover .card .ct{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.8);letter-spacing:.05em}
-.cover .card.on{border-color:color-mix(in srgb,var(--tint) 70%,transparent);
-  box-shadow:0 44px 80px -34px rgba(0,0,0,1),0 0 0 1px color-mix(in srgb,var(--tint) 40%,transparent),
-    0 0 70px -18px color-mix(in srgb,var(--tint) 60%,transparent)}
-.cover-cap{text-align:center;margin-top:22px;padding:0 26px}
-.cover-cap h2{font-size:clamp(24px,3.4vw,38px);letter-spacing:-.03em;margin:0;
-  background:linear-gradient(96deg,var(--hot),var(--ember) 60%,var(--cherry));
-  -webkit-background-clip:text;background-clip:text;color:transparent}
-.cover-cap p{margin:9px auto 0;max-width:54ch;color:var(--t3);font-size:13.5px;line-height:1.6;min-height:44px}
-.cover-cta{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px}
-.cover-count{font-size:11px;color:var(--t4)}
-.cover-dots{display:flex;gap:7px;justify-content:center;margin-top:18px}
-.cover-dots button{width:7px;height:7px;border-radius:50%;background:var(--line2);padding:0;
-  transition:.25s var(--ez)}
-.cover-dots button.on{background:var(--ember);width:20px;border-radius:99px}
+/* ================= HOME =================
+   Flat and 2D on purpose: no gradients anywhere, because they read differently
+   in every theme and fall apart in dark mode. Depth comes from spacing, a
+   single hairline border and one soft translucent surface. */
+.hero{border-bottom:1px solid var(--line)}
+.hero-in{max-width:860px;margin:0 auto;padding:96px 26px 84px;text-align:center}
+.hero .eyebrow{margin:0;font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--t4)}
+.hero h1{font-size:clamp(40px,6.4vw,74px);line-height:1.04;letter-spacing:-.04em;font-weight:660;
+  margin:20px 0 0;color:var(--text)}
+.lede{margin:20px auto 0;max-width:58ch;font-size:15.5px;line-height:1.7;color:var(--t2)}
+.lede.quiet{margin-top:12px;font-size:14px;color:var(--t2)}
+.lede.quiet b{color:var(--t2);font-weight:600}
+.hcta{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:32px}
+.hcta .btn{padding:10px 20px;font-size:13.5px;border-radius:9px;text-decoration:none}
+.hstats{list-style:none;display:flex;gap:44px;justify-content:center;flex-wrap:wrap;
+  margin:52px 0 0;padding:26px 0 0;border-top:1px solid var(--line)}
+.hstats b{display:block;font-size:19px;font-weight:640;letter-spacing:-.02em;color:var(--text)}
+.hstats span{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--t4)}
+
+/* ---- workspace cards: one calm grid, no carousel to fight with ---- */
+.wgrid-wrap{max-width:1120px;margin:0 auto;padding:64px 26px 88px}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:18px}
+.wcard{position:relative;display:flex;flex-direction:column;gap:14px;padding:28px;
+  border:1px solid var(--line);border-radius:18px;cursor:pointer;text-align:left;
+  background:var(--card1);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  transition:border-color .18s var(--ez),transform .18s var(--ez),background .18s var(--ez)}
+.wcard:hover,.wcard:focus-visible{border-color:var(--line2);transform:translateY(-3px);background:var(--card-hi,var(--hov))}
+.wcard .wi{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;
+  border:1px solid var(--line);background:var(--s2)}
+.wcard .wi svg{width:30px;height:30px}
+.wcard h3{margin:0;font-size:17px;font-weight:620;letter-spacing:-.02em;color:var(--text)}
+.wcard p{margin:0;font-size:13px;line-height:1.6;color:var(--t2)}
+.wcard .wfoot{margin-top:auto;padding-top:6px;display:flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--t4)}
+.wcard .wgo{margin-left:auto;font-family:var(--sans);font-size:12.5px;letter-spacing:0;
+  text-transform:none;color:var(--t3);transition:color .18s var(--ez)}
+.wcard:hover .wgo{color:var(--text)}
 @media(max-width:760px){
-  .cover{height:290px}
-  .cover .card{width:190px;height:190px;margin:-95px 0 0 -95px}
+  .hero-in{padding:64px 22px 56px}
+  .wgrid-wrap{padding:44px 22px 64px}
+  .hstats{gap:26px}
 }
-@media(prefers-reduced-motion:reduce){.cover .card{transition:opacity .01ms}}
-.foot{border-top:1px solid var(--line);padding:22px 0;color:var(--t4);font-size:12px}
+.foot{border-top:1px solid var(--line);padding:26px 0;color:var(--t4);font-size:12px}
 .foot .kemet{display:flex;align-items:center;gap:8px;color:var(--t2)}
 .foot .kemet b{font-weight:640;letter-spacing:-.01em}
 .foot .fsep{color:var(--t4)}
@@ -523,43 +483,29 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 
 <!-- ===================== HOME ===================== -->
 <section class="screen" id="screen-home">
-  <div class="hero" id="hero"><div class="hero-in">
-    <div class="eyebrow">Open source · No accounts · Nothing uploaded</div>
-    <h1 class="shimmer" id="shimmer">Shape anything</h1>
-    <p class="lede">Every tool you need, free — image and video editors, PDF and Word workspaces,
-      a translator and a colour studio.</p>
-    <p class="lede privacy"><b>Nothing is uploaded.</b> No account, no server, no telemetry:
-      your files are opened, edited and saved by the browser, on your own device.</p>
-    <div class="hcta">
-      <a class="btn btn-p" href="https://buymeacoffee.com/kemetca" target="_blank" rel="noopener">
-        <span aria-hidden="true">☕</span> Buy us a coffee</a>
-      <button class="btn btn-g" data-go="image">Open the image editor →</button>
-    </div>
-    <div class="hstats">
-      <div><b class="num">125</b><span>Tools</span></div>
-      <div><b class="num">7</b><span>Workspaces</span></div>
-      <div><b>Private</b><span>Files stay on your device</span></div>
-    </div>
-  </div></div>
-
-  <div class="home-wrap sect">
-    <div class="eyebrow">Workspaces</div>
-    <h2>Desktop software, running in a tab.</h2>
-    <p class="sub">Each one opens a real application — panels, a menu bar, live preview, undo history.
-      Click through the deck, or drag it sideways.</p>
-  </div>
-  <div class="cover-wrap">
-    <div class="cover" id="cover" tabindex="0" role="listbox" aria-label="Workspaces"></div>
-    <div class="cover-cap">
-      <h2 id="coverName">Image Workspace</h2>
-      <p id="coverDesc"></p>
-      <div class="cover-cta">
-        <button class="btn btn-p" id="coverOpen">Open workspace →</button>
-        <span class="cover-count mono" id="coverCount"></span>
+  <header class="hero">
+    <div class="hero-in">
+      <p class="eyebrow">Open source · No accounts · Nothing uploaded</p>
+      <h1>Shape anything</h1>
+      <p class="lede">Every tool you need, free — image and video editors, PDF and Word
+        workspaces, a translator and a colour studio.</p>
+      <p class="lede quiet"><b>Nothing is uploaded.</b> No account, no server, no telemetry.
+        Your files are opened, edited and saved by the browser, on your own device.</p>
+      <div class="hcta">
+        <a class="btn btn-p" href="https://buymeacoffee.com/kemetca" target="_blank" rel="noopener">Buy us a coffee</a>
+        <button class="btn btn-g" data-go="image">Open the image editor</button>
       </div>
-      <div class="cover-dots" id="coverDots"></div>
+      <ul class="hstats">
+        <li><b class="num">125</b><span>Tools</span></li>
+        <li><b class="num">7</b><span>Workspaces</span></li>
+        <li><b>Private</b><span>Files stay on your device</span></li>
+      </ul>
     </div>
-  </div>
+  </header>
+
+  <main class="wgrid-wrap">
+    <div class="wgrid" id="cards"></div>
+  </main>
 
   <div class="foot"><div class="foot-in">
     <span class="kemet"><span class="mark" style="width:17px;height:17px;border-radius:5px"></span>
@@ -919,22 +865,22 @@ const WORKSPACES=[
   icon:IC.img},
  {id:"pdf",name:"PDF",tint:"var(--cobalt)",n:17,ui:"Acrobat-style viewer · page thumbnails",
   desc:"Open a document and reorder, rotate, delete, merge, split, watermark and number its pages — rendered and rewritten in your browser.",
-  icon:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>'},
+  icon:'<path d="M6 2.6h7.2L19 8.4V21a1.4 1.4 0 0 1-1.4 1.4H6A1.4 1.4 0 0 1 4.6 21V4A1.4 1.4 0 0 1 6 2.6z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 2.8V8.6h5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><text x="11.8" y="18.2" text-anchor="middle" font-family="ui-monospace,monospace" font-size="5.4" font-weight="700" fill="currentColor">PDF</text>'},
  {id:"video",name:"Video",tint:"var(--cherry)",n:30,ui:"Timeline · multi-track · real export",
   desc:"Import footage, cut and arrange it on a multi-track timeline with transitions, text, filters, keyframes and audio, then export MP4 or WebM up to 4K.",
-  icon:'<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 12 5-3v9l-5-3z"/>'},
- {id:"documents",name:"Documents",tint:"color-mix(in srgb,var(--ash) 45%,var(--cobalt))",n:12,ui:"Word documents · read · edit · export",
-  desc:"Open a .docx and read it exactly as Word laid it out, print it, edit the text and formatting, then export Word, HTML or plain text.",
-  icon:'<path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 4v4h4"/><path d="M8 13h8M8 17h5"/>'},
+  icon:'<rect x="2.4" y="5.4" width="13.6" height="13.2" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m16.6 11.4 4.4-2.9v7l-4.4-2.9z" fill="currentColor"/><path d="m8 9.6 4 2.4-4 2.4z" fill="currentColor"/>'},
+ {id:"documents",name:"Writer",tint:"color-mix(in srgb,var(--ash) 45%,var(--cobalt))",n:12,ui:"Word documents · read · edit · export",
+  desc:"Open a Word file and read it exactly as Word laid it out, print it, edit the text and formatting, then export .docx, HTML or plain text.",
+  icon:'<path d="M6 2.6h7.2L19 8.4V21a1.4 1.4 0 0 1-1.4 1.4H6A1.4 1.4 0 0 1 4.6 21V4A1.4 1.4 0 0 1 6 2.6z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 2.8V8.6h5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m7.6 12.4 1.5 5.4 1.6-4 1.6 4 1.5-5.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'},
  {id:"translate",name:"Translator",tint:"var(--celadon)",n:34,ui:"On-device translation · 34 languages",
   desc:"Translate text between 34 languages with the browser's own on-device model — no key, no account, and your text never leaves the machine.",
-  icon:'<path d="M4 5h9M8.5 5v2c0 3-2 6-4.5 7"/><path d="M6 11c1.5 2.5 3.6 4.2 6 5"/><path d="m13 20 4-9 4 9M14.5 17h5"/>'},
+  icon:'<path d="M3 5.4h8.4M7.2 5.4v1.5c0 3-1.9 5.6-4.2 6.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4.4 10.2c1.3 2.2 3.2 3.7 5.4 4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="m12.6 21 4.2-9.6L21 21M14.4 17.6h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'},
  {id:"color",name:"Colour",tint:"var(--mang)",n:17,ui:"Harmonies · palettes · every format",
   desc:"Picker with eight harmony types, random palette generation, saved swatches and palettes, WCAG contrast, colour-blindness simulation, and every value one click from your clipboard.",
-  icon:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="8" r="1.4"/><circle cx="8" cy="12" r="1.4"/><circle cx="16" cy="12" r="1.4"/><circle cx="12" cy="16" r="1.4"/>'},
+  icon:'<path d="M12 3.2a8.8 8.8 0 1 0 0 17.6c1.2 0 1.9-.8 1.9-1.7 0-.9-.7-1.5-.7-2.3 0-.8.7-1.5 1.6-1.5h1.6c2.4 0 4.4-2 4.4-4.4 0-4.3-4-7.7-8.8-7.7z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="7.6" cy="12.4" r="1.35" fill="#E2622A"/><circle cx="9.4" cy="8.2" r="1.35" fill="#C9A24B"/><circle cx="13.9" cy="7.1" r="1.35" fill="#6C8CC4"/><circle cx="17.3" cy="10" r="1.35" fill="#7FA88A"/>'},
  {id:"file",name:"Files",tint:"var(--ash)",n:9,ui:"Queue · progress · download manager",
   desc:"Drag in any files for real MD5, SHA-1 and SHA-256 checksums plus MIME detected from content, not filename.",
-  icon:'<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2.5h7A2.5 2.5 0 0 1 21 10v6.5A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/>'}
+  icon:'<path d="M3 6.6a1.8 1.8 0 0 1 1.8-1.8h4.1l2 2.4h7.3A1.8 1.8 0 0 1 20 9v8.4a1.8 1.8 0 0 1-1.8 1.8H4.8A1.8 1.8 0 0 1 3 17.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 10.4h17" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".6"/>'}
 ];
 
 const OTHER_TOOLS={
@@ -1035,101 +981,24 @@ document.addEventListener("scroll",()=>$("ctx").classList.remove("on"),true);
 
 /* home cards */
 /* ============================================================
-   Workspace carousel — the active card faces you, its neighbours turn away.
-   Every position is one transform, recomputed when the selection moves, so
-   there is a single place that decides what "third card to the left" looks like.
+   Workspace cards — a grid, not a carousel. Nothing to drag, nothing to
+   mis-click, and it reflows on its own at every width.
    ============================================================ */
 const WS=WORKSPACES.filter(w=>w.id!=="home");
-let coverAt=0;
+$("cards").innerHTML=WS.map(w=>`
+  <button class="wcard" data-go="${w.id}" style="--tint:${w.tint}" aria-label="${w.name} Workspace">
+    <span class="wi" style="color:${w.tint}">${SVG(w.icon)}</span>
+    <h3>${w.name} Workspace</h3>
+    <p>${w.desc}</p>
+    <span class="wfoot">${w.n} tools<span class="wgo">Open →</span></span>
+  </button>`).join("");
 
-$("cover").innerHTML=WS.map((w,i)=>`
-  <div class="card" style="--tint:${w.tint}" data-cover="${i}" data-ws="${w.id}"
-       role="option" aria-label="${w.name} Workspace">
-    <span class="ci">${SVG(w.icon)}</span>
-    <span class="cmeta"><span class="cn">${w.name}</span><span class="ct">${w.n} tools</span></span>
-  </div>`).join("");
-$("coverDots").innerHTML=WS.map((w,i)=>`<button data-dot="${i}" aria-label="${w.name}"></button>`).join("");
+/* the hero shimmer and the carousel are gone: no gradients, nothing to drag */
 
-function layoutCover(){
-  const cards=$("cover").querySelectorAll("[data-cover]");
-  cards.forEach((el,i)=>{
-    const d=i-coverAt, ad=Math.abs(d);
-    const x=d*152+Math.sign(d)*(ad>1?(ad-1)*30:0);
-    const rot=clamp(-d*30,-46,46);
-    const scale=Math.max(.62,1-ad*.11);
-    const z=-ad*140;
-    el.style.transform=`translateX(${x}px) translateZ(${z}px) rotateY(${rot}deg) scale(${scale})`;
-    el.style.opacity=ad>3?0:1-ad*.11;
-    el.style.filter=`brightness(${1-Math.min(.3,ad*.1)}) saturate(${1-Math.min(.35,ad*.12)})`;
-    el.style.zIndex=String(50-ad);
-    el.style.pointerEvents=ad>3?"none":"auto";
-    el.classList.toggle("on",d===0);
-    el.setAttribute("aria-selected",String(d===0));
-  });
-  const w=WS[coverAt];
-  $("coverName").textContent=w.name+" Workspace";
-  $("coverDesc").textContent=w.desc;
-  $("coverCount").textContent=`${coverAt+1} of ${WS.length} · ${w.n} tools`;
-  $("coverDots").querySelectorAll("[data-dot]").forEach((b,i)=>b.classList.toggle("on",i===coverAt));
-  $("cover").setAttribute("aria-activedescendant",String(coverAt));
-}
-const coverGo=n=>{coverAt=clamp(n,0,WS.length-1);layoutCover();};
-layoutCover();
+document.addEventListener("click",()=>$("ctx").classList.remove("on"));
+document.addEventListener("scroll",()=>$("ctx").classList.remove("on"),true);
 
-/* click a neighbour to bring it forward; click the front one to open it */
-$("cover").addEventListener("click",e=>{
-  const c=e.target.closest("[data-cover]");
-  if(!c)return;
-  const i=+c.dataset.cover;
-  if(i===coverAt)go(WS[i].id); else coverGo(i);
-});
-$("coverOpen").addEventListener("click",()=>go(WS[coverAt].id));
-$("coverDots").addEventListener("click",e=>{
-  const b=e.target.closest("[data-dot]");if(b)coverGo(+b.dataset.dot);
-});
-
-/* wheel, trackpad and arrow keys all move the selection */
-let wheelLock=0;
-$("cover").addEventListener("wheel",e=>{
-  const d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;
-  if(Math.abs(d)<2)return;
-  const now=Date.now();
-  if(now-wheelLock<220)  {e.preventDefault();return;}
-  const next=coverAt+(d>0?1:-1);
-  if(next<0||next>WS.length-1)return;     // let the page scroll past the ends
-  e.preventDefault();wheelLock=now;coverGo(next);
-},{passive:false});
-$("cover").addEventListener("keydown",e=>{
-  if(e.key==="ArrowRight"){e.preventDefault();coverGo(coverAt+1);}
-  if(e.key==="ArrowLeft"){e.preventDefault();coverGo(coverAt-1);}
-  if(e.key==="Enter"||e.key===" "){e.preventDefault();go(WS[coverAt].id);}
-});
-
-/* the hero gradient follows the cursor, with a soft bloom behind the letters */
-(()=>{const h=$("hero"),t=$("shimmer");if(!h||!t)return;
-  h.addEventListener("pointermove",e=>{
-    const r=t.getBoundingClientRect();
-    const x=((e.clientX-r.left)/r.width)*100, y=((e.clientY-r.top)/r.height)*100;
-    t.style.setProperty("--shx",clamp(x,-20,120)+"%");
-    t.style.setProperty("--shy",clamp(y,0,100)+"%");
-    t.style.setProperty("--gx",x+"%");t.style.setProperty("--gy",y+"%");
-  });
-  h.addEventListener("pointerleave",()=>{
-    t.style.setProperty("--shx","50%");t.style.setProperty("--shy","50%");
-  });
-})();
-
-/* drag or swipe across the carousel */
-(()=>{const el=$("cover");let x0=null,moved=0;
-  el.addEventListener("pointerdown",e=>{x0=e.clientX;moved=0;});
-  el.addEventListener("pointermove",e=>{
-    if(x0===null)return;
-    const dx=e.clientX-x0;
-    if(Math.abs(dx)>60){coverGo(coverAt+(dx<0?1:-1));x0=e.clientX;moved=1;}
-  });
-  el.addEventListener("pointerup",()=>{x0=null;setTimeout(()=>{moved=0;},0);});
-  el.addEventListener("click",e=>{if(moved){e.stopPropagation();e.preventDefault();}},true);
-})();
+/* home cards */
 
 
 
