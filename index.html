@@ -2,9 +2,11 @@
 <title>Kiln — Workspace Preview</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E2622A'/%3E%3Crect x='9' y='9' width='14' height='14' rx='3' fill='%230B0A09'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="search.css">
 <script src="theme.js"></script>
+<script src="search.js"></script>
 
-<meta name="kiln-build" content="fda81ab-0917">
+<meta name="kiln-build" content="f6535c6-1041">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -44,7 +46,7 @@ p{margin:0}
   display:flex;align-items:center;gap:6px;transition:.15s var(--ez)}
 .wsnav button:hover{color:var(--t2);background:var(--hov)}
 .wsnav button[aria-current="true"]{color:var(--text);background:var(--hov2)}
-.wsnav .sq{width:7px;height:7px;border-radius:2px;background:currentColor;opacity:.5}
+.wsnav .sq{width:7px;height:7px;border-radius:2px;background:var(--tint,currentColor);opacity:.55}
 .wsnav button[aria-current="true"] .sq{opacity:1}
 .chrome-r{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none}
 kbd{font-family:var(--mono);font-size:10px;padding:1.5px 4.5px;border:1px solid var(--line);
@@ -375,23 +377,6 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .ctx.on{display:block;animation:pop .12s var(--ez)}
 
 /* command palette */
-.cmdk{position:fixed;inset:0;z-index:100;display:none;background:color-mix(in srgb,var(--ground) 40%,rgba(6,5,5,.5));
-  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding-top:13vh}
-.cmdk.on{display:block;animation:fade .16s var(--ez)}
-@keyframes fade{from{opacity:0}to{opacity:1}}
-.cmdk-b{width:min(560px,92vw);margin:0 auto;border-radius:13px;overflow:hidden;border:1px solid var(--line2);
-  background:var(--popbg);backdrop-filter:saturate(160%) blur(28px);
-  -webkit-backdrop-filter:saturate(160%) blur(28px);box-shadow:0 40px 90px -25px rgba(0,0,0,.95)}
-.cmdk-i{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--line)}
-.cmdk-i input{flex:1;background:none;border:0;outline:0;font-size:14.5px}
-.cmdk-i input::placeholder{color:var(--t3)}
-.cmdk-l{max-height:min(360px,48vh);overflow-y:auto;padding:5px}
-.cmdk-s{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);padding:8px 9px 4px}
-.cmdk-it{width:100%;display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:7px;font-size:13px;color:var(--t2)}
-.cmdk-it .g{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--t4)}
-.cmdk-it.sel{background:rgba(226,98,42,.16);color:var(--text)}
-.cmdk-it.sel .g{color:var(--hot)}
-.cmdk-f{padding:7px 13px;border-top:1px solid var(--line);display:flex;gap:13px;font-size:10.5px;color:var(--t4)}
 
 /* toasts */
 .toasts{position:fixed;bottom:34px;right:16px;z-index:120;display:flex;flex-direction:column;gap:7px;pointer-events:none}
@@ -413,6 +398,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .lede{margin:20px auto 0;max-width:58ch;font-size:15.5px;line-height:1.7;color:var(--t2)}
 .lede.quiet{margin-top:12px;font-size:14px;color:var(--t2)}
 .lede.quiet b{color:var(--t2);font-weight:600}
+.hsearch{display:flex;justify-content:center;margin-top:30px}
 .hcta{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:32px}
 .hcta .btn{padding:10px 20px;font-size:13.5px;border-radius:9px;text-decoration:none}
 .hstats{list-style:none;display:flex;gap:44px;justify-content:center;flex-wrap:wrap;
@@ -427,9 +413,15 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   border:1px solid var(--line);border-radius:18px;cursor:pointer;text-align:left;
   background:var(--card1);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   transition:border-color .18s var(--ez),transform .18s var(--ez),background .18s var(--ez)}
-.wcard:hover,.wcard:focus-visible{border-color:var(--line2);transform:translateY(-3px);background:var(--card-hi,var(--hov))}
+/* a card carries its category's colour: the icon, the ring it sits in, and
+   the edge and the "Open" it picks up under the cursor */
+.wcard:hover,.wcard:focus-visible{border-color:color-mix(in srgb,var(--tint) 55%,var(--line2));
+  transform:translateY(-3px);background:var(--card-hi,var(--hov))}
+.wcard:focus-visible{outline:2px solid var(--tint);outline-offset:2px}
 .wcard .wi{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;
-  border:1px solid var(--line);background:var(--s2)}
+  border:1px solid color-mix(in srgb,var(--tint) 28%,var(--line));
+  background:color-mix(in srgb,var(--tint) 10%,var(--s2))}
+.wcard:hover .wi{border-color:color-mix(in srgb,var(--tint) 55%,var(--line))}
 .wcard .wi svg{width:30px;height:30px}
 .wcard h3{margin:0;font-size:17px;font-weight:620;letter-spacing:-.02em;color:var(--text)}
 .wcard p{margin:0;font-size:13px;line-height:1.6;color:var(--t2)}
@@ -437,7 +429,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--t4)}
 .wcard .wgo{margin-left:auto;font-family:var(--sans);font-size:12.5px;letter-spacing:0;
   text-transform:none;color:var(--t3);transition:color .18s var(--ez)}
-.wcard:hover .wgo{color:var(--text)}
+.wcard:hover .wgo{color:var(--tint)}
 @media(max-width:760px){
   .hero-in{padding:64px 22px 56px}
   .wgrid-wrap{padding:44px 22px 64px}
@@ -468,10 +460,6 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   .card:hover,.card:focus-visible{flex-basis:280px}
   .wsnav .lbl{display:none}
   .hstats{gap:18px}
-  /* the search keeps its place beside the clock, as an icon */
-  .kbtn{padding:5px 8px;font-size:0;gap:0}
-  .kbtn kbd{display:none}
-  .kbtn::before{content:"⌕";font-size:16px;line-height:1}
 }
 
 /* ---- phones ---- */
@@ -506,7 +494,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   <nav class="wsnav" id="wsnav" aria-label="Workspaces"></nav>
   <div class="chrome-r">
     <span data-kiln-clock></span>
-    <button class="kbtn" id="openCmdk">Search tools <kbd>⌘K</kbd></button>
+    <span data-kiln-search></span>
     <span data-kiln-themebar></span>
   </div>
 </div>
@@ -521,6 +509,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
         workspaces, a translator and a colour studio.</p>
       <p class="lede quiet"><b>Nothing is uploaded.</b> No account, no server, no telemetry.
         Your files are opened, edited and saved by the browser, on your own device.</p>
+      <div class="hsearch"><span data-kiln-search data-kiln-search-big></span></div>
       <div class="hcta">
         <a class="btn btn-p" href="https://buymeacoffee.com/kemetca" target="_blank" rel="noopener">Buy us a coffee</a>
         <button class="btn btn-g" data-go="image">Open the image editor</button>
@@ -815,8 +804,8 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   <div class="cmdk-b">
     <div class="cmdk-i">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15" style="color:var(--t3)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="cmdkIn" placeholder="Search 125 tools across every workspace…" autocomplete="off">
-      <kbd>ESC</kbd>
+      <input id="cmdkIn" autocomplete="off" spellcheck="false">
+      <span class="cmdk-scope"></span>
     </div>
     <div class="cmdk-l" id="cmdkL"></div>
     <div class="cmdk-f"><span>↑↓ navigate</span><span>↵ open</span><span>esc close</span></div>
@@ -890,25 +879,25 @@ const NAMEX={rot90:"Rotate 90° CW",rot270:"Rotate 90° CCW",rot180:"Rotate 180�
 
 const WORKSPACES=[
  {id:"home",name:"Home",tint:"var(--t2)"},
- {id:"image",name:"Image",tint:"var(--iron)",n:IMG_GROUPS.reduce((t,g)=>t+g[2].length,0),ui:"Photoshop-style canvas · layers · history",
+ {id:"image",name:"Image",tint:"var(--cat-image)",n:IMG_GROUPS.reduce((t,g)=>t+g[2].length,0),ui:"Photoshop-style canvas · layers · history",
   desc:"Load one image, then crop, correct, filter, watermark and convert it with a full layer stack and non-destructive history.",
   icon:IC.img},
- {id:"pdf",name:"PDF",tint:"var(--cobalt)",n:17,ui:"Acrobat-style viewer · page thumbnails",
+ {id:"pdf",name:"PDF",tint:"var(--cat-pdf)",n:17,ui:"Acrobat-style viewer · page thumbnails",
   desc:"Open a document and reorder, rotate, delete, merge, split, watermark and number its pages — rendered and rewritten in your browser.",
   icon:'<path d="M6 2.6h7.2L19 8.4V21a1.4 1.4 0 0 1-1.4 1.4H6A1.4 1.4 0 0 1 4.6 21V4A1.4 1.4 0 0 1 6 2.6z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 2.8V8.6h5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><text x="11.8" y="18.2" text-anchor="middle" font-family="ui-monospace,monospace" font-size="5.4" font-weight="700" fill="currentColor">PDF</text>'},
- {id:"video",name:"Video",tint:"var(--cherry)",n:30,ui:"Timeline · multi-track · real export",
+ {id:"video",name:"Video",tint:"var(--cat-video)",n:30,ui:"Timeline · multi-track · real export",
   desc:"Import footage, cut and arrange it on a multi-track timeline with transitions, text, filters, keyframes and audio, then export MP4 or WebM up to 4K.",
   icon:'<rect x="2.4" y="5.4" width="13.6" height="13.2" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m16.6 11.4 4.4-2.9v7l-4.4-2.9z" fill="currentColor"/><path d="m8 9.6 4 2.4-4 2.4z" fill="currentColor"/>'},
- {id:"documents",name:"Writer",tint:"color-mix(in srgb,var(--ash) 45%,var(--cobalt))",n:12,ui:"Word documents · read · edit · export",
+ {id:"documents",name:"Writer",tint:"var(--cat-documents)",n:12,ui:"Word documents · read · edit · export",
   desc:"Open a Word file and read it exactly as Word laid it out, print it, edit the text and formatting, then export .docx, HTML or plain text.",
   icon:'<path d="M6 2.6h7.2L19 8.4V21a1.4 1.4 0 0 1-1.4 1.4H6A1.4 1.4 0 0 1 4.6 21V4A1.4 1.4 0 0 1 6 2.6z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 2.8V8.6h5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m7.6 12.4 1.5 5.4 1.6-4 1.6 4 1.5-5.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'},
- {id:"translate",name:"Translator",tint:"var(--celadon)",n:34,ui:"On-device translation · 34 languages",
+ {id:"translate",name:"Translator",tint:"var(--cat-translate)",n:34,ui:"On-device translation · 34 languages",
   desc:"Translate text between 34 languages with the browser's own on-device model — no key, no account, and your text never leaves the machine.",
   icon:'<path d="M3 5.4h8.4M7.2 5.4v1.5c0 3-1.9 5.6-4.2 6.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4.4 10.2c1.3 2.2 3.2 3.7 5.4 4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="m12.6 21 4.2-9.6L21 21M14.4 17.6h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'},
- {id:"color",name:"Colour",tint:"var(--mang)",n:17,ui:"Harmonies · palettes · every format",
+ {id:"color",name:"Colour",tint:"var(--cat-color)",n:17,ui:"Harmonies · palettes · every format",
   desc:"Picker with eight harmony types, random palette generation, saved swatches and palettes, WCAG contrast, colour-blindness simulation, and every value one click from your clipboard.",
   icon:'<path d="M12 3.2a8.8 8.8 0 1 0 0 17.6c1.2 0 1.9-.8 1.9-1.7 0-.9-.7-1.5-.7-2.3 0-.8.7-1.5 1.6-1.5h1.6c2.4 0 4.4-2 4.4-4.4 0-4.3-4-7.7-8.8-7.7z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="7.6" cy="12.4" r="1.35" fill="#E2622A"/><circle cx="9.4" cy="8.2" r="1.35" fill="#C9A24B"/><circle cx="13.9" cy="7.1" r="1.35" fill="#6C8CC4"/><circle cx="17.3" cy="10" r="1.35" fill="#7FA88A"/>'},
- {id:"file",name:"Files",tint:"var(--ash)",n:9,ui:"Queue · progress · download manager",
+ {id:"file",name:"Files",tint:"var(--cat-file)",n:9,ui:"Queue · progress · download manager",
   desc:"Drag in any files for real MD5, SHA-1 and SHA-256 checksums plus MIME detected from content, not filename.",
   icon:'<path d="M3 6.6a1.8 1.8 0 0 1 1.8-1.8h4.1l2 2.4h7.3A1.8 1.8 0 0 1 20 9v8.4a1.8 1.8 0 0 1-1.8 1.8H4.8A1.8 1.8 0 0 1 3 17.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 10.4h17" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".6"/>'}
 ];
@@ -926,7 +915,7 @@ const OTHER_TOOLS={
    ============================================================ */
 let CUR="home";
 $("wsnav").innerHTML=WORKSPACES.map(w=>
-  `<button data-ws="${w.id}" aria-current="${w.id==="home"}"><span class="sq"></span><span class="lbl">${w.name}</span></button>`).join("");
+  `<button data-ws="${w.id}" aria-current="${w.id==="home"}" style="--tint:${w.tint}"><span class="sq"></span><span class="lbl">${w.name}</span></button>`).join("");
 function go(id){
   // Image and PDF are separate, full applications now.
   // Everything below is the phase-3..5 preview shell.
@@ -1035,46 +1024,35 @@ document.addEventListener("scroll",()=>$("ctx").classList.remove("on"),true);
 /* ============================================================
    Command palette
    ============================================================ */
+/* The catalogue the global search reads. Every entry names a place that
+   really exists — the workspaces themselves, then the tools inside them.
+   Picking one opens the workspace that owns it, and an image tool opens
+   already selected. Colour and category ride along so a result is
+   recognisable before you have read it. */
+const WS_ROUTE={image:"editor.html",pdf:"pdf/",documents:"documents/",video:"video/",
+  translate:"translate/",color:"colour/",file:null};
 const ALL=[];
-IMG_GROUPS.forEach(([g,,ts])=>ts.forEach(([id,n])=>ALL.push({n,g:"Image · "+g,ws:"image",tool:id})));
-Object.entries(OTHER_TOOLS).forEach(([g,ts])=>ts.forEach(n=>ALL.push({n,g,ws:g.toLowerCase()==="colour"?"color":g.toLowerCase()==="fonts"?"font":g.toLowerCase()==="files"?"file":g.toLowerCase()})));
-const cmdk=$("cmdk"),cin=$("cmdkIn"),cl=$("cmdkL");
-let cres=[],csel=0;
-function openC(){cmdk.classList.add("on");cin.value="";cin.focus();renC("");}
-function closeC(){cmdk.classList.remove("on");}
-function renC(q){
-  q=q.trim().toLowerCase();
-  cres=(q?ALL.filter(t=>t.n.toLowerCase().includes(q)||t.g.toLowerCase().includes(q)):ALL).slice(0,70);
-  csel=0;
-  if(!cres.length){cl.innerHTML=`<div class="empty">No tool matches “${esc(q)}”</div>`;return;}
-  let last="",h="";
-  cres.forEach((t,i)=>{
-    if(t.g!==last){h+=`<div class="cmdk-s">${t.g}</div>`;last=t.g;}
-    h+=`<button class="cmdk-it ${i===0?"sel":""}" data-i="${i}">${t.n}<span class="g">${t.ws}</span></button>`;
-  });
-  cl.innerHTML=h;
-  cl.querySelectorAll(".cmdk-it").forEach(b=>b.addEventListener("click",()=>runC(+b.dataset.i)));
+WORKSPACES.filter(w=>w.id!=="home").forEach(w=>ALL.push({
+  name:`${w.name} Workspace`,group:"Workspaces",badge:`${w.n} tools`,cat:w.id,
+  run:()=>openWorkspace(w.id)}));
+IMG_GROUPS.forEach(([g,,ts])=>ts.forEach(([id,n])=>ALL.push({
+  name:n,group:"Image · "+g,badge:"image",cat:"image",
+  run:()=>{location.href="editor.html";}})));
+const CATALOGUE={PDF:"pdf",Colour:"color",Files:"file"};
+Object.entries(OTHER_TOOLS).forEach(([g,ts])=>{
+  const ws=CATALOGUE[g];
+  if(!ws)return;                       /* a group with no workspace behind it is not offered */
+  ts.forEach(n=>ALL.push({name:n,group:g,badge:WORKSPACES.find(w=>w.id===ws).name,cat:ws,
+    run:()=>openWorkspace(ws,n)}));
+});
+function openWorkspace(ws,tool){
+  const href=WS_ROUTE[ws];
+  if(href){location.href=href;return;}
+  go(ws);
+  if(tool)toast(`${tool} — open in the ${ws} workspace`);
 }
-function mv(d){
-  const it=cl.querySelectorAll(".cmdk-it");if(!it.length)return;
-  it[csel]?.classList.remove("sel");csel=(csel+d+it.length)%it.length;
-  it[csel].classList.add("sel");it[csel].scrollIntoView({block:"nearest"});
-}
-function runC(i){
-  const t=cres[i];if(!t)return;closeC();
-  if(t.ws==="image"){location.href="editor.html";return;}
-  if(t.ws==="pdf"){location.href="pdf/";return;}
-  if(t.ws==="documents"){location.href="documents/";return;}
-  if(t.ws==="video"){location.href="video/";return;}
-  if(t.ws==="translate"){location.href="translate/";return;}
-  if(t.ws==="color"){location.href="colour/";return;}
-  go(t.ws);
-  if(t.tool)setTimeout(()=>selectTool(t.tool),80);
-  else toast(`${t.n} — open in the ${t.ws} workspace`);
-}
-$("openCmdk").addEventListener("click",openC);
-cin.addEventListener("input",e=>renC(e.target.value));
-cmdk.addEventListener("click",e=>{if(e.target===cmdk)closeC();});
+KilnSearch.register(ALL);
+const openC=()=>KilnSearch.open("");
 /* ============================================================
    IMAGE WORKSPACE
    Layer stack: each applied tool is a non-destructive layer.
@@ -2608,14 +2586,7 @@ renderQ();
    ============================================================ */
 document.addEventListener("keydown",e=>{
   const M=e.metaKey||e.ctrlKey;
-  if(M&&e.key.toLowerCase()==="k"){e.preventDefault();cmdk.classList.contains("on")?closeC():openC();return;}
-  if(cmdk.classList.contains("on")){
-    if(e.key==="Escape")closeC();
-    else if(e.key==="ArrowDown"){e.preventDefault();mv(1);}
-    else if(e.key==="ArrowUp"){e.preventDefault();mv(-1);}
-    else if(e.key==="Enter"){e.preventDefault();runC(csel);}
-    return;
-  }
+  if(document.getElementById("cmdk").classList.contains("on"))return;   /* the palette handles its own keys */
   if(e.key==="Escape"){
     $("ctx").classList.remove("on");
     document.querySelectorAll("[data-menu]").forEach(o=>o.classList.remove("open"));

@@ -1,12 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-kiln-cat="translate" data-kiln-app="Translator">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Kiln — Translator</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E2622A'/%3E%3Crect x='9' y='9' width='14' height='14' rx='3' fill='%230B0A09'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="search.css">
 <script src="theme.js"></script>
+<script src="search.js"></script>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -135,13 +137,14 @@ textarea::placeholder{color:var(--t4)}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="fda81ab-0917">
+<meta name="kiln-build" content="f6535c6-1041">
 </head>
 <body>
 <div id="app">
   <div class="menubar">
     <a class="brand" href="../" style="text-decoration:none;color:inherit" title="Back to all workspaces"><span class="mark"></span>Kiln</a>
     <span data-kiln-home></span>
+    <span data-kiln-search></span>
     <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d" id="mFile"></div></div>
     <div class="menu" data-menu><button class="menu-t">Edit</button><div class="menu-d" id="mEdit"></div></div>
     <div class="menu" data-menu><button class="menu-t">Language</button><div class="menu-d" id="mLang"></div></div>

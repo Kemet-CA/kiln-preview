@@ -1,0 +1,69 @@
+/* ============================================================
+   Kiln shared search — the control and the palette it opens.
+   Loaded next to theme.css on every page. The palette markup and
+   class names are the ones the homepage has always used, so the
+   two are the same component rather than two that resemble each other.
+   ============================================================ */
+
+/* ---------- the control ---------- */
+/* the slot is a marker, not a box — the control lays out in its parent */
+[data-kiln-search]{display:contents}
+.ksearch{display:flex;align-items:center;gap:8px;min-width:230px;max-width:340px;
+  padding:5px 9px 5px 10px;border:var(--bw) solid var(--line);border-radius:9px;
+  background:var(--s2);color:var(--t3);font-size:12.5px;text-align:left;cursor:pointer;
+  box-shadow:var(--hs);transition:border-color .14s var(--ez),color .14s var(--ez)}
+.ksearch:hover{border-color:var(--cat,var(--ember));color:var(--t2)}
+.ksearch:focus-visible{outline:2px solid var(--cat,var(--ember));outline-offset:1px}
+.ksearch svg{width:14px;height:14px;flex:none;color:var(--cat,var(--ember))}
+.ksearch .kslabel{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ksearch kbd{font-family:var(--mono);font-size:9.5px;color:var(--t4);border:1px solid var(--line);
+  border-radius:4px;padding:1px 4px;flex:none}
+
+/* the hero control on the home page: the same thing, larger */
+.ksearch.big{min-width:0;max-width:none;width:min(560px,100%);padding:13px 16px;gap:11px;
+  font-size:15px;border-radius:12px;background:var(--s1);border-color:var(--line2)}
+.ksearch.big svg{width:18px;height:18px}
+.ksearch.big kbd{font-size:11px;padding:2px 6px}
+
+/* ---------- the palette ---------- */
+/* width:100vw rather than inset:0 — where a workspace's layout is wider than
+   the screen the browser widens the block a fixed element resolves against,
+   and the palette would centre itself half off the side of a phone */
+.cmdk{position:fixed;top:0;left:0;width:100vw;height:100dvh;z-index:1000;display:none;
+  background:color-mix(in srgb,var(--ground) 40%,rgba(6,5,5,.5));
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:12vh 16px 16px}
+.cmdk.on{display:block;animation:kfade .16s var(--ez)}
+@keyframes kfade{from{opacity:0}to{opacity:1}}
+.cmdk-b{width:min(640px,94vw);margin:0 auto;border-radius:13px;overflow:hidden;
+  border:var(--bw) solid var(--line2);background:var(--popbg);
+  backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);box-shadow:var(--popshadow)}
+.cmdk-i{display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid var(--line)}
+.cmdk-i svg{width:16px;height:16px;flex:none;color:var(--cat,var(--ember))}
+.cmdk-i input{flex:1;min-width:0;background:none;border:0;outline:0;font-size:15px;
+  color:var(--text);font-family:inherit}
+.cmdk-i input::placeholder{color:var(--t3)}
+.cmdk-scope{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--cat,var(--ember));border:1px solid var(--line);border-radius:5px;padding:2px 6px;flex:none}
+.cmdk-l{max-height:min(400px,52vh);overflow-y:auto;padding:5px}
+.cmdk-s{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--t3);padding:8px 9px 4px}
+.cmdk-it{width:100%;display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:7px;
+  font-size:13px;color:var(--t2);background:none;border:0;text-align:left;cursor:pointer;font-family:inherit}
+.cmdk-it .cdot{width:7px;height:7px;border-radius:2px;flex:none;background:var(--cat,var(--ember))}
+.cmdk-it .cname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmdk-it .g{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--t4);flex:none}
+.cmdk-it:hover{background:var(--hov)}
+.cmdk-it.sel{background:color-mix(in srgb,var(--cat,var(--ember)) 16%,transparent);color:var(--text)}
+.cmdk-it.sel .g{color:var(--cat,var(--ember))}
+.cmdk-f{padding:7px 13px;border-top:1px solid var(--line);display:flex;gap:13px;
+  font-size:10.5px;color:var(--t4)}
+.cmdk .empty{padding:26px 14px;text-align:center;color:var(--t3);font-size:13px}
+
+@media(max-width:600px){
+  .cmdk{padding:8vh 10px 10px}
+  .cmdk-f{display:none}
+  .ksearch{min-width:0}
+  .ksearch .kslabel,.ksearch kbd{display:none}
+  .ksearch.big .kslabel{display:block}
+  .ksearch.big{padding:11px 14px;font-size:14px}
+}
