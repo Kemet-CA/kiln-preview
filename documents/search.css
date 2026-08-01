@@ -5,38 +5,56 @@
    two are the same component rather than two that resemble each other.
    ============================================================ */
 
-/* ---------- the control ---------- */
-/* the slot is a marker, not a box — the control lays out in its parent */
+/* ---------- the control ----------
+   A square by default; open, it grows into a field in place. The slot is a
+   marker, not a box, so the control lays out in whatever bar holds it. */
 [data-kiln-search]{display:contents}
-.ksearch{display:flex;align-items:center;gap:8px;min-width:230px;max-width:340px;
-  padding:5px 9px 5px 10px;border:var(--bw) solid var(--line);border-radius:9px;
-  background:var(--s2);color:var(--t3);font-size:12.5px;text-align:left;cursor:pointer;
-  box-shadow:var(--hs);transition:border-color .14s var(--ez),color .14s var(--ez)}
-.ksearch:hover{border-color:var(--cat,var(--ember));color:var(--t2)}
-.ksearch:focus-visible{outline:2px solid var(--cat,var(--ember));outline-offset:1px}
-.ksearch svg{width:14px;height:14px;flex:none;color:var(--cat,var(--ember))}
-.ksearch .kslabel{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ksearch kbd{font-family:var(--mono);font-size:9.5px;color:var(--t4);border:1px solid var(--line);
-  border-radius:4px;padding:1px 4px;flex:none}
+.kswrap{display:flex;align-items:center;height:30px;flex:none;
+  border:var(--bw) solid var(--line);border-radius:9px;background:var(--s2);
+  box-shadow:var(--hs);overflow:hidden;
+  transition:border-color .14s var(--ez),background .14s var(--ez)}
+.kswrap:hover,.kswrap.on{border-color:var(--cat,var(--ember))}
+.ksearch{width:28px;height:28px;flex:none;display:grid;place-items:center;
+  background:none;border:0;cursor:pointer;color:var(--t3);padding:0}
+.kswrap:hover .ksearch,.kswrap.on .ksearch{color:var(--cat,var(--ember))}
+.ksearch svg{width:15px;height:15px}
+.ksearch:focus-visible{outline:2px solid var(--cat,var(--ember));outline-offset:-2px;border-radius:8px}
+/* the field: no width at all until the square is opened */
+.ksinput{width:0;min-width:0;padding:0;border:0;outline:0;background:none;
+  appearance:none;-webkit-appearance:none;
+  font-family:inherit;font-size:12.5px;color:var(--text);
+  transition:width .18s var(--ez),padding .18s var(--ez)}
+.ksinput::placeholder{color:var(--t3)}
+/* the pill itself carries the focus, so the field inside it does not draw a
+   second ring — a page-wide :focus-visible rule would otherwise box the text */
+.ksinput:focus,.ksinput:focus-visible{outline:none;box-shadow:none}
+.ksinput::-webkit-search-cancel-button{display:none}
+.kswrap.on .ksinput{width:clamp(140px,26vw,230px);padding:0 8px 0 2px}
+.kswrap kbd{display:none;font-family:var(--mono);font-size:9.5px;color:var(--t4);
+  border:1px solid var(--line);border-radius:4px;padding:1px 4px;margin-right:6px;flex:none}
+.kswrap.on kbd{display:block}
 
-/* the hero control on the home page: the same thing, larger */
-.ksearch.big{min-width:0;max-width:none;width:min(560px,100%);padding:13px 16px;gap:11px;
-  font-size:15px;border-radius:12px;background:var(--s1);border-color:var(--line2)}
-.ksearch.big svg{width:18px;height:18px}
-.ksearch.big kbd{font-size:11px;padding:2px 6px}
+/* the front page's own search is the point of that page, so it stays open */
+.kswrap.big{height:52px;border-radius:12px;background:var(--s1);border-color:var(--line2);
+  width:min(560px,100%);padding:0 6px}
+.kswrap.big .ksearch{width:40px;height:40px;justify-items:start;padding-left:10px}
+.kswrap.big .ksearch svg{width:18px;height:18px}
+.kswrap.big .kslabel{display:none}
+.kswrap.big .ksinput{width:100%;flex:1;font-size:15px;padding:0 8px}
+.kswrap.big kbd{display:block;font-size:11px;padding:2px 6px}
 
 /* ---------- the palette ---------- */
-/* width:100vw rather than inset:0 — where a workspace's layout is wider than
-   the screen the browser widens the block a fixed element resolves against,
-   and the palette would centre itself half off the side of a phone */
-.cmdk{position:fixed;top:0;left:0;width:100vw;height:100dvh;z-index:1000;display:none;
-  background:color-mix(in srgb,var(--ground) 40%,rgba(6,5,5,.5));
-  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:12vh 16px 16px}
-.cmdk.on{display:block;animation:kfade .16s var(--ez)}
-@keyframes kfade{from{opacity:0}to{opacity:1}}
-.cmdk-b{width:min(640px,94vw);margin:0 auto;border-radius:13px;overflow:hidden;
+/* The options hang off whichever control is open. The layer behind them is
+   there to catch a click anywhere else, not to dim the page — the control is
+   still on screen and still readable. width:100vw rather than inset:0: where a
+   workspace's layout is wider than the screen the browser widens the block a
+   fixed element resolves against. */
+.cmdk{position:fixed;top:0;left:0;width:100vw;height:100dvh;z-index:1000;display:none}
+.cmdk.on{display:block}
+.cmdk-b{position:fixed;border-radius:12px;overflow:hidden;animation:kdrop .14s var(--ez);
   border:var(--bw) solid var(--line2);background:var(--popbg);
   backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);box-shadow:var(--popshadow)}
+@keyframes kdrop{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
 .cmdk-i{display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid var(--line)}
 .cmdk-i svg{width:16px;height:16px;flex:none;color:var(--cat,var(--ember))}
 .cmdk-i input{flex:1;min-width:0;background:none;border:0;outline:0;font-size:15px;
@@ -45,6 +63,7 @@
 .cmdk-scope{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
   color:var(--cat,var(--ember));border:1px solid var(--line);border-radius:5px;padding:2px 6px;flex:none}
 .cmdk-l{max-height:min(400px,52vh);overflow-y:auto;padding:5px}
+.cmdk-f .cmdk-scope{border:0;padding:0;margin-right:auto}
 .cmdk-s{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--t3);padding:8px 9px 4px}
 .cmdk-it{width:100%;display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:7px;
@@ -60,10 +79,9 @@
 .cmdk .empty{padding:26px 14px;text-align:center;color:var(--t3);font-size:13px}
 
 @media(max-width:600px){
-  .cmdk{padding:8vh 10px 10px}
-  .cmdk-f{display:none}
-  .ksearch{min-width:0}
-  .ksearch .kslabel,.ksearch kbd{display:none}
-  .ksearch.big .kslabel{display:block}
-  .ksearch.big{padding:11px 14px;font-size:14px}
+  .cmdk-f span:not(.cmdk-scope){display:none}
+  .kswrap.on .ksinput{width:min(46vw,180px)}
+  .kswrap.on kbd{display:none}
+  .kswrap.big{height:46px}
+  .kswrap.big .ksinput{font-size:14px}
 }
