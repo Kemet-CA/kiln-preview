@@ -77,6 +77,7 @@ export class Timeline {
       ${thumb}<span class="clabel">${esc(label)}</span>
       ${badges ? `<span class="cbadge">${esc(badges)}</span>` : ""}
       ${c.kind === "audio" ? `<span class="cwave"></span>` : ""}
+      <button class="cdel" data-del="${c.id}" title="Delete this clip">✕</button>
       <span class="ch right" data-edge="right"></span>
     </div>`;
   }
@@ -136,8 +137,22 @@ export class Timeline {
       this.ruler.addEventListener("pointerup", up);
     });
 
+    // the ✕ on a selected clip, and right-click anywhere on one
+    this.body.addEventListener("click", e => {
+      const del = e.target.closest("[data-del]");
+      if (del) { e.stopPropagation(); this.app.onDelete(del.dataset.del); }
+    });
+    this.body.addEventListener("contextmenu", e => {
+      const el = e.target.closest(".tl-clip");
+      if (!el) return;
+      e.preventDefault();
+      this.app.onContext(el.dataset.clip, e.clientX, e.clientY);
+    });
+
     this.body.addEventListener("pointerdown", e => {
+      if (e.button !== 0) return;
       let clipEl = e.target.closest(".tl-clip");
+      if (e.target.closest("[data-del]")) return;
       if (!clipEl) { this.app.onSelect([]); return; }
       const id = clipEl.dataset.clip;
       const clip = findClip(this.project, id);

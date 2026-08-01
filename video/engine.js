@@ -72,7 +72,7 @@ function loop(now) {
 function drawPreview() {
   const p = App.project;
   const cv = $("preview");
-  if (cv.width !== p.w || cv.height !== p.h) { cv.width = p.w; cv.height = p.h; }
+  if (cv.width !== p.w || cv.height !== p.h) { cv.width = p.w; cv.height = p.h; fitPreview(); }
   const t = App.playhead;
 
   const wanted = new Set();
@@ -109,6 +109,22 @@ function drawPreview() {
     if (m.el && m.kind !== "image" && !wanted.has(m.el) && !m.el.paused) m.el.pause();
   }
   renderFrame(ctx, p, t, sources);
+}
+
+/* The canvas carries its own pixel size (the project resolution), so its CSS
+   size has to be computed rather than left to percentage max-height — which
+   resolved against an indefinite flex height and let the picture overflow its
+   box, worse the shorter the window. */
+function fitPreview() {
+  const cv = $("preview"), wrap = document.querySelector(".vwrap");
+  if (!cv || !wrap) return;
+  const box = wrap.getBoundingClientRect();
+  const avail = { w: Math.max(80, box.width - 32), h: Math.max(45, box.height - 32) };
+  const ratio = App.project.w / App.project.h;
+  let w = avail.w, h = w / ratio;
+  if (h > avail.h) { h = avail.h; w = h * ratio; }
+  cv.style.width = Math.floor(w) + "px";
+  cv.style.height = Math.floor(h) + "px";
 }
 
 function setPlaying(on) {
@@ -342,10 +358,14 @@ function addToTimeline(mediaId, atTime = null, trackId = null) {
     || p.tracks.find(t => t.kind === kind);
   if (!track) return null;
   const at = atTime ?? track.clips.reduce((m, c) => Math.max(m, M.clipEnd(c)), 0);
+  const wasEmpty = !p.tracks.some(t => t.clips.length);
   const clip = M.makeClip(media, at, { kind: media.kind, dur: media.dur, name: media.name });
   M.addClip(track, clip);
   commit("Add clip");
   refresh();
+  // an empty timeline has no length to fit, so it boots at maximum zoom —
+  // fit again as soon as there is something to measure
+  if (wasEmpty) timeline.zoomToFit();
   setSelection([clip.id]);
   return clip;
 }
@@ -503,6 +523,28 @@ function overlayTrack(at, dur) {
   renderTrackNames();
   return track;
 }
+/* right-click on a clip: the edits people reach for most, where the clip is */
+function openClipMenu(id, x, y) {
+  setSelection([id]);
+  const clip = M.findClip(App.project, id);
+  if (!clip) return;
+  const items = [
+    ["Split at playhead", "split"],
+    ["Duplicate", "duplicate"],
+    ["Detach audio", "detachAudio"],
+    null,
+    ["Delete", "delete"],
+    ["Ripple delete (close the gap)", "ripple"],
+  ];
+  const menu = $("clipMenu");
+  menu.innerHTML = items.map(it => it === null ? `<div class="msep"></div>`
+    : `<button class="mi" data-act="${it[1]}">${esc(it[0])}</button>`).join("");
+  menu.style.left = Math.min(x, innerWidth - 210) + "px";
+  menu.style.top = Math.min(y, innerHeight - 200) + "px";
+  menu.classList.add("on");
+}
+const closeClipMenu = () => $("clipMenu").classList.remove("on");
+
 function hitClipsAtPlayhead() {
   return App.project.tracks.flatMap(t => {
     const c = M.clipAt(t, App.playhead);
@@ -638,8 +680,9 @@ function wire() {
   });
 
   document.addEventListener("click", e => {
+    if (!e.target.closest("#clipMenu")) closeClipMenu();
     const mi = e.target.closest(".mi");
-    if (mi?.dataset.act) ACT[mi.dataset.act]?.();
+    if (mi?.dataset.act) { ACT[mi.dataset.act]?.(); closeClipMenu(); }
     if (!e.target.closest("[data-menu]") || mi) document.querySelectorAll("[data-menu]").forEach(x => x.classList.remove("open"));
     const act = e.target.closest("[data-act]:not(.mi)");
     if (act) ACT[act.dataset.act]?.();
@@ -697,7 +740,7 @@ function wire() {
     if (t.id === "pSize") {
       const p = PRESETS[t.value];
       App.project.w = p.w; App.project.h = p.h;
-      commit("Project size"); renderAll();
+      commit("Project size"); renderAll(); fitPreview();
     }
     if (t.id === "pFps") { App.project.fps = +t.value; commit("Frame rate"); syncStatus(); }
     if (t.id === "pBg") { App.project.bg = t.value; commit("Background"); }
@@ -808,11 +851,16 @@ timeline = new Timeline($("tlScroll"), {
   onSelect: setSelection,
   onSeek: seek,
   onSplit: id => { setSelection([id]); ACT.split(); },
+  onDelete: id => { setSelection([id]); ACT.delete(); },
+  onContext: openClipMenu,
   commit,
 });
 wire();
+new ResizeObserver(fitPreview).observe(document.querySelector(".vwrap"));
+addEventListener("resize", fitPreview);
 M.commit(App.hist, App.project, "New project");
 renderAll();
+fitPreview();
 timeline.zoomToFit();
 requestAnimationFrame(loop);
 status("Ready");

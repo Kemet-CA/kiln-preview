@@ -94,7 +94,7 @@ input,select{font:inherit;color:inherit}
 .stage{grid-area:stage;position:relative;overflow:hidden;display:flex;flex-direction:column;
   background:radial-gradient(70% 60% at 50% 0%,color-mix(in srgb,var(--ember) 5%,transparent),transparent 70%),var(--stagebg)}
 .vwrap{flex:1;min-height:0;display:grid;place-items:center;padding:16px}
-#preview{max-width:100%;max-height:100%;background:#000;border-radius:3px;
+#preview{display:block;background:#000;border-radius:3px;
   box-shadow:0 20px 50px -24px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.07)}
 .transport{flex:none;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 0 12px}
 .tbig{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--btnp-fg);
@@ -167,6 +167,13 @@ input,select{font:inherit;color:inherit}
 .tl-clip .cthumb{width:38px;height:calc(100% - 10px);border-radius:3px;background:#000 center/cover no-repeat;flex:none;pointer-events:none}
 .tl-clip .cwave{position:absolute;left:0;right:0;bottom:0;height:16px;pointer-events:none;opacity:.5;
   background:repeating-linear-gradient(90deg,currentColor 0 1px,transparent 1px 4px);color:var(--celadon)}
+.cdel{position:absolute;top:3px;right:3px;width:17px;height:17px;border-radius:5px;display:none;
+  place-items:center;font-size:11px;background:rgba(0,0,0,.45);color:#fff;z-index:4}
+.tl-clip.sel .cdel{display:grid}
+.cdel:hover{background:var(--bad);color:#fff}
+.ctxm{display:none;position:fixed;z-index:120;min-width:190px;padding:5px;border:var(--bw) solid var(--line2);
+  border-radius:9px;background:var(--popbg);backdrop-filter:blur(20px);box-shadow:var(--popshadow)}
+.ctxm.on{display:block;animation:pop .1s var(--ez)}
 .ch{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize;z-index:2}
 .ch.left{left:0}.ch.right{right:0}
 .ch:hover{background:color-mix(in srgb,var(--ember) 45%,transparent)}
@@ -205,7 +212,7 @@ input,select{font:inherit;color:inherit}
 .prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="0886297-1646">
+<meta name="kiln-build" content="5dbf4f6-1721">
 </head>
 <body>
 <div id="app">
@@ -303,6 +310,14 @@ input,select{font:inherit;color:inherit}
       <span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)">Timeline</span>
       <button class="tb txt" data-act="addVideoTrack">＋ Video track</button>
       <button class="tb txt" data-act="addAudioTrack">＋ Audio track</button>
+      <div class="obsep"></div>
+      <button class="tb txt" data-act="split" title="Split the selected clip at the playhead (S)">✂ Split</button>
+      <button class="tb txt" data-act="delete" title="Delete the selected clip (⌫)">🗑 Delete</button>
+      <div class="obsep"></div>
+      <span style="font-size:11px;color:var(--t3)">Zoom</span>
+      <button class="tb" data-act="zoomOut" title="Zoom out (⌘ + scroll)">−</button>
+      <button class="tb txt" data-act="zoomFit" title="Fit the whole timeline">Fit</button>
+      <button class="tb" data-act="zoomIn" title="Zoom in (⌘ + scroll)">+</button>
       <span class="tcode" id="tlInfo" style="margin-left:auto"></span>
     </div>
     <div class="tlmain">
@@ -345,6 +360,7 @@ input,select{font:inherit;color:inherit}
   </div>
 </div>
 
+<div class="ctxm" id="clipMenu"></div>
 <div class="toasts" id="toasts"></div>
 <script type="module" src="engine.js"></script>
 </body>
