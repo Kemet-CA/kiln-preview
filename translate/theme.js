@@ -191,7 +191,9 @@
     const t = cur(), n = next();
     const bg = root.dataset.mode === "light" ? t.light : t.dark;
     for (const b of bars) {
-      b.chip.style.background = `linear-gradient(120deg,${bg} 55%,${t.accent} 55%)`;
+      // the swatch is now a dot on the palette rather than the whole button,
+      // so the button reads as "themes" before it reads as "orange"
+      b.chip.style.background = t.accent;
       b.themeBtn.title = `Theme: ${t.name} — click for ${n.name}`;
       b.themeBtn.setAttribute("aria-label", `Theme ${t.name}, click to switch to ${n.name}`);
       b.modeBtn.title = mode === null
@@ -210,7 +212,14 @@
     bar.className = "ktb";
     bar.innerHTML =
       `<button class="ktb-btn" data-ktb-mode title="Light / dark">${MOON}${SUN}</button>
-       <button class="ktb-btn" data-ktb-theme><span class="ktb-chip"></span></button>`;
+       <button class="ktb-btn" data-ktb-theme>
+         <svg class="ktb-pal" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+           <path d="M12 3.4a8.6 8.6 0 1 0 0 17.2c1.1 0 1.8-.8 1.8-1.7 0-.8-.6-1.4-.6-2.2 0-.8.7-1.5 1.6-1.5h1.5A5.3 5.3 0 0 0 21.6 10c0-3.7-4.3-6.6-9.6-6.6z"
+             stroke="currentColor" stroke-width="1.7"/>
+           <circle class="d1" cx="7.6" cy="12.4" r="1.35"/><circle class="d2" cx="9.4" cy="8.2" r="1.35"/>
+           <circle class="d3" cx="14" cy="7.1" r="1.35"/>
+         </svg>
+         <span class="ktb-chip"></span></button>`;
     host.appendChild(bar);
     const rec = {
       bar,

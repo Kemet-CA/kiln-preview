@@ -428,7 +428,16 @@
 .ktb-btn:hover{color:var(--text);border-color:var(--line2);background:var(--hov)}
 .ktb-btn:active{transform:translateY(1px)}
 .ktb-btn svg{width:15px;height:15px}
-.ktb-chip{width:16px;height:16px;border-radius:4px;border:1px solid var(--line2);display:block}
+/* the theme button: a palette, with the current family's colour as the dot in
+   the corner. A plain coloured chip did not say what the button was for. */
+.ktb-btn[data-ktb-theme]{position:relative}
+.ktb-pal{width:16px;height:16px;color:var(--t3)}
+.ktb-btn:hover .ktb-pal{color:var(--text)}
+.ktb-pal .d1{fill:currentColor;opacity:.45}
+.ktb-pal .d2{fill:currentColor;opacity:.65}
+.ktb-pal .d3{fill:currentColor;opacity:.85}
+.ktb-chip{position:absolute;right:2px;bottom:2px;width:8px;height:8px;border-radius:50%;
+  border:1.5px solid var(--s1);display:block}
 :root[data-mode="light"] .ktb-moon{display:none}
 :root[data-mode="dark"] .ktb-sun{display:none}
 :root:not([data-mode]) .ktb-sun{display:none}
@@ -493,6 +502,7 @@
   --cat-color:#9DA2A8;
   --cat-file:#8D949B;
   --cat-code:#8D949B;
+  --cat-storage:#8D949B;
   --cat-neutral:#8D949B;
 }
 :root[data-mode="light"]{
@@ -505,6 +515,7 @@
   --cat-color:#5A6169;
   --cat-file:#5D666F;
   --cat-code:#5D666F;
+  --cat-storage:#5D666F;
   --cat-neutral:#5D666F;
 }
 @media (prefers-color-scheme: light){
@@ -522,6 +533,7 @@
 :root[data-kiln-cat="color"]{--cat:var(--cat-color)}
 :root[data-kiln-cat="file"]{--cat:var(--cat-file)}
 :root[data-kiln-cat="code"]{--cat:var(--cat-code)}
+:root[data-kiln-cat="storage"]{--cat:var(--cat-storage)}
 
 /* A workspace's accent is its category, in every theme. Written at the same
    weight as the theme blocks above and after them, so it is the last word. */

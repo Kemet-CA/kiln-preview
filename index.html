@@ -6,7 +6,7 @@
 <script src="theme.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="3ffa0e8-1835">
+<meta name="kiln-build" content="a2b44ca-2044">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -433,30 +433,42 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
     radial-gradient(52vw 40vw at 94% -2%,var(--bloom-b),transparent 70%);
   opacity:var(--bloom,.55);
   /* a very slow drift: two transforms, nothing repainted, so it costs nothing */
-  animation:drift 46s ease-in-out infinite alternate;will-change:transform}
+  animation:drift 90s ease-in-out infinite alternate;will-change:transform}
 @keyframes drift{from{transform:translate3d(0,0,0) scale(1)}
-  to{transform:translate3d(2.5%,1.5%,0) scale(1.06)}}
+  to{transform:translate3d(1.4%,.9%,0) scale(1.035)}}
 
 /* ---- the shapes that float behind the hero ----
    Decorative only: no pointer events, no tab stop, and they are given the same
    icons the cards below use, so the page introduces itself twice over. */
-.floaters{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.floaters{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
 .flo{position:absolute;display:grid;place-items:center;border-radius:20px;
   border:1px solid color-mix(in srgb,var(--tint) 22%,var(--line));
   background:color-mix(in srgb,var(--tint) 9%,var(--card1));
   color:var(--tint);opacity:.5;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   animation:bob var(--dur,26s) ease-in-out infinite alternate;animation-delay:var(--delay,0s);
-  will-change:transform}
+  will-change:transform;transition:opacity .4s var(--ez)}
 .flo svg{width:46%;height:46%;opacity:.85}
 @keyframes bob{
   from{transform:translate3d(0,0,0) rotate(var(--rot,0deg))}
   to{transform:translate3d(var(--dx,10px),var(--dy,-22px),0) rotate(calc(var(--rot,0deg) + var(--spin,3deg)))}}
-/* scrolling takes them away, and scrolling back brings them home */
-.floaters{transform:translate3d(0,calc(var(--away,0) * -34px),0);
-  opacity:calc(1 - var(--away,0) * .85);transition:transform .18s linear,opacity .18s linear}
+/* Scrolling moves them, it does not switch them off: the layer drifts up at a
+   fraction of the page's speed, so they stay with you the whole way down and
+   settle back at the top. */
+.floaters{transform:translate3d(0,calc(var(--scroll,0) * -0.14px),0);
+  opacity:calc(1 - min(var(--away,0),1) * .45);
+  transition:opacity .5s var(--ez)}
+/* arriving: a few pixels and a fade, staggered by position in the grid */
+.rise{opacity:0;transform:translate3d(0,14px,0);
+  transition:opacity .5s var(--ez),transform .5s var(--ez)}
+.rise.in{opacity:1;transform:none}
+.wgrid .wcard:nth-child(2){transition-delay:.04s}
+.wgrid .wcard:nth-child(3){transition-delay:.08s}
+.wgrid .wcard:nth-child(4){transition-delay:.12s}
+.wgrid .wcard:nth-child(n+5){transition-delay:.16s}
 @media(prefers-reduced-motion:reduce){
   #app::before,.flo{animation:none}
   .floaters{display:none}
+  .rise{opacity:1;transform:none;transition:none}
 }
 /* the screens sit above the light; the chrome keeps its own sticky */
 .screen{position:relative;z-index:1}
@@ -538,6 +550,9 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .wcard.soon:hover{transform:none;box-shadow:none;border-color:var(--line)}
 .wcard.soon .wi{opacity:.6}
 .wcard.soon .wn{color:var(--brand-ink)}
+/* a card that opens onto a preview rather than a working tool */
+.wcard.preview .wn{color:var(--warn)}
+.wcard.preview .wi{opacity:.85}
 
 @media(max-width:760px){
   .hero-in{padding:64px 22px 56px}
@@ -849,62 +864,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   </div>
 </section>
 
-<section class="screen ws" id="screen-file">
-  <div class="tbar">
-    <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d">
-      <button class="mi" data-act="filopen">Add files…<span class="sc">⌘O</span></button>
-      <button class="mi" data-act="filclear">Clear queue</button></div></div>
-    <div class="menu" data-menu><button class="menu-t">Process</button><div class="menu-d">
-      <button class="mi" data-fp="hash">Hash all (MD5 · SHA-1 · SHA-256)</button>
-      <button class="mi" data-fp="mime">Detect MIME from content</button>
-      <button class="mi" data-fp="zip">Create ZIP archive</button></div></div>
-    <div class="tsep"></div>
-    <button class="tb" data-act="filrun">Run queue</button>
-    <div class="tbar-r"><button class="btn btn-p" data-act="filopen">Add files</button></div>
-  </div>
-  <div class="wsbody" id="filBody" style="--lw:236px;--rw:308px">
-    <aside class="pane pane-l">
-      <div class="sec grow"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Queue<span class="sec-n num" id="qN">0</span></button>
-        <div class="sec-b" id="queue"><div class="empty">Queue is empty.</div></div></div>
-      <div class="sec"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Download manager</button><div class="sec-b" id="downloads"><div class="empty">No downloads.</div></div></div>
-    </aside>
-    <div class="split split-l" data-split="l"></div>
-    <div class="pane-c" style="overflow-y:auto">
-      <div style="padding:20px">
-        <div class="dz" id="filDz" tabindex="0" role="button" style="width:100%">
-          <div class="dz-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="21" height="21"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2.5h7A2.5 2.5 0 0 1 21 10v6.5A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/></svg></div>
-          <h3>Drop any files here</h3>
-          <p>Hashes and MIME types are computed for real, in your browser.<br>Drop several at once — they queue up.</p>
-          <div class="or"><button class="btn btn-p" data-act="filopen">Choose files…</button></div>
-        </div>
-        <div id="filTable" style="margin-top:18px"></div>
-      </div>
-      <input type="file" id="fileAny" multiple hidden>
-    </div>
-    <div class="split split-r" data-split="r"></div>
-    <aside class="pane pane-r">
-      <div class="sec"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        File information</button><div class="sec-b" id="filInfo"><div class="empty">Select a file.</div></div></div>
-      <div class="sec"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Checksums</button><div class="sec-b" id="filHash"><div class="empty">—</div></div></div>
-      <div class="sec"><button class="sec-h" data-sec>
-        <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg>
-        Export</button><div class="sec-b" id="filExport"></div></div>
-    </aside>
-  </div>
-  <div class="sbar">
-    <span class="si"><span class="dot-ok"></span><b id="sbFilStatus">Idle</b></span>
-    <span class="si">Files <b class="num" id="sbFilN">0</b></span>
-    <span class="si">Total <b id="sbFilSize">0 KB</b></span>
-    <span class="si sp">Hashing <b>WebCrypto · MD5 in JS</b></span>
-  </div>
-</section>
+
 </div>
 
 <div class="ctx" id="ctx"></div>
@@ -1007,9 +967,9 @@ const WORKSPACES=[
  {id:"code",name:"Code",tint:"var(--cat-code)",n:30,ui:"Editor · 18 languages · runs JS and HTML",
   desc:"Read, write and try code in eighteen languages, with real highlighting and a sandbox that runs JavaScript and renders HTML.",
   icon:'<path d="m8 6-6 6 6 6M16 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'},
- {id:"file",name:"Files",tint:"var(--cat-file)",n:9,ui:"Queue · progress · download manager",
-  desc:"Drag in any files for real MD5, SHA-1 and SHA-256 checksums plus MIME detected from content, not filename.",
-  icon:'<path d="M3 6.6a1.8 1.8 0 0 1 1.8-1.8h4.1l2 2.4h7.3A1.8 1.8 0 0 1 20 9v8.4a1.8 1.8 0 0 1-1.8 1.8H4.8A1.8 1.8 0 0 1 3 17.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 10.4h17" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".6"/>'}
+ {id:"storage",name:"Storage",tint:"var(--cat-storage)",n:0,ui:"Drives · folders · coming soon",
+  desc:"Somewhere to keep what you make. A preview of the design — drives, folders and details — with nothing behind it yet.",
+  icon:'<path d="M4 6.4h16a1.4 1.4 0 0 1 1.4 1.4v3.4H2.6V7.8A1.4 1.4 0 0 1 4 6.4z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2.6 11.2h18.8v5A1.4 1.4 0 0 1 20 17.6H4a1.4 1.4 0 0 1-1.4-1.4z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="14.4" r="1" fill="currentColor"/><circle cx="18" cy="8.9" r="1" fill="currentColor"/>'}
 ];
 
 const OTHER_TOOLS={
@@ -1032,6 +992,7 @@ function go(id){
   if(id==="image"){location.href="editor.html";return;}
   if(id==="voice"){location.href="voice/";return;}
   if(id==="code"){location.href="code/";return;}
+  if(id==="storage"){location.href="storage/";return;}
   if(id==="pdf"){location.href="pdf/";return;}
   if(id==="documents"){location.href="documents/";return;}
   if(id==="video"){location.href="video/";return;}
@@ -1122,11 +1083,11 @@ const IC_ARROW = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 /* Three words per workspace, because a card is scanned, not read. */
 const TAGLINE={image:"Edit. Enhance. Create.",code:"Write. Run. Learn.",video:"Cut. Arrange. Export.",
   voice:"Record. Clean. Transform.",color:"Pick. Harmonise. Copy.",documents:"Write. Format. Export.",
-  pdf:"Read. Edit. Convert.",translate:"Any language, on device.",file:"Hash. Inspect. Organise."};
+  pdf:"Read. Edit. Convert.",translate:"Any language, on device.",storage:"Drives. Folders. Soon."};
 /* The card says what the thing is, not what it is called internally */
 const CARDNAME={image:"Photo Editor",video:"Video Editor",voice:"Voice Recorder and Editor",
   color:"Colour Palette",documents:"Writer and Editor",pdf:"PDF Viewer and Editor",
-  translate:"Translator",code:"Code Editor",file:"File Tools"};
+  translate:"Translator",code:"Code Editor",storage:"Storage"};
 
 /* Two more the design asks for that do not exist yet. They are shown as what
    they are — clicking one says so rather than opening nothing. */
@@ -1136,11 +1097,11 @@ const SOON=[
 ];
 
 $("cards").innerHTML=WS.map(w=>`
-  <button class="wcard" data-go="${w.id}" style="--tint:${w.tint}" aria-label="Open ${w.name}">
+  <button class="wcard${w.n?"":" preview"}" data-go="${w.id}" style="--tint:${w.tint}" aria-label="Open ${w.name}">
     <span class="wi" style="color:${w.tint}">${SVG(w.icon)}</span>
     <h3>${CARDNAME[w.id]||w.name}</h3>
     <span class="wd">${TAGLINE[w.id]||""}</span>
-    <span class="wfoot"><span class="wn">${w.n} tools</span><span class="wgo">${IC_ARROW}</span></span>
+    <span class="wfoot"><span class="wn">${w.n?`${w.n} tools`:"Coming soon"}</span><span class="wgo">${IC_ARROW}</span></span>
   </button>`).join("")
   + SOON.map(w=>`
   <div class="wcard soon" data-soon="${w.name}" style="--tint:${w.tint}" role="button" tabindex="0"
@@ -1187,13 +1148,17 @@ $("openCmdk3").addEventListener("click",()=>KilnSearch.open(""));
 /* ---- the floating shapes ----
    Positions are fixed rather than random, so the page looks the same every
    time it is opened; only the drift is animated, and only with transforms. */
+/* Spread over the whole viewport rather than the hero, and slow: nothing here
+   should ever pull the eye off what someone came to do. */
 const FLOATS=[
-  {id:"image", x:"6%",  y:"14%", s:96,  dx:"14px", dy:"-26px", rot:"-8deg",  dur:"30s", delay:"0s"},
-  {id:"video", x:"16%", y:"64%", s:74,  dx:"-12px",dy:"-18px", rot:"6deg",   dur:"26s", delay:"-6s"},
-  {id:"voice", x:"85%", y:"20%", s:88,  dx:"-16px",dy:"22px",  rot:"9deg",   dur:"34s", delay:"-12s"},
-  {id:"color", x:"78%", y:"70%", s:68,  dx:"12px", dy:"18px",  rot:"-5deg",  dur:"28s", delay:"-3s"},
-  {id:"pdf",   x:"46%", y:"88%", s:60,  dx:"10px", dy:"-14px", rot:"4deg",   dur:"32s", delay:"-18s"},
-  {id:"code",  x:"92%", y:"48%", s:56,  dx:"-10px",dy:"-16px", rot:"-7deg",  dur:"24s", delay:"-9s"},
+  {id:"image",   x:"5%",  y:"12%", s:98, dx:"9px",  dy:"-14px", rot:"-8deg", dur:"64s", delay:"0s"},
+  {id:"video",   x:"14%", y:"58%", s:76, dx:"-8px", dy:"-11px", rot:"6deg",  dur:"78s", delay:"-14s"},
+  {id:"voice",   x:"86%", y:"18%", s:90, dx:"-9px", dy:"12px",  rot:"9deg",  dur:"72s", delay:"-28s"},
+  {id:"color",   x:"79%", y:"66%", s:70, dx:"7px",  dy:"10px",  rot:"-5deg", dur:"68s", delay:"-8s"},
+  {id:"pdf",     x:"44%", y:"84%", s:62, dx:"6px",  dy:"-9px",  rot:"4deg",  dur:"82s", delay:"-40s"},
+  {id:"code",    x:"93%", y:"44%", s:58, dx:"-6px", dy:"-10px", rot:"-7deg", dur:"60s", delay:"-20s"},
+  {id:"documents",x:"27%",y:"30%", s:54, dx:"7px",  dy:"9px",   rot:"5deg",  dur:"86s", delay:"-52s"},
+  {id:"storage", x:"63%", y:"12%", s:50, dx:"-6px", dy:"11px",  rot:"-6deg", dur:"74s", delay:"-33s"},
 ];
 $("floaters").innerHTML=FLOATS.map(f=>{
   const w=WORKSPACES.find(w=>w.id===f.id);
@@ -1207,8 +1172,9 @@ $("floaters").innerHTML=FLOATS.map(f=>{
   const home=$("screen-home"), box=$("floaters");
   let ticking=false;
   const update=()=>{
-    const away=Math.min(1, home.scrollTop / 420);
-    box.style.setProperty("--away", away.toFixed(3));
+    const y=home.scrollTop;
+    box.style.setProperty("--scroll", y.toFixed(0));
+    box.style.setProperty("--away", Math.min(1, y/900).toFixed(3));
     ticking=false;
   };
   home.addEventListener("scroll",()=>{
@@ -1217,6 +1183,23 @@ $("floaters").innerHTML=FLOATS.map(f=>{
     requestAnimationFrame(update);
   },{passive:true});
   update();
+})();
+
+/* ---- things arrive as you reach them ----
+   One observer, one class, transform and opacity only. Anything already on
+   screen at load is shown immediately, so nothing waits for a scroll that
+   may never come. */
+(function revealOnScroll(){
+  const marks=[...document.querySelectorAll(".wcard,.hstats,.hfeat,.gridhead")];
+  marks.forEach(el=>el.classList.add("rise"));
+  const io=new IntersectionObserver(entries=>{
+    for(const e of entries){
+      if(!e.isIntersecting)continue;
+      e.target.classList.add("in");
+      io.unobserve(e.target);
+    }
+  },{root:$("screen-home"),rootMargin:"0px 0px -8% 0px",threshold:.08});
+  marks.forEach(el=>io.observe(el));
 })();
 document.addEventListener("click",e=>{
   if(e.target.closest('[data-act="explore"]'))
@@ -1251,7 +1234,7 @@ WORKSPACES.filter(w=>w.id!=="home").forEach(w=>ALL.push({
 IMG_GROUPS.forEach(([g,,ts])=>ts.forEach(([id,n])=>ALL.push({
   name:n,group:"Image · "+g,badge:"image",cat:"image",
   run:()=>{location.href="editor.html";}})));
-const CATALOGUE={PDF:"pdf",Colour:"color",Files:"file"};
+const CATALOGUE={PDF:"pdf",Colour:"color"};
 Object.entries(OTHER_TOOLS).forEach(([g,ts])=>{
   const ws=CATALOGUE[g];
   if(!ws)return;                       /* a group with no workspace behind it is not offered */
@@ -2634,166 +2617,6 @@ document.addEventListener("click",e=>{
 $("zoomIn").addEventListener("change",e=>{
   const v=parseFloat(e.target.value);if(!isNaN(v))setZoom(v/100);else paint();
 });
-/* ============================================================
-   FILE WORKSPACE — real hashing and MIME sniffing
-   ============================================================ */
-function md5(u8){
-  const S=[7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,
-    4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21];
-  const K=new Uint32Array(64);
-  for(let i=0;i<64;i++)K[i]=Math.floor(Math.abs(Math.sin(i+1))*4294967296);
-  const ml=u8.length,nb=((ml+8)>>6)+1,M=new Uint32Array(nb*16);
-  for(let i=0;i<ml;i++)M[i>>2]|=u8[i]<<((i%4)*8);
-  M[ml>>2]|=0x80<<((ml%4)*8);
-  M[nb*16-2]=ml*8;
-  let a0=0x67452301,b0=0xefcdab89,c0=0x98badcfe,d0=0x10325476;
-  const rol=(x,c)=>(x<<c)|(x>>>(32-c));
-  for(let i=0;i<nb;i++){
-    let A=a0,B=b0,Cc=c0,Dd=d0;
-    for(let j=0;j<64;j++){
-      let f,g;
-      if(j<16){f=(B&Cc)|(~B&Dd);g=j;}
-      else if(j<32){f=(Dd&B)|(~Dd&Cc);g=(5*j+1)%16;}
-      else if(j<48){f=B^Cc^Dd;g=(3*j+5)%16;}
-      else{f=Cc^(B|~Dd);g=(7*j)%16;}
-      f=(f+A+K[j]+M[i*16+g])>>>0;A=Dd;Dd=Cc;Cc=B;B=(B+rol(f,S[j]))>>>0;
-    }
-    a0=(a0+A)>>>0;b0=(b0+B)>>>0;c0=(c0+Cc)>>>0;d0=(d0+Dd)>>>0;
-  }
-  const hx=n=>{let s="";for(let i=0;i<4;i++)s+=((n>>>(i*8))&255).toString(16).padStart(2,"0");return s;};
-  return hx(a0)+hx(b0)+hx(c0)+hx(d0);
-}
-const MAGIC=[
- [[0x89,0x50,0x4E,0x47],"image/png","PNG image"],
- [[0xFF,0xD8,0xFF],"image/jpeg","JPEG image"],
- [[0x47,0x49,0x46,0x38],"image/gif","GIF image"],
- [[0x25,0x50,0x44,0x46],"application/pdf","PDF document"],
- [[0x50,0x4B,0x03,0x04],"application/zip","ZIP archive (or OOXML)"],
- [[0x1F,0x8B],"application/gzip","GZIP archive"],
- [[0x00,0x01,0x00,0x00],"font/ttf","TrueType font"],
- [[0x4F,0x54,0x54,0x4F],"font/otf","OpenType font"],
- [[0x77,0x4F,0x46,0x46],"font/woff","WOFF font"],
- [[0x77,0x4F,0x46,0x32],"font/woff2","WOFF2 font"],
- [[0x49,0x44,0x33],"audio/mpeg","MP3 audio"],
- [[0x42,0x4D],"image/bmp","BMP image"],
- [[0x38,0x42,0x50,0x53],"image/vnd.adobe.photoshop","Photoshop document"]
-];
-function sniff(u8){
-  for(const[sig,mime,label]of MAGIC)
-    if(sig.every((b,i)=>u8[i]===b))return{mime,label};
-  if(u8[0]===0x52&&u8[8]===0x57&&u8[9]===0x45)return{mime:"image/webp",label:"WebP image"};
-  if(u8[4]===0x66&&u8[5]===0x74&&u8[6]===0x79&&u8[7]===0x70)return{mime:"video/mp4",label:"MP4 container"};
-  const t=new TextDecoder("utf-8",{fatal:false}).decode(u8.slice(0,400));
-  if(/^\s*[{[]/.test(t))return{mime:"application/json",label:"JSON text"};
-  if(/^\s*<\?xml|^\s*<svg/i.test(t))return{mime:"image/svg+xml",label:"XML / SVG"};
-  if(/^[\x09\x0A\x0D\x20-\x7E]*$/.test(t.slice(0,200)))return{mime:"text/plain",label:"Plain text"};
-  return{mime:"application/octet-stream",label:"Unknown binary"};
-}
-const Q={items:[],sel:-1};
-function addFiles(list){
-  [...list].forEach(f=>Q.items.push({f,name:f.name,size:f.size,state:"queued",pct:0,hash:null,mime:null}));
-  renderQ();runQ();
-}
-async function runQ(){
-  $("sbFilStatus").textContent="Processing";
-  for(const it of Q.items){
-    if(it.state!=="queued")continue;
-    it.state="running";renderQ();
-    const buf=await it.f.arrayBuffer();
-    const u8=new Uint8Array(buf);
-    it.mime=sniff(u8);
-    it.pct=35;renderQ();
-    const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
-    it.hash={md5:md5(u8)};
-    it.pct=65;renderQ();
-    try{
-      it.hash.sha1=hex(await crypto.subtle.digest("SHA-1",buf));
-      it.hash.sha256=hex(await crypto.subtle.digest("SHA-256",buf));
-    }catch(e){it.hash.sha1=it.hash.sha256="unavailable (needs https)";}
-    it.pct=100;it.state="done";renderQ();
-  }
-  $("sbFilStatus").textContent="Idle";
-  $("sbFilN").textContent=Q.items.length;
-  $("sbFilSize").textContent=fmtB(Q.items.reduce((a,b)=>a+b.size,0));
-}
-function renderQ(){
-  $("qN").textContent=Q.items.length;
-  $("queue").innerHTML=Q.items.length?Q.items.map((it,i)=>`
-    <button class="row ${i===Q.sel?"sel":""}" data-q="${i}" style="display:block;padding:7px">
-      <div style="display:flex;gap:7px;align-items:center">
-        <span style="width:6px;height:6px;border-radius:50%;flex:none;background:${
-          it.state==="done"?"var(--ok)":it.state==="running"?"var(--warn)":"var(--t4)"}"></span>
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${esc(it.name)}</span>
-        <span class="mono" style="margin-left:auto;font-size:9.5px;color:var(--t4);flex:none">${fmtB(it.size)}</span>
-      </div>
-      <div style="height:3px;border-radius:2px;background:var(--s3);margin-top:6px;overflow:hidden">
-        <div style="height:100%;width:${it.pct}%;background:linear-gradient(90deg,var(--ember),var(--hot));
-          transition:width .3s var(--ez)"></div></div>
-    </button>`).join(""):'<div class="empty">Queue is empty.</div>';
-  $("queue").querySelectorAll("[data-q]").forEach(b=>b.addEventListener("click",()=>{Q.sel=+b.dataset.q;renderQ();}));
-  $("filTable").innerHTML=Q.items.length?`
-    <div style="border:1px solid var(--line);border-radius:10px;overflow:hidden">
-    <table style="width:100%;border-collapse:collapse;font-size:12px">
-      <tr style="background:var(--s2)">${["File","Type","Size","SHA-256"].map(h=>
-        `<th style="text-align:left;padding:8px 10px;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;
-          text-transform:uppercase;color:var(--t3);border-bottom:1px solid var(--line)">${h}</th>`).join("")}</tr>
-      ${Q.items.map((it,i)=>`<tr data-q="${i}" style="cursor:pointer;background:${i===Q.sel?"rgba(226,98,42,.09)":"transparent"}">
-        <td style="padding:8px 10px;border-bottom:1px solid var(--line);max-width:220px;overflow:hidden;
-          text-overflow:ellipsis;white-space:nowrap">${esc(it.name)}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid var(--line);color:var(--t3)">${it.mime?esc(it.mime.label):"…"}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid var(--line);color:var(--t3)" class="mono num">${fmtB(it.size)}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid var(--line);color:var(--t4);font-family:var(--mono);font-size:10px;
-          max-width:180px;overflow:hidden;text-overflow:ellipsis">${it.hash?esc(it.hash.sha256.slice(0,24))+"…":"computing…"}</td>
-      </tr>`).join("")}
-    </table></div>`:"";
-  $("filTable").querySelectorAll("[data-q]").forEach(b=>b.addEventListener("click",()=>{Q.sel=+b.dataset.q;renderQ();}));
-  const it=Q.items[Q.sel];
-  $("filInfo").innerHTML=it?[["Name",it.name],["Size",fmtB(it.size)],["Bytes",it.size.toLocaleString()],
-    ["Declared type",it.f.type||"none"],["Detected type",it.mime?it.mime.mime:"…"],
-    ["Description",it.mime?it.mime.label:"…"],["Modified",new Date(it.f.lastModified).toISOString().slice(0,19).replace("T"," ")],
-    ["Status",it.state]].map(([k,v])=>`<div class="kv"><span>${k}</span><b>${esc(String(v))}</b></div>`).join("")
-    :'<div class="empty">Select a file.</div>';
-  $("filHash").innerHTML=it&&it.hash?["md5","sha1","sha256"].map(k=>
-    `<div style="margin-bottom:9px"><div class="eyebrow" style="margin-bottom:3px">${k.toUpperCase()}</div>
-      <div class="mono" data-copy="${it.hash[k]}" style="font-size:10px;color:var(--t2);word-break:break-all;
-        cursor:pointer;padding:5px 7px;background:var(--hov);border-radius:6px">${esc(it.hash[k])}</div></div>`).join("")
-    :'<div class="empty">—</div>';
-  $("filHash").querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>{
-    navigator.clipboard?.writeText(b.dataset.copy);toast("Checksum copied");}));
-  $("filExport").innerHTML=`
-    <div class="ctl"><div class="ctl-t"><label>Archive format</label></div>
-      <div class="seg"><button class="on">ZIP</button><button>TAR</button><button>TAR.GZ</button></div></div>
-    <button class="btn btn-g" style="width:100%;margin-top:10px" data-act="filhashfile">Download checksums</button>
-    <button class="btn btn-p" style="width:100%;margin-top:7px" data-act="filzip">Create ZIP archive</button>
-    <div class="mono" style="font-size:10px;color:var(--t4);margin-top:9px">POST /v1/file/zip · /v1/file/hash</div>`;
-}
-$("fileAny").addEventListener("change",e=>addFiles(e.target.files));
-$("filDz").addEventListener("click",()=>$("fileAny").click());
-["dragover","drop"].forEach(ev=>$("filDz").addEventListener(ev,e=>{e.preventDefault();
-  $("filDz").classList.toggle("over",ev==="dragover");}));
-$("filDz").addEventListener("drop",e=>{e.preventDefault();addFiles(e.dataTransfer.files);});
-document.addEventListener("click",e=>{
-  const a=e.target.closest("[data-act]");if(!a)return;
-  if(a.dataset.act==="filopen"){$("fileAny").click();}
-  if(a.dataset.act==="filclear"){Q.items=[];Q.sel=-1;renderQ();$("sbFilN").textContent=0;$("sbFilSize").textContent="0 KB";}
-  if(a.dataset.act==="filrun"){Q.items.forEach(i=>{if(i.state==="done"){i.state="queued";i.pct=0;}});runQ();}
-  if(a.dataset.act==="filhashfile"){
-    const t=Q.items.filter(i=>i.hash).map(i=>`${i.hash.sha256}  ${i.name}`).join("\n");
-    if(!t)return toast("Nothing hashed yet","warn");
-    const u=URL.createObjectURL(new Blob([t],{type:"text/plain"}));
-    const a2=el("a");a2.href=u;a2.download="SHA256SUMS.txt";a2.click();URL.revokeObjectURL(u);
-    $("downloads").innerHTML=`<div class="kv"><span>SHA256SUMS.txt</span><b style="color:var(--ok)">done</b></div>`;
-    toast("SHA256SUMS.txt downloaded");}
-  if(a.dataset.act==="filzip"){
-    if(!Q.items.length)return toast("Add files first","warn");
-    toast(`ZIP of ${Q.items.length} file${Q.items.length===1?"":"s"} — built server-side with archiver`);}
-  const s=e.target.closest(".seg button");
-  if(s&&!s.dataset.ga&&!s.dataset.fv){s.parentElement.querySelectorAll("button").forEach(b=>b.classList.remove("on"));s.classList.add("on");}
-  const fp=e.target.closest("[data-fp]");
-  if(fp){go("file");toast(`${fp.textContent.trim()} — queued`);runQ();}
-});
-renderQ();
-
 /* ============================================================
    Global keyboard shortcuts
    ============================================================ */
