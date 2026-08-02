@@ -6,7 +6,7 @@
 <script src="theme.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="9522c50-1700">
+<meta name="kiln-build" content="dfece0c-1710">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -38,7 +38,9 @@ p{margin:0}
 :root,
 :root[data-theme][data-mode]{
   --brand:#2563EB;
-  --brand-ink:#93C5FD;                 /* the blue when it is text, not a fill */
+  --brand-ink:#93C5FD;
+  --ink:#F1F5F9; --ink-fg:#0B1220;                 /* the solid button, inverted */
+  --bloom-a:rgba(99,102,241,.30); --bloom-b:rgba(56,189,248,.22); --bloom:.5;                 /* the blue when it is text, not a fill */
   --brand-soft:color-mix(in srgb,#2563EB 22%,transparent);
   --ember:#2563EB;
   --hot:#60A5FA;
@@ -49,7 +51,9 @@ p{margin:0}
 :root[data-mode="light"],
 :root[data-theme][data-mode="light"]{
   --brand:#1D4ED8;
-  --brand-ink:#1E3A8A;                 /* dark enough for Retro's silver ground */
+  --brand-ink:#1E3A8A;
+  --ink:#0B1220; --ink-fg:#FFFFFF;
+  --bloom-a:rgba(139,124,246,.38); --bloom-b:rgba(251,146,110,.30); --bloom:.75;                 /* dark enough for Retro's silver ground */
   /* both weights must total 100% or color-mix returns a translucent colour,
      and Retro's teal ground shows straight through the pill */
   --brand-soft:color-mix(in srgb,#1D4ED8 10%,#FFFFFF);
@@ -416,49 +420,94 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 @keyframes sin{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
 
 /* ================= HOME =================
-   Flat and 2D on purpose: no gradients anywhere, because they read differently
-   in every theme and fall apart in dark mode. Depth comes from spacing, a
-   single hairline border and one soft translucent surface. */
-.hero{border-bottom:1px solid var(--line)}
-.hero-in{max-width:760px;margin:0 auto;padding:104px 26px 76px;text-align:center}
-.tagline{margin:0;display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:99px;
-  border:1px solid color-mix(in srgb,var(--brand) 28%,var(--line));background:var(--brand-soft);
-  font-size:11.5px;letter-spacing:.01em;color:var(--brand-ink)}
-.tagline::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--brand-ink)}
-.hero h1{font-size:clamp(38px,6vw,68px);line-height:1.05;letter-spacing:-.042em;font-weight:640;
-  margin:22px 0 0;color:var(--text)}
-.hsearch{display:flex;justify-content:center;margin-top:36px}
-.hcta{display:flex;justify-content:center;margin-top:20px}
-.hcta a{font-size:13px;color:var(--t3);text-decoration:none;padding:7px 14px;border-radius:8px;
-  transition:color .15s var(--ez),background .15s var(--ez)}
-.hcta a:hover{color:var(--brand-ink);background:var(--brand-soft)}
-.hstats{list-style:none;display:flex;gap:56px;justify-content:center;flex-wrap:wrap;
-  margin:56px 0 0;padding:28px 0 0;border-top:1px solid var(--line)}
-.hstats b{display:block;font-size:19px;font-weight:640;letter-spacing:-.02em;color:var(--text)}
-.hstats span{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--t4)}
+   Soft where it should be and flat where it counts: the light behind the hero
+   is two wide radial blooms, and every control on top of it stays a solid
+   fill so it reads the same in all ten palettes. */
+.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+.hero::before,.hero::after{content:"";position:absolute;pointer-events:none;border-radius:50%;
+  filter:blur(90px);opacity:var(--bloom,.55);z-index:0}
+.hero::before{width:52vw;height:52vw;max-width:760px;max-height:760px;left:-14vw;top:-18vw;
+  background:radial-gradient(circle,var(--bloom-a) 0%,transparent 68%)}
+.hero::after{width:46vw;height:46vw;max-width:680px;max-height:680px;right:-12vw;top:-10vw;
+  background:radial-gradient(circle,var(--bloom-b) 0%,transparent 68%)}
+.hero-in{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:84px 26px 64px;text-align:center}
+.wordmark{margin:0;font-size:clamp(64px,11vw,132px);line-height:.92;letter-spacing:-.055em;font-weight:700;
+  color:var(--text)}
+.slogan{margin:14px 0 0;font-size:clamp(19px,2.4vw,28px);letter-spacing:-.02em;font-weight:500;color:var(--t2)}
+.slogan b{font-weight:500;color:var(--brand-ink)}
+.hsearch{display:flex;justify-content:center;margin-top:34px}
+.hsearch .kswrap.big{width:min(680px,100%);height:58px;border-radius:14px}
+.hsearch .kswrap.big .ksinput{font-size:15.5px}
+.hcta{display:flex;justify-content:center;flex-wrap:wrap;gap:14px;margin-top:26px}
+.hcta .btn{display:inline-flex;align-items:center;gap:10px;padding:13px 24px;border-radius:12px;
+  font-size:14px;font-weight:560;text-decoration:none;cursor:pointer;border:1px solid transparent;
+  transition:transform .16s var(--ez),box-shadow .16s var(--ez),background .16s var(--ez)}
+.hcta .btn:hover{transform:translateY(-1px)}
+.hcta .go{background:var(--ink);color:var(--ink-fg);box-shadow:0 10px 24px -14px rgba(15,23,42,.8)}
+.hcta .go:hover{box-shadow:0 14px 30px -14px rgba(15,23,42,.9)}
+.hcta .go svg{transition:transform .16s var(--ez)}
+.hcta .go:hover svg{transform:translateX(3px)}
+.hcta .quiet{background:var(--card1);border-color:var(--line2);color:var(--text)}
+.hcta .quiet:hover{background:var(--hov)}
 
-/* ---- workspace cards: one calm grid, no carousel to fight with ---- */
-/* ---- the workspaces: a name, a count, and the icon that identifies it ---- */
-.wgrid-wrap{max-width:1120px;margin:0 auto;padding:8px 26px 84px}
-.gridhead{display:flex;align-items:baseline;gap:12px;padding:0 4px 16px}
-.gridhead h2{font-size:14px;font-weight:600;letter-spacing:-.01em;color:var(--text)}
-.gridhead span{font-size:12.5px;color:var(--t2)}
-.wgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
-.wcard{position:relative;display:flex;align-items:center;gap:14px;padding:18px;
-  border:1px solid var(--line);border-radius:14px;cursor:pointer;text-align:left;
-  background:var(--card1);
-  transition:border-color .16s var(--ez),transform .16s var(--ez),box-shadow .16s var(--ez)}
-.wcard:hover,.wcard:focus-visible{border-color:color-mix(in srgb,var(--tint) 40%,var(--line2));
-  transform:translateY(-2px);box-shadow:0 10px 26px -18px rgba(15,23,42,.55)}
+/* ---- the stats bar ---- */
+.hstats{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
+  gap:2px 0;max-width:1120px;margin:52px auto 0;padding:14px 8px;border:1px solid var(--line);
+  border-radius:18px;background:var(--card1);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.hstats li{display:flex;align-items:center;gap:11px;padding:8px 14px;position:relative;min-width:0}
+.hstats li+li::before{content:"";position:absolute;left:0;top:14%;bottom:14%;width:1px;background:var(--line)}
+.hstats .si{width:34px;height:34px;flex:none;border-radius:11px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--tint) 14%,var(--s2));color:var(--tint)}
+.hstats .si svg{width:17px;height:17px}
+.hstats .st{display:flex;flex-direction:column;gap:1px;text-align:left;min-width:0}
+.hstats .st b,.hstats .st span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hstats b{font-size:16px;font-weight:650;letter-spacing:-.02em;color:var(--text)}
+.hstats span{font-size:11px;color:var(--t2)}
+
+/* ---- the feature row under the cards ---- */
+.hfeat{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2px 0;
+  max-width:1120px;margin:0 auto 76px;padding:18px 8px;border:1px solid var(--line);border-radius:18px;
+  background:var(--card1)}
+.hfeat li{display:flex;gap:12px;padding:8px 18px;position:relative}
+.hfeat li+li::before{content:"";position:absolute;left:0;top:10%;bottom:10%;width:1px;background:var(--line)}
+.hfeat .fi{flex:none;color:var(--tint)}
+.hfeat .fi svg{width:20px;height:20px}
+.hfeat b{display:block;font-size:13px;font-weight:600;letter-spacing:-.01em;color:var(--text)}
+.hfeat span{display:block;font-size:12px;line-height:1.55;color:var(--t2)}
+
+/* ---- the workspaces ---- */
+.wgrid-wrap{max-width:1120px;margin:0 auto;padding:56px 26px 40px}
+.gridhead{display:flex;align-items:center;gap:12px;padding:0 4px 18px}
+.gridhead h2{font-size:19px;font-weight:640;letter-spacing:-.025em;color:var(--text)}
+.gridhead .all{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-size:13px;
+  color:var(--brand-ink);background:none;border:0;cursor:pointer;padding:6px 8px;border-radius:8px}
+.gridhead .all:hover{background:var(--brand-soft)}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(216px,1fr));gap:16px}
+.wcard{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:22px;
+  border:1px solid var(--line);border-radius:18px;cursor:pointer;text-align:left;background:var(--card1);
+  transition:transform .18s var(--ez),box-shadow .18s var(--ez),border-color .18s var(--ez)}
+.wcard:hover,.wcard:focus-visible{transform:translateY(-4px);border-color:color-mix(in srgb,var(--tint) 34%,var(--line2));
+  box-shadow:0 18px 34px -22px rgba(15,23,42,.55)}
 .wcard:focus-visible{outline:2px solid var(--tint);outline-offset:2px}
-.wcard .wi{width:42px;height:42px;flex:none;border-radius:11px;display:grid;place-items:center;
-  background:color-mix(in srgb,var(--tint) 12%,var(--s2))}
-.wcard .wi svg{width:22px;height:22px}
-.wcard .wt{display:flex;flex-direction:column;gap:2px;min-width:0}
-.wcard h3{margin:0;font-size:14.5px;font-weight:600;letter-spacing:-.015em;color:var(--text)}
-.wcard .wn{font-size:12px;color:var(--t2)}
-.wcard .wgo{margin-left:auto;flex:none;color:var(--t4);transition:color .16s var(--ez),transform .16s var(--ez)}
-.wcard:hover .wgo{color:var(--tint);transform:translateX(2px)}
+.wcard .wi{width:52px;height:52px;flex:none;border-radius:15px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--tint) 13%,var(--s2));
+  transition:transform .18s var(--ez)}
+.wcard:hover .wi{transform:scale(1.06)}
+.wcard .wi svg{width:26px;height:26px}
+.wcard h3{margin:18px 0 0;font-size:16px;font-weight:640;letter-spacing:-.02em;color:var(--text)}
+.wcard .wd{margin-top:5px;font-size:12.5px;line-height:1.55;color:var(--t2)}
+.wcard .wfoot{margin-top:16px;width:100%;display:flex;align-items:center;gap:8px}
+.wcard .wn{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--t2)}
+.wcard .wgo{margin-left:auto;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  border:1px solid var(--line);color:var(--t3);
+  transition:color .18s var(--ez),border-color .18s var(--ez),background .18s var(--ez)}
+.wcard:hover .wgo{color:var(--tint);border-color:color-mix(in srgb,var(--tint) 45%,var(--line));
+  background:color-mix(in srgb,var(--tint) 10%,transparent)}
+.wcard.soon{cursor:default}
+.wcard.soon:hover{transform:none;box-shadow:none;border-color:var(--line)}
+.wcard.soon .wi{opacity:.6}
+.wcard.soon .wn{color:var(--brand-ink)}
+
 @media(max-width:760px){
   .hero-in{padding:64px 22px 56px}
   .wgrid-wrap{padding:44px 22px 64px}
@@ -532,24 +581,33 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 <section class="screen" id="screen-home">
   <header class="hero">
     <div class="hero-in">
-      <p class="tagline">Private &amp; secure</p>
-      <h1>Shape and ship anything</h1>
+      <h1 class="wordmark">Kiln</h1>
+      <p class="slogan">Shape &amp; Ship <b>Anything.</b></p>
       <div class="hsearch"><span data-kiln-search data-kiln-search-big></span></div>
       <div class="hcta">
-        <a href="https://buymeacoffee.com/kemetca" target="_blank" rel="noopener">Buy us a coffee</a>
+        <button class="btn go" data-act="explore">Explore Workspaces
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <a class="btn quiet" href="https://buymeacoffee.com/kemetca" target="_blank" rel="noopener">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/>
+            <path d="M17 10h1.6a2.4 2.4 0 0 1 0 4.8H17"/><path d="M7 3v2.5M11 3v2.5"/></svg>
+          Buy us a coffee</a>
       </div>
-      <ul class="hstats">
-        <li><b class="num">159</b><span>Tools</span></li>
-        <li><b class="num">8</b><span>Workspaces</span></li>
-        <li><b>Private</b><span>Files stay on your device</span></li>
-      </ul>
+      <ul class="hstats" id="hstats"></ul>
     </div>
   </header>
 
-  <main class="wgrid-wrap">
-    <div class="gridhead"><h2>Workspaces</h2><span>Runs on your machine</span></div>
+  <main class="wgrid-wrap" id="workspaces">
+    <div class="gridhead"><h2>Your Workspaces</h2>
+      <button class="all" id="openCmdk2">View all tools
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </div>
     <div class="wgrid" id="cards"></div>
   </main>
+  <ul class="hfeat" id="hfeat"></ul>
 
   <div class="foot"><div class="foot-in">
     <span class="kemet"><span class="mark" style="width:18px;height:18px;border-radius:6px"></span>
@@ -1022,15 +1080,77 @@ document.addEventListener("scroll",()=>$("ctx").classList.remove("on"),true);
    mis-click, and it reflows on its own at every width.
    ============================================================ */
 const WS=WORKSPACES.filter(w=>w.id!=="home");
-const ARROW=`<svg class="wgo" width="16" height="16" viewBox="0 0 24 24" fill="none"
-  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
-  aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`;
+const IC_ARROW = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
+
+/* Three words per workspace, because a card is scanned, not read. */
+const TAGLINE={image:"Edit. Enhance. Create.",video:"Cut. Arrange. Export.",voice:"Record. Clean. Transform.",
+  color:"Pick. Harmonise. Copy.",documents:"Write. Format. Export.",pdf:"Read. Edit. Convert.",
+  translate:"Any language, on device.",file:"Hash. Inspect. Organise."};
+
+/* Two more the design asks for that do not exist yet. They are shown as what
+   they are — clicking one says so rather than opening nothing. */
+const SOON=[
+  {id:"code",name:"Code",tint:"var(--cat-file)",tag:"Build. Debug. Deploy.",
+   icon:'<path d="m8 6-6 6 6 6M16 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'},
+  {id:"ai",name:"AI",tint:"var(--cat-voice)",tag:"Smarter tools. Local.",
+   icon:'<path d="M12 3.2 13.7 9l5.8 1.7L13.7 12.4 12 18.2 10.3 12.4 4.5 10.7 10.3 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M18.5 15.5l.7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7z" fill="currentColor" opacity=".7"/>'},
+];
+
 $("cards").innerHTML=WS.map(w=>`
   <button class="wcard" data-go="${w.id}" style="--tint:${w.tint}" aria-label="Open ${w.name}">
     <span class="wi" style="color:${w.tint}">${SVG(w.icon)}</span>
-    <span class="wt"><h3>${w.name}</h3><span class="wn">${w.n} tools</span></span>
-    ${ARROW}
-  </button>`).join("");
+    <h3>${w.name}</h3>
+    <span class="wd">${TAGLINE[w.id]||""}</span>
+    <span class="wfoot"><span class="wn">${w.n} tools</span><span class="wgo">${IC_ARROW}</span></span>
+  </button>`).join("")
+  + SOON.map(w=>`
+  <div class="wcard soon" data-soon="${w.name}" style="--tint:${w.tint}" role="button" tabindex="0"
+       aria-label="${w.name} — not built yet">
+    <span class="wi" style="color:${w.tint}">${SVG(w.icon)}</span>
+    <h3>${w.name}</h3>
+    <span class="wd">${w.tag}</span>
+    <span class="wfoot"><span class="wn">Soon</span><span class="wgo">${IC_ARROW}</span></span>
+  </div>`).join("");
+
+/* ---- the stats bar ---- */
+const HIC={
+  grid:'<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  box:'<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 12 4 7.5M12 12l8-4.5M12 12v9" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".6"/>',
+  shield:'<path d="M12 3.2 20 6v6.2c0 4.3-3.2 7.4-8 8.6-4.8-1.2-8-4.3-8-8.6V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8.8 12.2 2.2 2.2 4.2-4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  lock:'<rect x="4.8" y="10.5" width="14.4" height="9.7" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.4 10.5V7.8a3.6 3.6 0 0 1 7.2 0v2.7" fill="none" stroke="currentColor" stroke-width="1.7"/>',
+  spark:'<path d="M12 3.6 13.5 9 19 10.5 13.5 12 12 17.4 10.5 12 5 10.5 10.5 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+};
+const STATS=[
+  ["grid", WS.length, "Workspaces", "var(--cat-image)"],
+  ["box", WS.reduce((t,w)=>t+(w.n||0),0), "Tools", "var(--cat-video)"],
+  ["shield", "100%", "Private", "var(--cat-voice)"],
+  ["lock", "Local-first", "Always yours", "var(--brand)"],
+  ["spark", "∞", "Possibilities", "var(--cat-translate)"],
+];
+$("hstats").innerHTML=STATS.map(([ic,big,small,tint])=>`
+  <li style="--tint:${tint}"><span class="si">${SVG(HIC[ic])}</span>
+    <span class="st"><b>${big}</b><span>${small}</span></span></li>`).join("");
+
+/* ---- what it is, in five lines, under the cards ---- */
+const FEATS=[
+  ["shield","Privacy first","Your files stay yours. Always.","var(--cat-image)"],
+  ["lock","Everything local","No cloud. No tracking. No account.","var(--cat-voice)"],
+  ["box","One workspace","Every tool, one place.","var(--cat-video)"],
+  ["grid","Open in a tab","Nothing to install.","var(--brand)"],
+  ["spark","Fast and quiet","Built for people who make things.","var(--cat-translate)"],
+];
+$("hfeat").innerHTML=FEATS.map(([ic,t,d,tint])=>`
+  <li style="--tint:${tint}"><span class="fi">${SVG(HIC[ic])}</span>
+    <span><b>${t}</b><span>${d}</span></span></li>`).join("");
+
+$("openCmdk2").addEventListener("click",()=>KilnSearch.open(""));
+document.addEventListener("click",e=>{
+  if(e.target.closest('[data-act="explore"]'))
+    document.getElementById("workspaces").scrollIntoView({behavior:"smooth",block:"start"});
+  const soon=e.target.closest("[data-soon]");
+  if(soon)toast(`${soon.dataset.soon} is not built yet — the eight above are`);
+});
 
 /* the hero shimmer and the carousel are gone: no gradients, nothing to drag */
 
