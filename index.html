@@ -6,7 +6,7 @@
 <script src="theme.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="31dcc2c-1045">
+<meta name="kiln-build" content="4adf4a5-1159">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -458,6 +458,14 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   opacity:calc(1 - min(var(--away,0),1) * .45);
   transition:opacity .5s var(--ez)}
 /* arriving: a few pixels and a fade, staggered by position in the grid */
+/* How much light the glass catches depends on what is behind it: on a pale
+   page the sheen is white and the edge is a shadow of itself; on a dark one
+   both come from the light above. */
+:root{--glass-edge:rgba(255,255,255,.14);--glass-sheen:rgba(255,255,255,.06);
+  --glass-shine:rgba(255,255,255,.10);--card-hover:color-mix(in srgb,var(--card1) 100%,rgba(255,255,255,.05))}
+:root[data-mode="light"]{--glass-edge:rgba(255,255,255,.85);--glass-sheen:rgba(255,255,255,.55);
+  --glass-shine:rgba(255,255,255,.7);--card-hover:rgba(255,255,255,.9)}
+
 .rise{opacity:0;transform:translate3d(0,14px,0);
   transition:opacity .5s var(--ez),transform .5s var(--ez)}
 .rise.in{opacity:1;transform:none}
@@ -484,6 +492,11 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .intro{margin:14px auto 0;max-width:58ch;font-size:clamp(14px,1.45vw,16.5px);line-height:1.62;
   color:var(--t2);letter-spacing:-.005em;text-wrap:pretty}
 .intro b{font-weight:600;color:var(--brand-ink)}
+/* each word arrives a beat after the one before it */
+.intro.writing .w{display:inline-block;opacity:0;transform:translateY(.32em);
+  animation:writeIn .42s var(--ez) forwards}
+@keyframes writeIn{to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.intro.writing .w{opacity:1;transform:none;animation:none}}
 .hsearch{display:flex;justify-content:center;margin-top:26px}
 .hsearch .kswrap.big{width:min(680px,100%);height:58px;border-radius:14px}
 .hsearch .kswrap.big .ksinput{font-size:15.5px}
@@ -500,7 +513,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .hcta .quiet:hover{background:var(--hov)}
 
 /* ---- the stats bar ---- */
-.hstats{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
+.hstats{list-style:none;border-radius:16px;padding:6px;display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
   gap:2px 0;max-width:1120px;margin:34px auto 0;padding:10px 6px;border:1px solid var(--line);
   border-radius:16px;background:var(--card1);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .hstats li{display:flex;align-items:center;gap:11px;padding:8px 14px;position:relative;min-width:0}
@@ -526,17 +539,55 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 
 /* ---- the workspaces ---- */
 .wgrid-wrap{max-width:1120px;margin:0 auto;padding:36px 26px 28px}
-.gridhead{display:flex;align-items:center;gap:12px;padding:0 4px 14px}
-.gridhead h2{font-size:19px;font-weight:640;letter-spacing:-.025em;color:var(--text)}
-.gridhead .all{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-size:13px;
+/* Centred: the grid below is symmetrical, and a heading pinned to the left of
+   it was the only thing on the page that was not. "View all tools" goes under
+   it rather than beside it, so the middle stays the middle. */
+.gridhead{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 4px 18px;text-align:center}
+.gridhead h2{font-size:clamp(19px,2.2vw,24px);font-weight:650;letter-spacing:-.028em;color:var(--text)}
+.gridhead .all{display:inline-flex;align-items:center;gap:7px;font-size:13px;
   color:var(--brand-ink);background:none;border:0;cursor:pointer;padding:6px 8px;border-radius:8px}
 .gridhead .all:hover{background:var(--brand-soft)}
 .wgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+/* ---- frosted glass ----
+   A card is a pane held above the page: it takes its colour from what is
+   behind it rather than painting over it. `--card1` is already translucent per
+   theme, so the glass is the blur, the hairline along the top edge where the
+   light would catch, and a shadow with two ranges — a tight one that seats the
+   pane and a wide soft one that lifts it.
+
+   backdrop-filter is the expensive part, so it is only on the panes a person
+   looks at, and `will-change` is deliberately absent: promoting a dozen cards
+   to their own layers costs more than the blur does. */
+.glass{
+  background:var(--card1);
+  backdrop-filter:blur(16px) saturate(1.5);
+  -webkit-backdrop-filter:blur(16px) saturate(1.5);
+  border:1px solid var(--glass-edge);
+  box-shadow:0 1px 2px rgba(8,12,24,.06), 0 14px 34px -20px rgba(8,12,24,.35);
+  position:relative;
+}
+/* the light along the top edge — one pixel, and the thing that reads as glass */
+.glass::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(180deg,var(--glass-sheen),transparent 42%);opacity:.9}
+
 .wcard{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:18px;
-  border:1px solid var(--line);border-radius:18px;cursor:pointer;text-align:left;background:var(--card1);
-  transition:transform .18s var(--ez),box-shadow .18s var(--ez),border-color .18s var(--ez)}
-.wcard:hover,.wcard:focus-visible{transform:translateY(-4px);border-color:color-mix(in srgb,var(--tint) 34%,var(--line2));
-  box-shadow:0 18px 34px -22px rgba(15,23,42,.55)}
+  border-radius:18px;cursor:pointer;text-align:left;
+  /* No transition on background-color: it would cross-fade every card on a
+     theme change, which lags the switch and means the colour on screen is not
+     the colour the palette says for a fifth of a second. Hover changes it
+     outright; the lift and the shadow carry the movement. */
+  transition:transform .22s var(--ez),box-shadow .22s var(--ez),border-color .22s var(--ez)}
+.wcard:hover,.wcard:focus-visible{transform:translateY(-5px) scale(1.012);
+  border-color:color-mix(in srgb,var(--tint) 40%,var(--glass-edge));
+  background:var(--card-hover);
+  box-shadow:0 2px 4px rgba(8,12,24,.07), 0 26px 46px -24px color-mix(in srgb,var(--tint) 34%,rgba(8,12,24,.5))}
+/* a slow shine that crosses the pane on hover, once */
+.wcard>.wi,.wcard>h3,.wcard>.wd,.wcard>.wfoot{position:relative;z-index:1}
+.wcard::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;
+  background:linear-gradient(115deg,transparent 32%,var(--glass-shine) 46%,transparent 60%);
+  transform:translateX(-120%);opacity:0}
+.wcard:hover::before{transform:translateX(120%);opacity:1;
+  transition:transform .85s cubic-bezier(.22,.61,.36,1),opacity .2s}
 .wcard:focus-visible{outline:2px solid var(--tint);outline-offset:2px}
 .wcard .wi{width:46px;height:46px;flex:none;border-radius:13px;display:grid;place-items:center;
   background:color-mix(in srgb,var(--tint) 13%,var(--s2));
@@ -1107,14 +1158,14 @@ const SOON=[
 ];
 
 $("cards").innerHTML=WS.map(w=>`
-  <button class="wcard${w.n?"":" preview"}" data-go="${w.id}" style="--tint:${w.tint}" aria-label="Open ${w.name}">
+  <button class="wcard glass${w.n?"":" preview"}" data-go="${w.id}" style="--tint:${w.tint}" aria-label="Open ${w.name}">
     <span class="wi" style="color:${w.tint}">${SVG(w.icon)}</span>
     <h3>${CARDNAME[w.id]||w.name}</h3>
     <span class="wd">${TAGLINE[w.id]||""}</span>
     <span class="wfoot"><span class="wn">${w.n?`${w.n} tools`:"Coming soon"}</span><span class="wgo">${IC_ARROW}</span></span>
   </button>`).join("")
   + SOON.map(w=>`
-  <div class="wcard soon" data-soon="${w.name}" style="--tint:${w.tint}" role="button" tabindex="0"
+  <div class="wcard glass soon" data-soon="${w.name}" style="--tint:${w.tint}" role="button" tabindex="0"
        aria-label="${w.name} — not built yet">
     <span class="wi" style="color:${w.tint}">${SVG(w.icon)}</span>
     <h3>${CARDNAME[w.id]||w.name}</h3>
@@ -1200,16 +1251,53 @@ $("floaters").innerHTML=FLOATS.map(f=>{
    screen at load is shown immediately, so nothing waits for a scroll that
    may never come. */
 (function revealOnScroll(){
-  const marks=[...document.querySelectorAll(".wcard,.hstats,.hfeat,.gridhead")];
+  const marks=[...document.querySelectorAll(".wcard,.hstats,.hfeat,.gridhead,.foot-in,.hcta,.hsearch")];
   marks.forEach(el=>el.classList.add("rise"));
+  /* Cards in the same row arrive one after another rather than together — the
+     stagger is what makes it read as a movement instead of a flash. It is set
+     per card as it is seen, so a row scrolled past quickly does not queue up a
+     long tail of delays. */
   const io=new IntersectionObserver(entries=>{
-    for(const e of entries){
-      if(!e.isIntersecting)continue;
+    const seen=entries.filter(e=>e.isIntersecting);
+    seen.forEach((e,i)=>{
+      e.target.style.transitionDelay=(Math.min(i,6)*45)+"ms";
       e.target.classList.add("in");
       io.unobserve(e.target);
-    }
+    });
   },{root:$("screen-home"),rootMargin:"0px 0px -8% 0px",threshold:.08});
   marks.forEach(el=>io.observe(el));
+})();
+
+/* ---- the intro writes itself ----
+   Not a character-by-character typewriter, which is slow to read and janky to
+   animate: each word fades up a beat after the one before it, which lands as
+   writing without making anyone wait for it. The whole line is in the DOM from
+   the start, so it is copyable and a screen reader gets the sentence at once
+   rather than a word at a time. */
+(function writeIntro(){
+  const el=document.querySelector(".hero .intro");
+  if(!el)return;
+  if(matchMedia("(prefers-reduced-motion:reduce)").matches)return;
+  const walk=(node,out)=>{
+    for(const child of [...node.childNodes]){
+      if(child.nodeType===3){
+        const frag=document.createDocumentFragment();
+        for(const part of child.textContent.split(/(\s+)/)){
+          if(!part)continue;
+          if(/^\s+$/.test(part)){frag.appendChild(document.createTextNode(part));continue;}
+          const w=document.createElement("span");
+          w.className="w";
+          w.textContent=part;
+          w.style.animationDelay=(out.n++*26)+"ms";
+          frag.appendChild(w);
+        }
+        node.replaceChild(frag,child);
+      }else if(child.nodeType===1){walk(child,out);}
+    }
+  };
+  el.setAttribute("aria-label",el.textContent.replace(/\s+/g," ").trim());
+  walk(el,{n:0});
+  el.classList.add("writing");
 })();
 document.addEventListener("click",e=>{
   if(e.target.closest('[data-act="explore"]'))
