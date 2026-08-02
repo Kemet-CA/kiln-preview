@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="search.css">
 <link rel="stylesheet" href="panels.css">
 <script src="theme.js"></script>
+<script src="i18n.js"></script>
 <script src="search.js"></script>
 <script src="panels.js" defer></script>
 <script src="session.js"></script>
@@ -211,7 +212,7 @@ input,select{font:inherit;color:inherit}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="0d0d2b6-1336">
+<meta name="kiln-build" content="ad79c08-1408">
 </head>
 <body>
 <div id="app">
@@ -225,7 +226,8 @@ input,select{font:inherit;color:inherit}
       <span data-kiln-search></span>
       <span data-kiln-coffee></span>
       <span data-kiln-clock></span>
-      <span data-kiln-themebar></span>
+      <span class="klang" data-kiln-lang></span>
+    <span data-kiln-themebar></span>
     </div>
   </div>
 

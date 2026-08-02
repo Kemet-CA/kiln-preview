@@ -77,8 +77,9 @@
       a.href = "https://buymeacoffee.com/kemetca";
       a.target = "_blank";
       a.rel = "noopener";
-      a.title = "Buy us a coffee — it keeps this free";
-      a.innerHTML = COFFEE + `<span class="lbl">Buy us a coffee</span>`;
+      const cl = window.KilnLang?.t("ui.coffee") || "Buy us a coffee";
+      a.title = cl + " — it keeps this free";
+      a.innerHTML = COFFEE + `<span class="lbl">${cl}</span>`;
       slot.appendChild(a);
     }
   }
@@ -211,7 +212,7 @@
     const bar = document.createElement("div");
     bar.className = "ktb";
     bar.innerHTML =
-      `<button class="ktb-btn" data-ktb-mode title="Light / dark">${MOON}${SUN}</button>
+      `<button class="ktb-btn" data-ktb-mode title="${window.KilnLang?.t("ui.mode") || "Light / dark"}">${MOON}${SUN}</button>
        <button class="ktb-btn" data-ktb-theme>
          <svg class="ktb-pal" viewBox="0 0 24 24" fill="none" aria-hidden="true">
            <path d="M12 3.4a8.6 8.6 0 1 0 0 17.2c1.1 0 1.8-.8 1.8-1.7 0-.8-.6-1.4-.6-2.2 0-.8.7-1.5 1.6-1.5h1.5A5.3 5.3 0 0 0 21.6 10c0-3.7-4.3-6.6-9.6-6.6z"
@@ -253,6 +254,19 @@
   }
 
   const mountAll = () => document.querySelectorAll("[data-kiln-themebar]").forEach(mount);
+  /* The buttons read their labels once, at mount. A language change has to
+     come back for them, or the chrome keeps whatever language it was born in. */
+  addEventListener("kiln-lang", () => {
+    const say = (k, fb) => window.KilnLang?.t(k) || fb;
+    for (const b of document.querySelectorAll("[data-ktb-mode]")) b.title = say("ui.mode", "Light / dark");
+    for (const a of document.querySelectorAll(".kcoffee")) {
+      const label = say("ui.coffee", "Buy us a coffee");
+      a.title = label;
+      const text = a.querySelector(".lbl");
+      if (text) text.textContent = label;
+    }
+  });
+
   const boot = () => { mountHome(); mountCoffee(); mountAll(); mountClock(); mountMarks(); measureBar(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

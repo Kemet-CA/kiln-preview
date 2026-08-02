@@ -7,7 +7,7 @@
 <script src="i18n.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="0d0d2b6-1336">
+<meta name="kiln-build" content="ad79c08-1408">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -678,6 +678,9 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .foot .fsep{color:var(--t4)}
 .foot .fdim{color:var(--t4)}
 .foot-in{max-width:1180px;margin:0 auto;padding:0 26px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.footclock{margin-inline-start:auto;display:inline-flex}
+.footclock .ktb-now{gap:7px}
+.foot-in .fdim{margin-inline-start:0}
 
 /* ================= responsive ================= */
 @media(max-width:1100px){
@@ -735,9 +738,8 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   <nav class="wsnav" id="wsnav" aria-label="Workspaces"></nav>
   <div class="chrome-r">
     <span data-kiln-search></span>
-    <span class="klang" data-kiln-lang></span>
     <span data-kiln-coffee></span>
-    <span data-kiln-clock></span>
+    <span class="klang" data-kiln-lang></span>
     <span data-kiln-themebar></span>
   </div>
 </div>
@@ -788,7 +790,10 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   <div class="foot"><div class="foot-in">
     <span class="kemet"><span class="mark" style="width:18px;height:18px;border-radius:6px"></span>
       <b data-i18n="foot.by">Kiln by Kemet Studio</b></span>
-    <span style="margin-left:auto" class="fdim">© Kemet CA</span>
+    <!-- the time and where you are: useful, but not worth a slot in the top bar
+         next to the things you actually press -->
+    <span class="footclock" data-kiln-clock></span>
+    <span class="fdim">© Kemet CA</span>
   </div></div>
 </section>
 
