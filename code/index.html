@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en" data-kiln-cat="code" data-kiln-app="Code">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiln — Code</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E2622A'/%3E%3Crect x='9' y='9' width='14' height='14' rx='3' fill='%230B0A09'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="search.css">
+<script src="theme.js"></script>
+<script src="search.js"></script>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);font-size:13px;
+  line-height:1.5;letter-spacing:-.008em;-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none;--rw:300px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left;padding:0}
+input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ember);outline-offset:1px;border-radius:4px}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-thumb{background:var(--scrl);border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+
+#app{display:grid;height:100vh;height:100dvh;
+  grid-template-rows:34px 36px minmax(0,1fr) 24px;
+  grid-template-columns:minmax(0,1fr) var(--rw);
+  grid-template-areas:"menu menu" "opt opt" "stage panels" "status status"}
+body.nopanels{--rw:0px}
+body.nopanels #panels{display:none}
+
+/* ---------- menu bar ---------- */
+.menubar{grid-area:menu;display:flex;align-items:center;gap:2px;padding:0 8px;
+  border-bottom:1px solid var(--line);background:var(--s1)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:640;letter-spacing:-.03em;font-size:13.5px;margin-right:8px}
+.mark{width:18px;height:18px;border-radius:5px;position:relative;flex:none;background:var(--ember)}
+.mark::after{content:"";position:absolute;inset:5px 5px 0;border-radius:4px 4px 0 0;background:rgba(11,10,9,.55)}
+.menu{position:relative}
+.menu-t{padding:4px 9px;border-radius:5px;font-size:12.5px;color:var(--t2)}
+.menu-t:hover,.menu.open .menu-t{background:var(--hov2);color:var(--text)}
+.menu-d{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:250px;z-index:80;padding:5px;
+  border:var(--bw) solid var(--line2);border-radius:9px;background:var(--popbg);
+  backdrop-filter:blur(20px);box-shadow:var(--popshadow);max-height:70vh;overflow-y:auto}
+.menu.open>.menu-d{display:block;animation:pop .12s var(--ez)}
+@keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.mi{width:100%;display:flex;align-items:center;gap:10px;padding:5.5px 9px;border-radius:6px;font-size:12.5px;color:var(--t2)}
+.mi:hover{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--text)}
+.mi .sc{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t4)}
+.mi.on{color:var(--ember)}
+.msep{height:1px;background:var(--line);margin:4px 6px}
+.menubar-r{margin-left:auto;display:flex;align-items:center;gap:6px}
+
+/* ---------- options bar ---------- */
+.optbar{grid-area:opt;display:flex;align-items:center;gap:7px;padding:0 10px;
+  border-bottom:1px solid var(--line);background:var(--s1);font-size:12px;color:var(--t3);
+  overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.optbar::-webkit-scrollbar{display:none}
+.obsep{width:1px;height:16px;background:var(--line);flex:none}
+.sel{height:24px;padding:0 6px;border-radius:6px;border:var(--bw) solid var(--line);background:var(--s2);
+  font-size:11.5px;color:var(--text);outline:0;max-width:190px}
+.tb{height:24px;padding:0 9px;border-radius:6px;display:flex;align-items:center;gap:5px;color:var(--t2);flex:none;font-size:11.5px}
+.tb:hover{background:var(--hov2);color:var(--text)}
+.tb.on{background:color-mix(in srgb,var(--ember) 16%,transparent);color:var(--ember);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ember) 30%,transparent)}
+.optbar-r{margin-left:auto;display:flex;align-items:center;gap:7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:5px 12px;border-radius:6px;
+  font-size:12px;font-weight:550;border:1px solid transparent;cursor:pointer;flex:none}
+.btn-p{background:var(--btnp-bg);color:var(--btnp-fg);box-shadow:var(--btnp-sh)}
+.btn-p:hover{filter:brightness(1.07)}
+.btn-g{border:var(--bw) solid var(--line);color:var(--t2);box-shadow:var(--hs)}
+.btn-g:hover{border-color:var(--line2);color:var(--text);background:var(--hov)}
+
+/* ---------- the editor ----------
+   A textarea for the typing, and a highlighted copy of the same text behind
+   it, in the same font at the same size. The two have to agree to the pixel
+   or the illusion breaks, so every metric is set in one place. */
+.stage{grid-area:stage;display:flex;min-height:0;background:var(--code-bg);position:relative}
+.ed{flex:1;display:flex;min-width:0;position:relative;
+  --code-pad:14px;--code-size:13.5px;--code-lh:1.65}
+.gutter{flex:none;padding:var(--code-pad) 10px var(--code-pad) 14px;text-align:right;
+  font-family:var(--mono);font-size:var(--code-size);line-height:var(--code-lh);
+  color:var(--code-gutter);background:var(--code-gutter-bg);border-right:1px solid var(--line);
+  overflow:hidden;user-select:none;min-width:52px}
+.gutter i{display:block;font-style:normal}
+.gutter i.cur{color:var(--code-fg);background:var(--code-line)}
+.pane{position:relative;flex:1;min-width:0;overflow:hidden}
+.hl,#src{margin:0;padding:var(--code-pad);border:0;font-family:var(--mono);
+  font-size:var(--code-size);line-height:var(--code-lh);white-space:pre;tab-size:2;
+  letter-spacing:0;word-spacing:0}
+.hl{position:absolute;inset:0;overflow:auto;color:var(--code-fg);pointer-events:none;
+  background:var(--code-bg)}
+body.wrap .hl,body.wrap #src{white-space:pre-wrap;overflow-wrap:anywhere}
+#src{position:absolute;inset:0;width:100%;height:100%;resize:none;outline:0;background:transparent;
+  color:transparent;caret-color:var(--code-caret);overflow:auto;user-select:text;z-index:2}
+#src::selection{background:var(--code-sel)}
+.hl code{font:inherit}
+
+/* the colours a token can take, per editor theme */
+:root{--code-bg:var(--s1);--code-fg:var(--text);--code-gutter:var(--t4);--code-gutter-bg:var(--s2);
+  --code-caret:var(--ember);--code-sel:color-mix(in srgb,var(--ember) 28%,transparent);
+  --code-line:color-mix(in srgb,var(--ember) 10%,transparent);
+  --t-comment:var(--t4);--t-string:#7FA88A;--t-number:#C9A24B;--t-keyword:var(--ember);
+  --t-atom:#9B7BB8;--t-type:#6C8CC4;--t-fn:#C4623F;--t-op:var(--t3);--t-attr:#6C8CC4;
+  --t-tag:var(--ember);--t-key:#6C8CC4;--t-var:#9B7BB8;--t-regex:#7FA88A;--t-heading:var(--ember);
+  --t-selector:var(--ember);--t-atrule:#9B7BB8;--t-macro:#C4623F;--t-doctype:var(--t4)}
+body[data-code-theme="midnight"]{--code-bg:#0D1117;--code-fg:#E6EDF3;--code-gutter:#4A5568;
+  --code-gutter-bg:#0A0E14;--code-caret:#58A6FF;--code-sel:rgba(56,139,253,.35);
+  --code-line:rgba(110,118,129,.12);
+  --t-comment:#8B949E;--t-string:#A5D6FF;--t-number:#79C0FF;--t-keyword:#FF7B72;--t-atom:#79C0FF;
+  --t-type:#FFA657;--t-fn:#D2A8FF;--t-op:#9CA3AF;--t-attr:#79C0FF;--t-tag:#7EE787;--t-key:#79C0FF;
+  --t-var:#FFA657;--t-regex:#A5D6FF;--t-heading:#FF7B72;--t-selector:#7EE787;--t-atrule:#FF7B72;
+  --t-macro:#D2A8FF;--t-doctype:#8B949E}
+body[data-code-theme="paper"]{--code-bg:#FBFAF7;--code-fg:#1F2328;--code-gutter:#9AA0A6;
+  --code-gutter-bg:#F2F1ED;--code-caret:#0550AE;--code-sel:rgba(84,174,255,.28);
+  --code-line:rgba(84,174,255,.10);
+  --t-comment:#6E7781;--t-string:#0A7C42;--t-number:#0550AE;--t-keyword:#CF222E;--t-atom:#0550AE;
+  --t-type:#953800;--t-fn:#8250DF;--t-op:#57606A;--t-attr:#0550AE;--t-tag:#116329;--t-key:#0550AE;
+  --t-var:#953800;--t-regex:#0A7C42;--t-heading:#CF222E;--t-selector:#116329;--t-atrule:#CF222E;
+  --t-macro:#8250DF;--t-doctype:#6E7781}
+.t-comment{color:var(--t-comment);font-style:italic}
+.t-string{color:var(--t-string)}.t-number{color:var(--t-number)}
+.t-keyword{color:var(--t-keyword);font-weight:600}.t-atom{color:var(--t-atom)}
+.t-type{color:var(--t-type)}.t-fn{color:var(--t-fn)}.t-op{color:var(--t-op)}
+.t-attr{color:var(--t-attr)}.t-tag{color:var(--t-tag)}.t-key{color:var(--t-key)}
+.t-var{color:var(--t-var)}.t-regex{color:var(--t-regex)}.t-heading{color:var(--t-heading);font-weight:700}
+.t-selector{color:var(--t-selector)}.t-atrule{color:var(--t-atrule)}.t-macro{color:var(--t-macro)}
+.t-doctype{color:var(--t-doctype)}
+mark.find{background:color-mix(in srgb,var(--warn) 55%,transparent);color:inherit;border-radius:2px}
+
+/* ---------- panels ---------- */
+#panels{grid-area:panels;background:var(--s1);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.ptabs{display:flex;flex:none;border-bottom:1px solid var(--line);background:var(--s2)}
+.ptab{padding:6px 11px;font-size:11.5px;color:var(--t3)}
+.ptab.on{color:var(--text);background:var(--s1);box-shadow:inset 0 -2px 0 var(--ember)}
+.pfold{margin-left:auto;width:26px;display:grid;place-items:center;color:var(--t3)}
+.pfold:hover{color:var(--ember)}
+.pbody{flex:1;min-height:0;overflow:auto;display:none;padding:9px}
+.pbody.on{display:block}
+#out{font-family:var(--mono);font-size:11.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;
+  user-select:text}
+#out .l{padding:3px 6px;border-radius:5px;display:block}
+#out .l.err{color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+#out .l.warn{color:var(--warn)}
+#out .l.ret{color:var(--ok)}
+#out .l.dim{color:var(--t4)}
+#preview{width:100%;height:260px;border:1px solid var(--line);border-radius:9px;background:#fff}
+.snip{width:100%;text-align:left;padding:8px 9px;border-radius:8px;border:var(--bw) solid var(--line);
+  background:var(--s2);margin-bottom:6px}
+.snip b{display:block;font-size:12px;font-weight:600;color:var(--text)}
+.snip span{display:block;font-size:11px;color:var(--t3);margin-top:2px}
+.snip:hover{border-color:var(--ember)}
+.ihead{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);padding:10px 4px 6px}
+.ihead:first-child{padding-top:2px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3.5px 5px;font-size:12px}
+.kv span{color:var(--t3)}
+.kv b{font-family:var(--mono);font-weight:500;color:var(--t2)}
+.note{padding:7px 5px 10px;font-size:11.5px;color:var(--t4);line-height:1.65}
+
+/* ---------- find ---------- */
+.findbar{position:absolute;top:8px;right:16px;z-index:6;display:none;align-items:center;gap:6px;
+  padding:6px 8px;border-radius:10px;border:var(--bw) solid var(--line2);background:var(--popbg);
+  backdrop-filter:blur(18px);box-shadow:var(--popshadow)}
+.findbar.on{display:flex}
+.findbar input{width:180px;padding:4px 8px;border-radius:6px;border:var(--bw) solid var(--line);
+  background:var(--s2);color:var(--text);font-size:12px;outline:0}
+.findbar span{font-family:var(--mono);font-size:10.5px;color:var(--t3);min-width:52px;text-align:center}
+
+/* ---------- status + toasts ---------- */
+.sbar{grid-area:status;display:flex;align-items:center;padding:0 10px;border-top:1px solid var(--line);
+  background:var(--s1);font-family:var(--mono);font-size:10.5px;color:var(--t3);overflow:hidden}
+.si{display:flex;align-items:center;gap:5px;padding:0 10px;border-right:1px solid var(--line);height:100%;white-space:nowrap}
+.si:first-child{padding-left:0}
+.si b{color:var(--t2);font-weight:500}
+.si.sp{margin-left:auto;border-right:0}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--ok)}
+.dot.bad{background:var(--bad)}.dot.warn{background:var(--warn)}
+.toasts{position:fixed;bottom:32px;right:14px;z-index:120;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:9px;font-size:12.5px;
+  border:var(--bw) solid var(--line2);background:var(--popbg);box-shadow:var(--popshadow);transition:opacity .3s}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body data-code-theme="kiln">
+<div id="app">
+  <div class="menubar">
+    <span class="brand"><span class="mark"></span>Kiln</span>
+    <span data-kiln-home></span>
+    <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d" id="mFile"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Edit</button><div class="menu-d" id="mEdit"></div></div>
+    <div class="menu" data-menu><button class="menu-t">Language</button><div class="menu-d" id="mLang"></div></div>
+    <div class="menu" data-menu><button class="menu-t">View</button><div class="menu-d" id="mView"></div></div>
+    <div class="menubar-r">
+      <span data-kiln-search></span>
+      <span data-kiln-clock></span>
+      <span data-kiln-themebar></span>
+    </div>
+  </div>
+
+  <div class="optbar">
+    <select class="sel" id="langSel" title="Language" aria-label="Language"></select>
+    <select class="sel" id="themeSel" title="Editor theme" aria-label="Editor theme">
+      <option value="kiln">Editor: Kiln</option>
+      <option value="midnight">Editor: Midnight</option>
+      <option value="paper">Editor: Paper</option>
+    </select>
+    <span class="obsep"></span>
+    <button class="tb" data-act="fontDown" title="Smaller">A−</button>
+    <span class="num" id="fontV" style="min-width:34px;text-align:center">13.5</span>
+    <button class="tb" data-act="fontUp" title="Larger">A+</button>
+    <button class="tb" data-act="wrap" id="wrapBtn" title="Wrap long lines">Wrap</button>
+    <span class="obsep"></span>
+    <button class="tb" data-act="format" title="Tidy the indentation (⇧⌥F)">Format</button>
+    <button class="tb" data-act="comment" title="Comment or uncomment (⌘/)">Comment</button>
+    <button class="tb" data-act="find" title="Find (⌘F)">Find</button>
+    <div class="optbar-r">
+      <button class="btn btn-g" data-act="open">Open…</button>
+      <button class="btn btn-g" data-act="save">Download</button>
+      <button class="btn btn-p" data-act="run" title="Run (⌘↵)">▶ Run</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="ed">
+      <div class="gutter" id="gutter"></div>
+      <div class="pane">
+        <pre class="hl" id="hlWrap" aria-hidden="true"><code id="hl"></code></pre>
+        <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off"
+          aria-label="Code editor"></textarea>
+      </div>
+      <div class="findbar" id="findbar">
+        <input id="findIn" placeholder="Find" aria-label="Find">
+        <span id="findN">0 / 0</span>
+        <button class="tb" data-act="findPrev" title="Previous">↑</button>
+        <button class="tb" data-act="findNext" title="Next">↓</button>
+        <button class="tb" data-act="findClose" title="Close">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <aside id="panels">
+    <div class="ptabs">
+      <button class="ptab on" data-pt="pOut">Output</button>
+      <button class="ptab" data-pt="pSnip">Starters</button>
+      <button class="ptab" data-pt="pInfo">About</button>
+      <button class="pfold" data-act="panels" title="Hide the panel">›</button>
+    </div>
+    <div class="pbody on" id="pOut">
+      <div id="out"><span class="l dim">Run the code and anything it prints lands here.</span></div>
+      <iframe id="preview" hidden sandbox="allow-scripts" title="Preview"></iframe>
+    </div>
+    <div class="pbody" id="pSnip"></div>
+    <div class="pbody" id="pInfo">
+      <div class="ihead">What this is</div>
+      <div class="note">An editor for reading, writing and trying code in eighteen
+        languages. Highlighting is done here, in this tab, by a tokenizer you can
+        read in <b>src/highlight.js</b> — there is no language server and nothing
+        is sent anywhere.</div>
+      <div class="ihead">Running</div>
+      <div class="note">JavaScript runs in a sandboxed frame with no access to
+        this page, and its console lands in Output. HTML renders as a preview.
+        The other languages are for reading and writing here: running them needs
+        a runtime this tab does not have.</div>
+      <div class="ihead">Keys</div>
+      <div class="kv"><span>Run</span><b>⌘↵</b></div>
+      <div class="kv"><span>Find</span><b>⌘F</b></div>
+      <div class="kv"><span>Comment</span><b>⌘/</b></div>
+      <div class="kv"><span>Format</span><b>⇧⌥F</b></div>
+      <div class="kv"><span>Indent</span><b>Tab</b></div>
+      <div class="kv"><span>Download</span><b>⌘S</b></div>
+    </div>
+  </aside>
+
+  <div class="sbar">
+    <span class="si"><span class="dot" id="sbDot"></span><b id="sbStatus">Ready</b></span>
+    <span class="si">Language <b id="sbLang">JavaScript</b></span>
+    <span class="si">Ln <b id="sbLn">1</b>, Col <b id="sbCol">1</b></span>
+    <span class="si">Lines <b id="sbLines">1</b></span>
+    <span class="si">Chars <b id="sbChars">0</b></span>
+    <span class="si sp">On device <b>yes</b></span>
+  </div>
+</div>
+
+<input type="file" id="fileIn" hidden>
+<div class="toasts" id="toasts"></div>
+<script type="module" src="engine.js"></script>
+</body>
+</html>

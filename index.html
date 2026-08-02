@@ -6,7 +6,7 @@
 <script src="theme.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="dfece0c-1710">
+<meta name="kiln-build" content="eda46f0-1805">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -423,23 +423,28 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
    Soft where it should be and flat where it counts: the light behind the hero
    is two wide radial blooms, and every control on top of it stays a solid
    fill so it reads the same in all ten palettes. */
-.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
-.hero::before,.hero::after{content:"";position:absolute;pointer-events:none;border-radius:50%;
-  filter:blur(90px);opacity:var(--bloom,.55);z-index:0}
-.hero::before{width:52vw;height:52vw;max-width:760px;max-height:760px;left:-14vw;top:-18vw;
-  background:radial-gradient(circle,var(--bloom-a) 0%,transparent 68%)}
-.hero::after{width:46vw;height:46vw;max-width:680px;max-height:680px;right:-12vw;top:-10vw;
-  background:radial-gradient(circle,var(--bloom-b) 0%,transparent 68%)}
-.hero-in{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:84px 26px 64px;text-align:center}
-.wordmark{margin:0;font-size:clamp(64px,11vw,132px);line-height:.92;letter-spacing:-.055em;font-weight:700;
+/* The light sits on a fixed layer under the whole page rather than inside the
+   hero. A blurred box clipped by its parent shows its cut edges the moment you
+   scroll; a fixed pair of radial gradients that fade to nothing has no edges
+   to show. */
+#app::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(58vw 46vw at 8% -6%,var(--bloom-a),transparent 70%),
+    radial-gradient(52vw 40vw at 94% -2%,var(--bloom-b),transparent 70%);
+  opacity:var(--bloom,.55)}
+/* the screens sit above the light; the chrome keeps its own sticky */
+.screen{position:relative;z-index:1}
+.hero{position:relative;border-bottom:1px solid var(--line)}
+.hero-in{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:52px 26px 40px;text-align:center}
+.wordmark{margin:0;font-size:clamp(56px,9vw,108px);line-height:.94;letter-spacing:-.055em;font-weight:700;
   color:var(--text)}
-.slogan{margin:14px 0 0;font-size:clamp(19px,2.4vw,28px);letter-spacing:-.02em;font-weight:500;color:var(--t2)}
+.slogan{margin:10px 0 0;font-size:clamp(18px,2.1vw,25px);letter-spacing:-.02em;font-weight:500;color:var(--t2)}
 .slogan b{font-weight:500;color:var(--brand-ink)}
-.hsearch{display:flex;justify-content:center;margin-top:34px}
+.hsearch{display:flex;justify-content:center;margin-top:26px}
 .hsearch .kswrap.big{width:min(680px,100%);height:58px;border-radius:14px}
 .hsearch .kswrap.big .ksinput{font-size:15.5px}
-.hcta{display:flex;justify-content:center;flex-wrap:wrap;gap:14px;margin-top:26px}
-.hcta .btn{display:inline-flex;align-items:center;gap:10px;padding:13px 24px;border-radius:12px;
+.hcta{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:18px}
+.hcta .btn{display:inline-flex;align-items:center;gap:9px;padding:11px 20px;border-radius:12px;
   font-size:14px;font-weight:560;text-decoration:none;cursor:pointer;border:1px solid transparent;
   transition:transform .16s var(--ez),box-shadow .16s var(--ez),background .16s var(--ez)}
 .hcta .btn:hover{transform:translateY(-1px)}
@@ -452,8 +457,8 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 
 /* ---- the stats bar ---- */
 .hstats{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
-  gap:2px 0;max-width:1120px;margin:52px auto 0;padding:14px 8px;border:1px solid var(--line);
-  border-radius:18px;background:var(--card1);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+  gap:2px 0;max-width:1120px;margin:34px auto 0;padding:10px 6px;border:1px solid var(--line);
+  border-radius:16px;background:var(--card1);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .hstats li{display:flex;align-items:center;gap:11px;padding:8px 14px;position:relative;min-width:0}
 .hstats li+li::before{content:"";position:absolute;left:0;top:14%;bottom:14%;width:1px;background:var(--line)}
 .hstats .si{width:34px;height:34px;flex:none;border-radius:11px;display:grid;place-items:center;
@@ -466,7 +471,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 
 /* ---- the feature row under the cards ---- */
 .hfeat{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2px 0;
-  max-width:1120px;margin:0 auto 76px;padding:18px 8px;border:1px solid var(--line);border-radius:18px;
+  max-width:1120px;margin:0 auto 48px;padding:14px 6px;border:1px solid var(--line);border-radius:16px;
   background:var(--card1)}
 .hfeat li{display:flex;gap:12px;padding:8px 18px;position:relative}
 .hfeat li+li::before{content:"";position:absolute;left:0;top:10%;bottom:10%;width:1px;background:var(--line)}
@@ -476,27 +481,27 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .hfeat span{display:block;font-size:12px;line-height:1.55;color:var(--t2)}
 
 /* ---- the workspaces ---- */
-.wgrid-wrap{max-width:1120px;margin:0 auto;padding:56px 26px 40px}
-.gridhead{display:flex;align-items:center;gap:12px;padding:0 4px 18px}
+.wgrid-wrap{max-width:1120px;margin:0 auto;padding:36px 26px 28px}
+.gridhead{display:flex;align-items:center;gap:12px;padding:0 4px 14px}
 .gridhead h2{font-size:19px;font-weight:640;letter-spacing:-.025em;color:var(--text)}
 .gridhead .all{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-size:13px;
   color:var(--brand-ink);background:none;border:0;cursor:pointer;padding:6px 8px;border-radius:8px}
 .gridhead .all:hover{background:var(--brand-soft)}
-.wgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(216px,1fr));gap:16px}
-.wcard{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:22px;
+.wgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.wcard{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:18px;
   border:1px solid var(--line);border-radius:18px;cursor:pointer;text-align:left;background:var(--card1);
   transition:transform .18s var(--ez),box-shadow .18s var(--ez),border-color .18s var(--ez)}
 .wcard:hover,.wcard:focus-visible{transform:translateY(-4px);border-color:color-mix(in srgb,var(--tint) 34%,var(--line2));
   box-shadow:0 18px 34px -22px rgba(15,23,42,.55)}
 .wcard:focus-visible{outline:2px solid var(--tint);outline-offset:2px}
-.wcard .wi{width:52px;height:52px;flex:none;border-radius:15px;display:grid;place-items:center;
+.wcard .wi{width:46px;height:46px;flex:none;border-radius:13px;display:grid;place-items:center;
   background:color-mix(in srgb,var(--tint) 13%,var(--s2));
   transition:transform .18s var(--ez)}
 .wcard:hover .wi{transform:scale(1.06)}
-.wcard .wi svg{width:26px;height:26px}
-.wcard h3{margin:18px 0 0;font-size:16px;font-weight:640;letter-spacing:-.02em;color:var(--text)}
+.wcard .wi svg{width:23px;height:23px}
+.wcard h3{margin:14px 0 0;font-size:16px;font-weight:640;letter-spacing:-.02em;color:var(--text)}
 .wcard .wd{margin-top:5px;font-size:12.5px;line-height:1.55;color:var(--t2)}
-.wcard .wfoot{margin-top:16px;width:100%;display:flex;align-items:center;gap:8px}
+.wcard .wfoot{margin-top:13px;width:100%;display:flex;align-items:center;gap:8px}
 .wcard .wn{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--t2)}
 .wcard .wgo{margin-left:auto;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
   border:1px solid var(--line);color:var(--t3);
@@ -972,6 +977,9 @@ const WORKSPACES=[
  {id:"translate",name:"Translator",tint:"var(--cat-translate)",n:34,ui:"On-device translation · 34 languages",
   desc:"Translate text between 34 languages with the browser's own on-device model — no key, no account, and your text never leaves the machine.",
   icon:'<path d="M3 5.4h8.4M7.2 5.4v1.5c0 3-1.9 5.6-4.2 6.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4.4 10.2c1.3 2.2 3.2 3.7 5.4 4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="m12.6 21 4.2-9.6L21 21M14.4 17.6h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'},
+ {id:"code",name:"Code",tint:"var(--cat-code)",n:30,ui:"Editor · 18 languages · runs JS and HTML",
+  desc:"Read, write and try code in eighteen languages, with real highlighting and a sandbox that runs JavaScript and renders HTML.",
+  icon:'<path d="m8 6-6 6 6 6M16 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'},
  {id:"file",name:"Files",tint:"var(--cat-file)",n:9,ui:"Queue · progress · download manager",
   desc:"Drag in any files for real MD5, SHA-1 and SHA-256 checksums plus MIME detected from content, not filename.",
   icon:'<path d="M3 6.6a1.8 1.8 0 0 1 1.8-1.8h4.1l2 2.4h7.3A1.8 1.8 0 0 1 20 9v8.4a1.8 1.8 0 0 1-1.8 1.8H4.8A1.8 1.8 0 0 1 3 17.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 10.4h17" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".6"/>'}
@@ -996,6 +1004,7 @@ function go(id){
   // Everything below is the phase-3..5 preview shell.
   if(id==="image"){location.href="editor.html";return;}
   if(id==="voice"){location.href="voice/";return;}
+  if(id==="code"){location.href="code/";return;}
   if(id==="pdf"){location.href="pdf/";return;}
   if(id==="documents"){location.href="documents/";return;}
   if(id==="video"){location.href="video/";return;}
@@ -1084,15 +1093,13 @@ const IC_ARROW = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
   stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
 
 /* Three words per workspace, because a card is scanned, not read. */
-const TAGLINE={image:"Edit. Enhance. Create.",video:"Cut. Arrange. Export.",voice:"Record. Clean. Transform.",
+const TAGLINE={image:"Edit. Enhance. Create.",code:"Write. Run. Learn.",video:"Cut. Arrange. Export.",voice:"Record. Clean. Transform.",
   color:"Pick. Harmonise. Copy.",documents:"Write. Format. Export.",pdf:"Read. Edit. Convert.",
   translate:"Any language, on device.",file:"Hash. Inspect. Organise."};
 
 /* Two more the design asks for that do not exist yet. They are shown as what
    they are — clicking one says so rather than opening nothing. */
 const SOON=[
-  {id:"code",name:"Code",tint:"var(--cat-file)",tag:"Build. Debug. Deploy.",
-   icon:'<path d="m8 6-6 6 6 6M16 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'},
   {id:"ai",name:"AI",tint:"var(--cat-voice)",tag:"Smarter tools. Local.",
    icon:'<path d="M12 3.2 13.7 9l5.8 1.7L13.7 12.4 12 18.2 10.3 12.4 4.5 10.7 10.3 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M18.5 15.5l.7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7z" fill="currentColor" opacity=".7"/>'},
 ];
@@ -1126,7 +1133,6 @@ const STATS=[
   ["box", WS.reduce((t,w)=>t+(w.n||0),0), "Tools", "var(--cat-video)"],
   ["shield", "100%", "Private", "var(--cat-voice)"],
   ["lock", "Local-first", "Always yours", "var(--brand)"],
-  ["spark", "∞", "Possibilities", "var(--cat-translate)"],
 ];
 $("hstats").innerHTML=STATS.map(([ic,big,small,tint])=>`
   <li style="--tint:${tint}"><span class="si">${SVG(HIC[ic])}</span>
@@ -1169,7 +1175,7 @@ document.addEventListener("scroll",()=>$("ctx").classList.remove("on"),true);
    Picking one opens the workspace that owns it, and an image tool opens
    already selected. Colour and category ride along so a result is
    recognisable before you have read it. */
-const WS_ROUTE={image:"editor.html",pdf:"pdf/",documents:"documents/",video:"video/",voice:"voice/",
+const WS_ROUTE={image:"editor.html",pdf:"pdf/",documents:"documents/",video:"video/",voice:"voice/",code:"code/",
   translate:"translate/",color:"colour/",file:null};
 const ALL=[];
 WORKSPACES.filter(w=>w.id!=="home").forEach(w=>ALL.push({

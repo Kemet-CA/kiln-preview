@@ -10,12 +10,13 @@
   "use strict";
 
   // cycle order — the chip button steps through this list
+  // Three that are actually different from one another. Deep Ocean and
+  // Monochrome were Ember with the warmth turned down, so they are gone; a
+  // reader who wants either has the light/dark switch.
   const THEMES = [
     { id: "ember", name: "Ember", dark: "#0B0A09", light: "#F2EEE8", accent: "#E2622A" },
     { id: "neo", name: "Neo Pop", dark: "#131316", light: "#F6EFDF", accent: "#F2BE22" },
     { id: "retro", name: "Retro OS", dark: "#3A3A3A", light: "#008080", accent: "#C0C0C0" },
-    { id: "ocean", name: "Deep Ocean", dark: "#071019", light: "#EDF4F8", accent: "#19A7BE" },
-    { id: "mono", name: "Monochrome", dark: "#101010", light: "#F4F4F4", accent: "#8A8A8A" },
   ];
   const KEY_T = "kiln-theme", KEY_M = "kiln-mode";
   const root = document.documentElement;

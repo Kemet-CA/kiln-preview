@@ -23,7 +23,7 @@ input,select,textarea{font:inherit;color:inherit}
 .num{font-variant-numeric:tabular-nums}
 
 #app{display:grid;height:100vh;height:100dvh;
-  grid-template-rows:34px 36px minmax(0,1fr) 186px 24px;
+  grid-template-rows:34px 36px minmax(0,1fr) var(--tlh,208px) 24px;
   grid-template-columns:minmax(0,1fr) var(--rw);
   grid-template-areas:"menu menu" "opt opt" "stage panels" "tl tl" "status status"}
 body.foldR{--rw:30px}
@@ -82,14 +82,23 @@ body.foldR #panels .ptabs{padding-left:0;justify-content:center}
 .rec-h{display:flex;align-items:center;gap:9px;padding:8px 13px;flex:none;border-bottom:1px solid var(--line);
   background:var(--s2);font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
 .rec-h .sp{margin-left:auto;display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-family:var(--sans);font-size:11.5px}
-.scope{flex:1;min-height:0;position:relative;background:var(--stagebg);
+/* The stage is dark in both modes, so what is painted on it needs its own ink:
+   in light mode the category colour is a dark teal and would vanish here. */
+.scope{--wave:color-mix(in srgb,var(--cat,var(--ember)) 58%,#FFFFFF);
+  flex:1;min-height:0;position:relative;background:var(--stagebg);
   background-image:radial-gradient(var(--stagedot) 1px,transparent 1px);
   background-size:18px 18px;background-position:-1px -1px}
 #wave{position:absolute;inset:0;width:100%;height:100%;display:block}
-.scope-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--t3);
-  font-size:13px;line-height:1.7;padding:20px;pointer-events:none}
+/* On the dark stage the placeholder has to carry itself: a plate behind it and
+   real contrast, not grey-on-grey. */
+.scope-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
+  padding:20px;pointer-events:none}
 .scope-empty[hidden]{display:none}      /* display:grid outranks the hidden attribute */
-.scope-empty b{display:block;color:var(--text);font-size:15px;font-weight:600;margin-bottom:4px}
+.scope-empty>div{max-width:420px;padding:20px 24px;border-radius:14px;
+  background:color-mix(in srgb,var(--ground) 72%,transparent);
+  border:1px solid var(--line2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  color:#E9EDF2;font-size:13px;line-height:1.65;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.scope-empty b{display:block;color:#FFF;font-size:16px;font-weight:640;margin-bottom:6px;letter-spacing:-.01em}
 .rec-f{flex:none;display:flex;align-items:center;gap:14px;padding:12px 16px;border-top:1px solid var(--line);background:var(--s2)}
 .recbtn{width:56px;height:56px;border-radius:50%;flex:none;display:grid;place-items:center;
   border:2px solid color-mix(in srgb,var(--bad) 55%,transparent);background:color-mix(in srgb,var(--bad) 16%,transparent);
@@ -120,13 +129,17 @@ body.foldR #panels .ptabs{padding-left:0;justify-content:center}
 .tl-h .sp{margin-left:auto;display:flex;align-items:center;gap:5px;text-transform:none;letter-spacing:0}
 .tl-scroll{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;position:relative}
 .tl-inner{position:relative;height:100%;min-width:100%}
-.ruler{position:sticky;top:0;height:20px;border-bottom:1px solid var(--line);background:var(--s2);z-index:2}
-#rulerC{display:block;height:20px}
-.track{position:relative;height:96px;margin:8px 0 0;background:var(--s2);
-  border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.track-lab{position:absolute;left:6px;top:5px;z-index:3;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+.ruler{position:sticky;top:0;height:22px;border-bottom:1px solid var(--line);background:var(--s2);z-index:4;
+  cursor:ew-resize}
+.ruler:hover{background:var(--s3)}
+#rulerC{display:block;height:22px;pointer-events:none}
+.lanes{padding:6px 0 10px;display:flex;flex-direction:column;gap:6px}
+.track{position:relative;height:74px;background:var(--s2);border-radius:8px;
+  border:1px solid var(--line)}
+.track.drop{border-color:var(--ember);background:color-mix(in srgb,var(--ember) 8%,var(--s2))}
+.track-lab{position:absolute;left:7px;top:5px;z-index:3;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
   text-transform:uppercase;color:var(--t4);pointer-events:none}
-.clip{position:absolute;top:6px;height:84px;border-radius:8px;overflow:hidden;cursor:grab;
+.clip{position:absolute;top:5px;height:63px;border-radius:8px;overflow:hidden;cursor:grab;
   border:1px solid color-mix(in srgb,var(--ember) 45%,transparent);
   background:color-mix(in srgb,var(--ember) 12%,var(--s1))}
 .clip.on{border-color:var(--ember);box-shadow:0 0 0 1px var(--ember),0 6px 16px -8px rgba(0,0,0,.6)}
@@ -219,16 +232,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
   </div>
 
   <div class="optbar">
-    <button class="tb" data-act="record" id="obRec" title="Record (R)">● Record</button>
-    <button class="tb" data-act="play" id="obPlay" title="Play / pause (Space)">▶ Play</button>
-    <button class="tb" data-act="stop" title="Stop (⇧Space)">■ Stop</button>
-    <span class="obsep"></span>
     <select class="sel" id="devSel" title="Input device" aria-label="Input device"></select>
     <button class="tb" data-act="monitor" id="obMon" title="Hear yourself while recording">Monitor</button>
     <span class="obsep"></span>
     <button class="tb" data-act="split" title="Split at playhead (S)">Split</button>
     <button class="tb" data-act="delete" title="Delete clip (⌫)">Delete</button>
     <button class="tb" data-act="duplicate" title="Duplicate clip (⌘D)">Duplicate</button>
+    <button class="tb" data-act="addTrack" title="Add another track">＋ Track</button>
     <span class="obsep"></span>
     <button class="tb" data-act="zoomOut" title="Zoom out">−</button>
     <span class="num" id="zoomV" style="min-width:52px;text-align:center">40 px/s</span>
@@ -280,9 +290,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
     <div class="tl-scroll" id="tlScroll">
       <div class="tl-inner" id="tlInner">
         <div class="ruler"><canvas id="rulerC"></canvas></div>
-        <div class="track" id="track">
-          <span class="track-lab">Take</span>
-        </div>
+        <div class="lanes" id="lanes"></div>
         <div class="playhead" id="playhead" style="left:0"></div>
         <div class="tl-empty" id="tlEmpty">Recordings land here. Drag to move, drag an edge to trim, S to split.</div>
       </div>

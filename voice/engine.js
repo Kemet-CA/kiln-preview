@@ -59,7 +59,7 @@ const saveCustom = v => { try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(
 
 /* ---------------- state ---------------- */
 const App = {
-  clips: [], sel: null, sr: 48000,
+  clips: [], sel: null, sr: 48000, tracks: 2,
   zoom: 40, pos: 0,
   recording: false, playing: false, monitor: false,
   ctx: null, stream: null, rec: null, analyser: null, media: null,
@@ -73,6 +73,8 @@ window.App = App;                                   // the tests read this
 const audio = () => (App.ctx ||= new (window.AudioContext || window.webkitAudioContext)());
 const selClip = () => App.clips.find(c => c.id === App.sel) || null;
 const projectEnd = () => App.clips.reduce((m, c) => Math.max(m, c.start + c.dur), 0);
+const laneEnd = t => App.clips.filter(c => (c.track || 0) === t).reduce((m, c) => Math.max(m, c.start + c.dur), 0);
+const laneCount = () => Math.max(App.tracks, ...App.clips.map(c => (c.track || 0) + 1), 1);
 
 /* ---------------- chrome ---------------- */
 function toast(msg, kind = "") {
@@ -170,6 +172,7 @@ async function startRecording() {
       status("Decode failed", "bad");
     }
   };
+  $("scopeEmpty").hidden = true;          // nothing but the waveform while recording
   App.rec = rec;
   App.recording = true;
   App.live = [];
@@ -198,8 +201,8 @@ function monoOf(buf) {
 function addClip(data, sr, name) {
   App.sr = sr;
   const clip = {
-    id: uid(), name, sr, buf: data,
-    offset: 0, dur: data.length / sr, start: projectEnd(),
+    id: uid(), name, sr, buf: data, track: 0,
+    offset: 0, dur: data.length / sr, start: laneEnd(0),
     fx: { ...FX0 }, voice: "natural", rendered: null, noiseProfile: null,
   };
   App.clips.push(clip);
@@ -229,9 +232,9 @@ function drawLive() {
   const maxBars = Math.floor(w / (3 * devicePixelRatio));
   if (App.live.length > maxBars) App.live.shift();
 
-  const css = getComputedStyle(document.documentElement);
-  const accent = css.getPropertyValue("--cat").trim() || css.getPropertyValue("--ember").trim();
-  const hot = css.getPropertyValue("--hot").trim();
+  const css = getComputedStyle(document.querySelector(".scope"));
+  const accent = css.getPropertyValue("--wave").trim();
+  const hot = "#FFFFFF";
   ctx2.clearRect(0, 0, w, h);
   const mid = h / 2, bw = 3 * devicePixelRatio;
   ctx2.fillStyle = accent;
@@ -279,8 +282,8 @@ function paintRecorderIdle() {
   if (!clip) return;
   const data = clip.rendered || clip.buf.subarray(
     Math.floor(clip.offset * clip.sr), Math.floor((clip.offset + clip.dur) * clip.sr));
-  const css = getComputedStyle(document.documentElement);
-  const accent = css.getPropertyValue("--cat").trim() || css.getPropertyValue("--ember").trim();
+  const css = getComputedStyle(document.querySelector(".scope"));
+  const accent = css.getPropertyValue("--wave").trim();
   const buckets = Math.max(2, Math.floor(w / (2 * devicePixelRatio)));
   const pk = D.peaks(data, buckets);
   const mid = h / 2;
@@ -292,7 +295,7 @@ function paintRecorderIdle() {
   // playhead inside the clip
   const rel = (App.pos - clip.start) / clip.dur;
   if (rel >= 0 && rel <= 1) {
-    x.fillStyle = css.getPropertyValue("--hot").trim();
+    x.fillStyle = "#FFFFFF";
     x.fillRect(rel * w, 0, Math.max(1, devicePixelRatio), h);
   }
   $("pitchHz").textContent = (() => {
@@ -486,7 +489,7 @@ function clipPeaks(clip) {
 function drawClip(el, clip) {
   const c = el.querySelector("canvas");
   const w = Math.max(4, Math.floor(clip.dur * App.zoom));
-  const h = 84;
+  const h = 63;
   c.width = w * devicePixelRatio; c.height = h * devicePixelRatio;
   const x = c.getContext("2d");
   const css = getComputedStyle(document.documentElement);
@@ -513,9 +516,16 @@ function fxSummary(fx) {
   return bits.slice(0, 3).join(" · ");
 }
 function drawTimeline() {
-  const track = $("track");
-  [...track.querySelectorAll(".clip")].forEach(e => e.remove());
+  const lanes = $("lanes");
+  const n = laneCount();
+  if (lanes.children.length !== n) {
+    lanes.innerHTML = Array.from({ length: n }, (_, i) =>
+      `<div class="track" data-track="${i}"><span class="track-lab">Track ${i + 1}</span></div>`).join("");
+  }
+  [...lanes.querySelectorAll(".clip")].forEach(e => e.remove());
   for (const clip of App.clips) {
+    const lane = lanes.children[Math.min(clip.track || 0, n - 1)];
+    if (!lane) continue;
     const el = document.createElement("div");
     el.className = "clip" + (clip.id === App.sel ? " on" : "");
     el.dataset.clip = clip.id;
@@ -524,11 +534,12 @@ function drawTimeline() {
     el.innerHTML = `<canvas></canvas><span class="cname">${clip.name}</span>` +
       `<span class="cfx">${fxSummary(clip.fx)}</span>` +
       `<span class="edge l"></span><span class="edge r"></span>`;
-    track.appendChild(el);
+    lane.appendChild(el);
     drawClip(el, clip);
   }
   $("playhead").style.left = App.pos * App.zoom + "px";
   $("tlPos").textContent = fmt(App.pos, true);
+  $("tlEmpty").hidden = App.clips.length > 0;
 }
 function drawAll() {
   drawRuler();
@@ -713,9 +724,6 @@ function stop() {
 }
 function syncTransport() {
   $("recBtn").classList.toggle("on", App.recording);
-  $("obRec").classList.toggle("on", App.recording);
-  $("obRec").textContent = App.recording ? "● Stop" : "● Record";
-  $("obPlay").textContent = App.playing ? "❚❚ Pause" : "▶ Play";
   $("recTitle").textContent = App.recording ? "Recording" : App.playing ? "Playing" : "Recorder";
 }
 
@@ -766,7 +774,7 @@ async function exportWav() {
 window.exportWav = exportWav;
 /* A small surface for the tests: they build a known signal, run it through the
    real pipeline and measure what comes out, rather than trusting the UI. */
-window.Voice = { addClip, renderClip, applyVoice, splitAtPlayhead, exportWav, mixdown, VOICES, FX0 };
+window.Voice = { addClip, renderClip, applyVoice, splitAtPlayhead, exportWav, mixdown, drawAll, VOICES, FX0 };
 window.DSP = D;
 
 async function importFile(file) {
@@ -842,24 +850,56 @@ function zoomFit() {
   if (!end) return setZoom(40);
   setZoom(clamp(($("tlScroll").clientWidth - 40) / end, 4, 400));
 }
-$("tlScroll").addEventListener("pointerdown", e => {
-  if (e.target.closest(".clip")) return;
-  const r = $("tlInner").getBoundingClientRect();
-  App.pos = clamp((e.clientX - r.left) / App.zoom, 0, projectEnd());
-  drawTimeline();
-  paintRecorderIdle();
-});
+/* Scrubbing: the ruler is a strip you can grab, and it keeps following the
+   pointer until you let go — outside the strip too, which is what makes it
+   feel like a transport rather than a series of clicks. */
+(function scrubbing() {
+  const seekTo = e => {
+    const r = $("tlInner").getBoundingClientRect();
+    App.pos = clamp((e.clientX - r.left) / App.zoom, 0, Math.max(projectEnd(), 0.01));
+    $("playhead").style.left = App.pos * App.zoom + "px";
+    $("tlPos").textContent = fmt(App.pos, true);
+    paintRecorderIdle();
+  };
+  const strip = document.querySelector(".ruler");
+  strip.addEventListener("pointerdown", e => {
+    strip.setPointerCapture(e.pointerId);
+    seekTo(e);
+    const move = ev => seekTo(ev);
+    const up = () => { strip.removeEventListener("pointermove", move); strip.removeEventListener("pointerup", up); };
+    strip.addEventListener("pointermove", move);
+    strip.addEventListener("pointerup", up);
+  });
+  // empty timeline space seeks too
+  $("tlScroll").addEventListener("pointerdown", e => {
+    if (e.target.closest(".clip") || e.target.closest(".ruler")) return;
+    seekTo(e);
+  });
+  /* the wheel: across to travel, with a modifier to zoom about the pointer */
+  $("tlScroll").addEventListener("wheel", e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) {
+      e.preventDefault();
+      const r = $("tlInner").getBoundingClientRect();
+      const atPointer = (e.clientX - r.left) / App.zoom;          // the second the pointer is over
+      setZoom(App.zoom * (e.deltaY > 0 ? 0.88 : 1.14));
+      $("tlScroll").scrollLeft = atPointer * App.zoom - (e.clientX - $("tlScroll").getBoundingClientRect().left);
+    } else if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+      e.preventDefault();
+      $("tlScroll").scrollLeft += e.deltaY;                        // a plain wheel travels sideways
+    }
+  }, { passive: false });
+})();
 
 /* dragging a clip, and dragging its edges to trim */
 (function dragging() {
   let mode = null, clip = null, startX = 0, orig = 0, origDur = 0, origOff = 0, el = null;
-  $("track").addEventListener("pointerdown", e => {
+  $("lanes").addEventListener("pointerdown", e => {
     const box = e.target.closest(".clip");
     if (!box) return;
     clip = App.clips.find(c => c.id === box.dataset.clip);
     if (!clip) return;
     selectClip(clip.id);
-    el = $("track").querySelector(`.clip[data-clip="${clip.id}"]`);
+    el = $("lanes").querySelector(`.clip[data-clip="${clip.id}"]`);
     mode = e.target.classList.contains("edge")
       ? (e.target.classList.contains("l") ? "trimL" : "trimR") : "move";
     startX = e.clientX; orig = clip.start; origDur = clip.dur; origOff = clip.offset;
@@ -867,12 +907,18 @@ $("tlScroll").addEventListener("pointerdown", e => {
     el.classList.add("dragging");
     e.preventDefault();
   });
-  $("track").addEventListener("pointermove", e => {
+  $("lanes").addEventListener("pointermove", e => {
     if (!mode || !clip || !el) return;
     const d = (e.clientX - startX) / App.zoom;
     if (mode === "move") {
       clip.start = Math.max(0, orig + d);
       el.style.left = clip.start * App.zoom + "px";
+      // which lane is the pointer over?
+      const lanes = [...$("lanes").children];
+      const over = lanes.findIndex(l => { const r = l.getBoundingClientRect();
+        return e.clientY >= r.top && e.clientY <= r.bottom; });
+      lanes.forEach((l, i) => l.classList.toggle("drop", i === over && over !== clip.track));
+      if (over >= 0 && over !== clip.track) { clip.track = over; drawTimeline(); el = null; }
     } else if (mode === "trimL") {
       const max = origOff + origDur - 0.05;
       const off = clamp(origOff + d, 0, max);
@@ -887,16 +933,18 @@ $("tlScroll").addEventListener("pointerdown", e => {
     }
   });
   const end = () => {
+    [...$("lanes").children].forEach(l => l.classList.remove("drop"));
     if (!mode) return;
     const wasTrim = mode !== "move";
     mode = null;
     el?.classList.remove("dragging");
+    if (!el) { push("Move clip"); drawAll(); mode = null; return; }
     if (wasTrim && clip) { clip.rendered = null; clip.peaksCache = null; reRender(clip, "Trim"); }
     else push("Move clip");
     drawAll();
   };
-  $("track").addEventListener("pointerup", end);
-  $("track").addEventListener("pointercancel", end);
+  $("lanes").addEventListener("pointerup", end);
+  $("lanes").addEventListener("pointercancel", end);
 })();
 
 /* ---------------- menus ---------------- */
@@ -978,6 +1026,10 @@ const ACT = {
     reRender(c, "Clean up");
     toast("Noise learned, sibilance tamed, levelled and normalised");
   },
+  addTrack: () => { App.tracks = laneCount() + 1; drawAll(); toast(`Track ${App.tracks}`); },
+  seekStart: () => { App.pos = 0; drawTimeline(); paintRecorderIdle(); },
+  seekEnd: () => { App.pos = projectEnd(); drawTimeline(); paintRecorderIdle(); },
+  nudge: d => { App.pos = clamp(App.pos + d, 0, projectEnd()); drawTimeline(); paintRecorderIdle(); },
   foldR: () => document.body.classList.toggle("foldR"),
 };
 document.addEventListener("click", e => {
@@ -1037,6 +1089,10 @@ document.addEventListener("keydown", e => {
   else if (e.key.toLowerCase() === "r") { e.preventDefault(); startRecording(); }
   else if (e.key.toLowerCase() === "s") { e.preventDefault(); splitAtPlayhead(); }
   else if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); deleteClip(); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); ACT.nudge(e.shiftKey ? -1 : -0.1); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); ACT.nudge(e.shiftKey ? 1 : 0.1); }
+  else if (e.key === "Home") { e.preventDefault(); ACT.seekStart(); }
+  else if (e.key === "End") { e.preventDefault(); ACT.seekEnd(); }
   else if (e.key === "Escape") document.querySelectorAll("[data-menu]").forEach(m => m.classList.remove("open"));
 });
 
