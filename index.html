@@ -6,7 +6,7 @@
 <script src="theme.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="9e0f344-0932">
+<meta name="kiln-build" content="31dcc2c-1045">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -478,6 +478,12 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   color:var(--text)}
 .slogan{margin:10px 0 0;font-size:clamp(18px,2.1vw,25px);letter-spacing:-.02em;font-weight:500;color:var(--t2)}
 .slogan b{font-weight:500;color:var(--brand-ink)}
+/* One paragraph under the name: what this is and why it is worth the visit,
+   before anyone has to work it out from a grid of icons. Measured so it is two
+   or three lines rather than a wall. */
+.intro{margin:14px auto 0;max-width:58ch;font-size:clamp(14px,1.45vw,16.5px);line-height:1.62;
+  color:var(--t2);letter-spacing:-.005em;text-wrap:pretty}
+.intro b{font-weight:600;color:var(--brand-ink)}
 .hsearch{display:flex;justify-content:center;margin-top:26px}
 .hsearch .kswrap.big{width:min(680px,100%);height:58px;border-radius:14px}
 .hsearch .kswrap.big .ksinput{font-size:15.5px}
@@ -593,6 +599,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   .wsnav{display:none}                       /* the cards below are the navigation */
   .hero-in{padding:44px 18px 40px}
   .hero h1{font-size:clamp(34px,10vw,48px)}
+  .intro{font-size:14px;line-height:1.6;margin-top:11px}
   .lede{font-size:14.5px;line-height:1.65}
   .hcta{gap:8px}
   .hcta .btn{flex:1 1 100%;justify-content:center;text-align:center}
@@ -631,6 +638,9 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
     <div class="hero-in">
       <h1 class="wordmark">Kiln</h1>
       <p class="slogan">Shape &amp; Ship <b>Anything.</b></p>
+      <p class="intro">Why pay for a different subscription every month when it is all in one place?
+        Edit photos, cut video, record a voiceover, write, read and sign PDFs, translate, write code —
+        <b>all here, and free.</b></p>
       <div class="hsearch"><span data-kiln-search data-kiln-search-big></span></div>
       <div class="hcta">
         <button class="btn go" data-act="explore">Explore Workspaces
