@@ -53,6 +53,10 @@ export const DEFAULT_CLIP = {
   maskOpacity: 1, barSize: .12,          // barSize: letterbox bar height, 0..0.45
   // audio
   volume: 1, fadeIn: 0, fadeOut: 0, muted: false,
+  /* A video's own sound rides on its own clip, linked to the picture: moving,
+     trimming or deleting one does the same to the other until they are
+     unlinked. `linkedTo` holds the other clip's id, both ways. */
+  linkedTo: null,
   // transitions with the neighbour on the same track
   transIn: null, transOut: null,      // { type, dur }
   // text / sticker
@@ -359,6 +363,16 @@ export const allClips = p => p.tracks.flatMap(t => t.clips.map(c => ({ clip: c, 
 export const clipEnd = c => c.start + c.dur;
 export const trackOf = (p, id) => p.tracks.find(t => t.clips.some(c => c.id === id));
 export const findClip = (p, id) => p.tracks.flatMap(t => t.clips).find(c => c.id === id);
+export const linkedOf = (p, c) => c?.linkedTo ? findClip(p, c.linkedTo) : null;
+/* one clip and whatever is linked to it, which is what a selection means */
+export const withLinked = (p, ids) => {
+  const out = new Set(ids);
+  for (const id of ids) {
+    const c = findClip(p, id);
+    if (c?.linkedTo && findClip(p, c.linkedTo)) out.add(c.linkedTo);
+  }
+  return [...out];
+};
 export const duration = p =>
   p.tracks.reduce((m, t) => t.clips.reduce((n, c) => Math.max(n, clipEnd(c)), m), 0);
 export const mediaOf = (p, c) => p.media.find(m => m.id === c.mediaId);

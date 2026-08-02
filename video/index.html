@@ -103,7 +103,8 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .tl-ruler,.tl-clip,.thead,.tlbar{user-select:none;-webkit-user-select:none}
 #preview.picking{cursor:crosshair}
 /* the framing strip under the picture — stage colours, because it is on the stage */
-.framebar{flex:none;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;padding:10px 12px 0}
+.tsep{width:1px;height:18px;background:var(--stage-line);margin:0 4px}
+.transport .fbtn{height:30px}
 .fbgroup{display:flex;align-items:center;gap:3px;padding:3px;border-radius:10px;
   background:rgba(0,0,0,.28);border:1px solid var(--stage-line)}
 .fbr{padding:4px 9px;border-radius:7px;font-size:11px;font-weight:600;color:var(--stage-fg2);white-space:nowrap}
@@ -233,6 +234,14 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .emb:hover{background:var(--hov2);transform:scale(1.18)}
 .emb.on{background:color-mix(in srgb,var(--ember) 22%,transparent);box-shadow:inset 0 0 0 1px var(--ember)}
 .stcur{font-size:18px;text-align:center}
+.btn.busy{background:var(--s3);color:var(--t3);cursor:progress;position:relative;overflow:hidden;
+  box-shadow:none;border-color:var(--line2)}
+.btn.busy::before{content:"";position:absolute;inset:0;width:var(--done,0%);
+  background:color-mix(in srgb,var(--btnp-bg) 42%,transparent);transition:width .2s linear}
+.btn.busy::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.13),transparent);
+  animation:expsheen 1.4s linear infinite}
+@keyframes expsheen{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 .btn-imp{background:var(--imp-bg,#12a594);color:#fff;border:1px solid rgba(0,0,0,.14);
   box-shadow:0 1px 2px rgba(0,0,0,.18);font-weight:600}
 .btn-imp:hover{filter:brightness(1.08)}
@@ -345,9 +354,11 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .tl-clip .cbadge{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--t2);opacity:.8;pointer-events:none}
 /* the filmstrip: one wide image of frames, mapped so a frame sits where it
    happens — scale it to the media's full length and slide it by the in-point */
-.cthumb.strip{position:absolute;inset:0;width:auto;height:100%;border-radius:inherit;
+.cthumb.strip{background-repeat:repeat-x;position:absolute;inset:0;width:auto;height:100%;border-radius:inherit;
   background-repeat:no-repeat;opacity:.62;pointer-events:none;z-index:0}
 .cthumb{width:38px;height:calc(100% - 10px);border-radius:3px;background:#000 center/cover no-repeat;flex:none;pointer-events:none}
+/* after the shorthand above, or it resets the repeat back to no-repeat */
+.cthumb.strip{background-repeat:repeat-x;background-color:#0b0b0c}
 .tl-clip .cwave{position:absolute;left:0;right:0;bottom:0;height:16px;pointer-events:none;opacity:.5;
   background:repeating-linear-gradient(90deg,currentColor 0 1px,transparent 1px 4px);color:var(--celadon)}
 .cdel{position:absolute;top:3px;right:3px;width:17px;height:17px;border-radius:5px;display:none;
@@ -401,7 +412,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="9884c52-0818">
+<meta name="kiln-build" content="9c60556-0908">
 </head>
 <body>
 <div id="app">
@@ -461,14 +472,6 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
     <div class="vwrap"><canvas id="preview" width="1920" height="1080"></canvas></div>
     <!-- Framing lives on the player: the shape you are cutting for is something
          you judge by looking at it, not by opening a panel. -->
-    <div class="framebar">
-      <div class="menuwrap">
-        <button class="fbtn" data-act="cropOpen" id="cropBtn" title="Crop, or cut to a platform shape">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
-            <path d="M7 2v15h15"/><path d="M2 7h15v15"/></svg><span>Crop</span><b class="caret">▾</b></button>
-        <div class="cropmenu" id="cropMenu" hidden></div>
-      </div>
-    </div>
     <!-- the crop box lives over the picture; it is only there while cropping -->
     <div class="cropbox" id="cropBox" hidden>
       <i data-grip="nw"></i><i data-grip="ne"></i><i data-grip="sw"></i><i data-grip="se"></i>
@@ -488,6 +491,13 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
       <button class="tb" data-act="toEnd" title="Go to end (End)" aria-label="Go to end">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 6h-2v12h2zM14 12 6 18V6z"/></svg></button>
       <span class="tcode"><b id="tcNow">0:00.00</b> / <span id="tcTotal">0:00.00</span></span>
+      <div class="tsep"></div>
+      <div class="menuwrap">
+        <button class="fbtn" data-act="cropOpen" id="cropBtn" title="Crop, or cut to a platform shape">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+            <path d="M7 2v15h15"/><path d="M2 7h15v15"/></svg><span>Crop</span><b class="caret">▾</b></button>
+        <div class="cropmenu" id="cropMenu" hidden></div>
+      </div>
     </div>
     <div class="dz" id="dz">
       <div class="dzi">
@@ -541,6 +551,8 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M7 4v8a5 5 0 0 0 10 0V4"/><path d="M7 9h4M13 9h4"/></svg><span>Snapping</span></button>
       <button class="tb txt" data-act="closeGaps" title="Pull the clips together so there are no gaps">⇥ Close gaps</button>
+      <div class="obsep"></div>
+      <button class="tb txt" data-act="loopMode" id="loopBtn" title="Play once, loop, or bounce back and forth">↻ Play once</button>
       <div class="obsep"></div>
       <span style="font-size:11px;color:var(--t3)">Zoom</span>
       <button class="tb" data-act="zoomOut" title="Zoom out (⌘ + scroll)">−</button>

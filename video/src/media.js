@@ -130,17 +130,39 @@ export async function importFile(file, id = uid("m")) {
     media.dur = isFinite(el.duration) ? el.duration : 10;
     media.w = el.videoWidth || 0;
     media.h = el.videoHeight || 0;
+
     if (kind === "video") {
       media.poster = await posterOf(el).catch(() => null);
       // the strip takes a moment; let the pool show the poster first
       filmstripOf(el).then(strip => {
         if (!strip) return;
-        media.strip = strip;
+        media.strip = strip.url;
+        media.stripFrames = strip.frames;
+        media.stripAspect = strip.aspect;      // one frame's width ÷ its height
         window.__kilnStrip?.(media);
       }).catch(() => {});
     }
   }
   media.buffer = await file.arrayBuffer();
+
+  /* Does this file carry sound, and what is it? There is no property that
+     answers honestly — `webkitAudioDecodedByteCount` is zero until something
+     has played, and `mozHasAudio` is not Chrome — so the answer comes from
+     trying to decode it. Decoding throws when there is no audio track.
+
+     The decoded buffer is kept, which turns the cost into a saving: the
+     exporter used to decode every file again at mix time and now does not. */
+  if (kind !== "image") {
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      media.audio = await ac.decodeAudioData(media.buffer.slice(0));
+      media.hasAudio = media.audio.length > 0;
+      ac.close?.();
+    } catch {
+      media.hasAudio = false;                 // no audio track, or none we can read
+    }
+  }
+
   putBlob(id, file);
   return media;
 }
@@ -152,9 +174,13 @@ export async function importFile(file, id = uid("m")) {
    is kept to what is useful at timeline sizes.
 
    Built after the poster so the pool has something to show immediately. */
-async function filmstripOf(el, frames = 12) {
+async function filmstripOf(el, frames = 0) {
   const dur = el.duration;
   if (!isFinite(dur) || dur <= 0) return null;
+  /* One frame roughly every two seconds rather than a fixed twelve. A minute
+     of footage squeezed into twelve frames had to be stretched to cover the
+     clip, which is what made long videos look smeared. */
+  if (!frames) frames = Math.max(8, Math.min(40, Math.round(dur / 2)));
   const fh = 44;
   const fw = Math.max(1, Math.round(fh * (el.videoWidth / Math.max(1, el.videoHeight)) || 78));
   const c = document.createElement("canvas");
@@ -180,7 +206,7 @@ async function filmstripOf(el, frames = 12) {
   el.removeEventListener("error", onErr);
   if (broken) return null;
   el.currentTime = 0;
-  return c.toDataURL("image/jpeg", 0.55);
+  return { url: c.toDataURL("image/jpeg", 0.55), frames, aspect: fw / fh };
 }
 
 /* a small still from one second in, for the timeline and the media pool */

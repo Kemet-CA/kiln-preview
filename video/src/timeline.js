@@ -84,15 +84,21 @@ export class Timeline {
     const left = this.timeToPx(c.start), w = Math.max(6, this.timeToPx(c.dur));
     const sel = this.app.selection?.includes(c.id) ? " sel" : "";
     const media = mediaOf(this.project, c);
-    /* A filmstrip if the media has one: scaled so it covers the whole media,
-       then slid by the in-point, which puts every frame where it happens. */
+    /* A filmstrip if the media has one. The frames keep their own shape and
+       the strip repeats to fill the clip: stretching one strip across a long
+       clip was what smeared the pictures, because a minute of footage had to
+       cover a metre of timeline. */
     let thumb = "";
     if (c.kind !== "text" && c.kind !== "sticker" && media) {
       if (media.strip && media.dur) {
-        const full = w * (media.dur / Math.max(c.dur * (c.speed || 1), .001));
-        const offset = -(c.in || 0) / media.dur * full;
+        const rowH = c.kind === "audio" ? 40 : 47;      // the clip's own height
+        const aspect = media.stripAspect || 16 / 9;
+        const frames = media.stripFrames || 12;
+        const stripW = rowH * aspect * frames;
+        // slide by the in-point so the strip still starts where the clip does
+        const offset = -((c.in || 0) / media.dur) * stripW;
         thumb = `<span class="cthumb strip" style="background-image:url(${media.strip});` +
-          `background-size:${full.toFixed(1)}px 100%;background-position:${offset.toFixed(1)}px 0"></span>`;
+          `background-size:${stripW.toFixed(1)}px 100%;background-position:${offset.toFixed(1)}px 0"></span>`;
       } else if (media.poster) {
         thumb = `<span class="cthumb" style="background-image:url(${media.poster})"></span>`;
       }

@@ -45,6 +45,8 @@ export const PRESETS = {
    old code took the preset's literal 16:9 numbers and scaled the project into
    them on each axis separately, which squashed anything that was not 16:9.
    Bitrate follows the pixel count so quality holds across shapes. */
+export let lastTimings = null;      // what the previous export spent its time on
+
 export function outputSize(project, preset) {
   const P = PRESETS[preset] || PRESETS["1080p"];
   const short = P.h;
@@ -71,16 +73,25 @@ function avcCodec(w, h) {
 }
 
 /* seek a <video> and wait for the frame to actually be there */
-function seekTo(el, t) {
-  return new Promise(resolve => {
-    const want = Math.max(0, Math.min(t, (el.duration || 1e9) - 0.001));
-    if (Math.abs(el.currentTime - want) < 0.001 && el.readyState >= 2) return resolve();
+/* Every seek costs a decode, and the decode is nearly the whole of an export —
+   measured at 95% of the wall clock. So the cheapest seek is the one that does
+   not happen: if the element is already showing the frame this moment needs,
+   asking for it again buys nothing but the decode.
+
+   `tol` is half a source frame. Two output frames that land inside the same
+   source frame are the same picture, which happens whenever the output runs
+   faster than the source, whenever a clip is slowed down, and on any still. */
+function seekTo(el, t, tol = 0.001) {
+  const want = Math.max(0, Math.min(t, (el.duration || 1e9) - 0.001));
+  if (Math.abs(el.currentTime - want) <= tol && el.readyState >= 2) return null;
+  const p = new Promise(resolve => {
     let done = false;
     const finish = () => { if (done) return; done = true; el.removeEventListener("seeked", finish); resolve(); };
     el.addEventListener("seeked", finish, { once: true });
     setTimeout(finish, 400);                       // never hang the whole export on one frame
-    el.currentTime = want;
   });
+  el.currentTime = want;
+  return p;
 }
 
 /* ---------------- audio ---------------- */
@@ -93,8 +104,12 @@ async function mixAudio(project, sampleRate, totalDur, onProgress) {
   for (const clip of withAudio) {
     const media = mediaOf(project, clip);
     if (!media?.buffer || buffers.has(media.id)) continue;
-    try { buffers.set(media.id, await ctx.decodeAudioData(media.buffer.slice(0))); }
-    catch { buffers.set(media.id, null); }         // silent or image media
+    // import already decoded it; decoding the same file twice is pure waste
+    if (media.audio) { buffers.set(media.id, media.audio); }
+    else {
+      try { buffers.set(media.id, await ctx.decodeAudioData(media.buffer.slice(0))); }
+      catch { buffers.set(media.id, null); }       // silent or image media
+    }
     onProgress?.(++decoded / Math.max(1, withAudio.length) * .15);
   }
   for (const clip of withAudio) {
@@ -171,7 +186,18 @@ export async function exportVideo(project, opts, hooks = {}) {
     sampleRate, numberOfChannels: 2, bitrate: 192000,
   });
 
-  /* ---- video ---- */
+  /* ---- video ----
+     An export is decode-bound. Measured on a 10-second timeline: 95% of the
+     wall clock is the browser decoding the frame each seek asks for, ~35 ms a
+     frame, against 3 ms of compositing and no measurable encoder wait.
+
+     A pool of extra <video> elements decoding in parallel was tried and
+     reverted: it did overlap the decodes, but the frames drawn no longer
+     matched the seeks that had been issued, and a faster export of the wrong
+     pictures is not faster. The real fix is not to seek at all — demux the
+     source and feed a WebCodecs VideoDecoder, which decodes forward once
+     instead of paying for a seek per frame. That needs a demuxer, which is a
+     piece of work in its own right and is the next thing to do here. */
   hooks.onStage?.("Rendering frames");
   const frameCount = Math.ceil(total * fps);
   const els = new Map();                    // clip id → the <video> it draws from
@@ -181,11 +207,18 @@ export async function exportVideo(project, opts, hooks = {}) {
       if (media?.el) els.set(clip.id, media.el);
     }
 
+  /* Where the time goes, kept because "export is slow" is not actionable
+     without it: decoding source frames, compositing them and waiting for the
+     encoder are three different problems with three different fixes. */
+  const spent = { seek: 0, draw: 0, encode: 0, seeks: 0 };
+  const clock = () => performance.now();
+
   for (let i = 0; i < frameCount; i++) {
     if (hooks.cancelled?.()) { videoEncoder.close(); audioEncoder.close(); return null; }
     const t = i / fps;
 
     const sources = new Map();
+    const waits = [];
     for (const clip of visualClipsAt(project, t)) {
       const media = mediaOf(project, clip);
       if (!media) continue;
@@ -195,10 +228,24 @@ export async function exportVideo(project, opts, hooks = {}) {
       }
       const el = els.get(clip.id) || media.el;
       if (!el) continue;
-      await seekTo(el, sourceTime(clip, t));
+      /* Half an output frame, adjusted for the clip's speed: that is how far
+         the source moves between two output frames, so anything closer than
+         half of it is the same picture and the decode can be skipped. It pays
+         on stills, on slowed clips, and whenever the output runs faster than
+         the source. */
+      const tol = Math.max(0.001, (clip.speed || 1) / (fps * 2) - 0.0005);
+      const wait = seekTo(el, sourceTime(clip, t), tol);
+      if (wait) waits.push(wait);           // several clips decode at once
       sources.set(clip.id, el);
     }
+    if (waits.length) {
+      const s0 = clock();
+      await Promise.all(waits);
+      spent.seek += clock() - s0;
+      spent.seeks = (spent.seeks || 0) + waits.length;
+    }
 
+    const d0 = clock();
     ctx.save();
     ctx.scale(scale.x, scale.y);
     renderFrame(ctx, project, t, sources);
@@ -207,7 +254,10 @@ export async function exportVideo(project, opts, hooks = {}) {
     const frame = new VideoFrame(canvas, { timestamp: Math.round(t * 1e6), duration: Math.round(1e6 / fps) });
     videoEncoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });
     frame.close();
+    spent.draw += clock() - d0;
+    const e0 = clock();
     if (videoEncoder.encodeQueueSize > 8) await new Promise(r => setTimeout(r, 0));
+    spent.encode += clock() - e0;
     if (i % 3 === 0) hooks.onProgress?.(.1 + .8 * (i / frameCount));
   }
 
@@ -227,6 +277,7 @@ export async function exportVideo(project, opts, hooks = {}) {
     if (audioEncoder.encodeQueueSize > 8) await new Promise(r => setTimeout(r, 0));
   }
 
+  lastTimings = { ...spent, frames: frameCount, seeks: spent.seeks || 0 };
   hooks.onStage?.("Finishing file");
   await videoEncoder.flush();
   await audioEncoder.flush();

@@ -46,6 +46,8 @@ const App = {
   picking: false,
   emojiQuery: "",
   transEdge: "in",
+  loop: "once",            // once | loop | pong
+  direction: 1,            // which way the playhead is travelling, for ping-pong
   mediaBin: new Map(),      // media taken out of the list, kept for undo
   stabilising: false,
   poolSel: [],
@@ -78,9 +80,18 @@ function loop(now) {
   const dt = lastTick ? (now - lastTick) / 1000 : 0;
   lastTick = now;
   if (App.playing && !App.exporting) {
-    App.playhead += dt;
     const end = M.duration(App.project);
-    if (App.playhead >= end) { App.playhead = end; setPlaying(false); }
+    App.playhead += dt * (App.loop === "pong" ? App.direction : 1);
+    if (App.playhead >= end) {
+      if (App.loop === "loop") App.playhead = 0;
+      else if (App.loop === "pong") { App.playhead = end; App.direction = -1; }
+      else { App.playhead = end; setPlaying(false); }
+    } else if (App.playhead <= 0 && App.direction < 0) {
+      // the bottom of a bounce: turn round rather than stop
+      App.playhead = 0;
+      if (App.loop === "pong") App.direction = 1;
+      else setPlaying(false);
+    }
     syncPlayheadUi();
     dirty = true;                 // the playhead moved, so the frame differs
   }
@@ -171,6 +182,17 @@ function fitPreview() {
   if (h > avail.h) { h = avail.h; w = h * ratio; }
   cv.style.width = Math.floor(w) + "px";
   cv.style.height = Math.floor(h) + "px";
+}
+
+function syncLoopUi() {
+  const b = $("loopBtn");
+  if (!b) return;
+  const label = { once: "↻ Play once", loop: "🔁 Loop", pong: "⇄ Ping-pong" }[App.loop];
+  b.textContent = label;
+  b.classList.toggle("on", App.loop !== "once");
+  b.title = { once: "Stops at the end — click for looping",
+    loop: "Starts again at the end — click for ping-pong",
+    pong: "Turns round at each end — click to play once" }[App.loop];
 }
 
 function setPlaying(on) {
@@ -769,7 +791,8 @@ function refresh({ silent, noTimeline } = {}) {
 }
 function setSelection(ids, reveal = false) {
   invalidate();
-  App.selection = ids;
+  // picking a clip picks whatever is linked to it, until they are unlinked
+  App.selection = M.withLinked(App.project, ids);
   /* Move the playhead onto the clip when it is not already there. Editing a
      clip you cannot see was the whole of "the colour controls do not update":
      they did, on a frame that was not on screen. */
@@ -821,6 +844,25 @@ function addToTimeline(mediaId, atTime = null, trackId = null) {
   const wasEmpty = !p.tracks.some(t => t.clips.length);
   const clip = M.makeClip(media, at, { kind: media.kind, dur: media.dur, name: media.name });
   M.addClip(track, clip);
+
+  /* A video that carries sound gets that sound on the timeline as its own
+     clip, linked to the picture. Sound you cannot see is sound you cannot
+     edit, and hiding it inside the video clip meant every volume or fade
+     decision had to be made through a panel. */
+  if (media.kind === "video" && media.hasAudio) {
+    const aTrack = p.tracks.filter(t => t.kind === "audio")
+      .find(t => !t.clips.some(c => at < M.clipEnd(c) && c.start < at + media.dur))
+      || p.tracks.find(t => t.kind === "audio");
+    if (aTrack) {
+      const sound = M.makeClip(media, at, {
+        kind: "audio", dur: media.dur, name: (media.name || "Clip") + " audio",
+      });
+      sound.linkedTo = clip.id;
+      clip.linkedTo = sound.id;
+      clip.muted = true;                 // the audio clip is the one that plays it
+      M.addClip(aTrack, sound);
+    }
+  }
   commit("Add clip");
   refresh();
   // an empty timeline has no length to fit, so it boots at maximum zoom —
@@ -851,7 +893,7 @@ const ACT = {
   },
   delete: () => {
     if (!App.selection.length) return toast("Select a clip first", "warn");
-    App.selection.forEach(id => M.removeClip(App.project, id));
+    M.withLinked(App.project, App.selection).forEach(id => M.removeClip(App.project, id));
     setSelection([]); commit("Delete clip"); refresh();
   },
   /* The magnet: no gaps anywhere. It is one action rather than a mode, so a
@@ -1181,6 +1223,16 @@ const ACT = {
     App.hist.i++;
     restore();
   },
+  /* Three ways to reach the end: stop, start again, or turn round. Ping-pong
+     is the one worth having for a short clip you are judging — it keeps the
+     movement in front of you without the jump back to the start. */
+  loopMode: () => {
+    const order = ["once", "loop", "pong"];
+    App.loop = order[(order.indexOf(App.loop) + 1) % order.length];
+    App.direction = 1;
+    syncLoopUi();
+    toast({ once: "Plays once", loop: "Loops", pong: "Bounces back and forth" }[App.loop]);
+  },
   snap: () => {
     App.snapping = !App.snapping;
     $("snapBtn").classList.toggle("on", App.snapping);
@@ -1194,6 +1246,22 @@ const ACT = {
     if (!c) return;
     Object.assign(c, { x: 0, y: 0, scale: 1, rot: 0, flipH: false, flipV: false, opacity: 1, crop: { l: 0, t: 0, r: 0, b: 0 } });
     commit("Reset transform"); refresh();
+  },
+  unlinkAudio: () => {
+    const c = firstSelected();
+    const other = M.linkedOf(App.project, c);
+    if (!c || !other) return toast("This clip has no linked audio", "warn");
+    c.linkedTo = null; other.linkedTo = null;
+    commit("Unlink audio"); refresh();
+    setSelection([c.id]);
+    toast("Unlinked — the picture and the sound move on their own now");
+  },
+  relinkAudio: () => {
+    const [a, b] = selectedClips();
+    if (!a || !b || a.kind === b.kind) return toast("Select a video clip and an audio clip", "warn");
+    a.linkedTo = b.id; b.linkedTo = a.id;
+    commit("Link audio"); refresh();
+    toast("Linked");
   },
   detachAudio: () => {
     const c = firstSelected();
@@ -1213,6 +1281,7 @@ const ACT = {
     toast("Project saved");
   },
   exportOpen: () => {
+    if (App.exporting) return toast("An export is already running", "warn");
     if (!M.duration(App.project)) return toast("The timeline is empty", "warn");
     syncExportUi();
     $("expNote").textContent = canEncode()
@@ -1253,7 +1322,7 @@ function openClipMenu(id, x, y) {
   const items = [
     ["Split at playhead", "split"],
     ["Duplicate", "duplicate"],
-    ["Detach audio", "detachAudio"],
+    M.linkedOf(App.project, clip) ? ["Unlink audio", "unlinkAudio"] : ["Detach audio", "detachAudio"],
     null,
     ["Delete", "delete"],
     ["Ripple delete (close the gap)", "ripple"],
@@ -1307,7 +1376,32 @@ async function generateSample() {
   cv.width = 1280; cv.height = 720;
   const c = cv.getContext("2d");
   const stream = cv.captureStream(30);
-  const mime = ["video/webm;codecs=vp9", "video/webm"].find(m => MediaRecorder.isTypeSupported(m));
+  /* Give the sample a soundtrack — a quiet two-note figure. A test clip with
+     no audio cannot be used to try any of the audio features, which is most of
+     what someone reaches for a test clip to do. */
+  let ac = null;
+  try {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    const dest = ac.createMediaStreamDestination();
+    const gain = ac.createGain();
+    gain.gain.value = .12;
+    gain.connect(dest);
+    for (const [freq, at] of [[220, 0], [330, 1.2], [262, 2.4], [392, 3.6]]) {
+      const o = ac.createOscillator();
+      o.type = "sine";
+      o.frequency.value = freq;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0, ac.currentTime + at);
+      g.gain.linearRampToValueAtTime(1, ac.currentTime + at + .05);
+      g.gain.linearRampToValueAtTime(0, ac.currentTime + at + 1.1);
+      o.connect(g).connect(gain);
+      o.start(ac.currentTime + at);
+      o.stop(ac.currentTime + at + 1.2);
+    }
+    dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+  } catch { /* no audio here; the clip is still worth having */ }
+  const mime = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp9", "video/webm"]
+    .find(m => MediaRecorder.isTypeSupported(m));
   const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4e6 });
   const chunks = [];
   rec.ondataavailable = e => e.data.size && chunks.push(e.data);
@@ -1327,7 +1421,7 @@ async function generateSample() {
       c.font = "600 54px system-ui, sans-serif";
       c.textAlign = "center";
       c.fillText(`Kiln test clip · ${t.toFixed(1)}s`, 640, 660);
-      if (t >= 5) { rec.stop(); done(); return; }
+      if (t >= 5) { rec.stop(); ac?.close?.(); done(); return; }
       requestAnimationFrame(frame);
     };
     frame();
@@ -1416,6 +1510,7 @@ async function doExport() {
   const bitrate = +$("expBr").value * 1e6;
   const audioKbps = +$("expAud").value;
   $("expGo").disabled = true;
+  setExportBusy(0);
   const t0 = performance.now();
   try {
     const blob = await exportVideo(App.project, {
@@ -1424,7 +1519,7 @@ async function doExport() {
       codec: $("expCodec").value || undefined,
     }, {
       onStage: s => { $("expNote").textContent = s + "…"; status(s); },
-      onProgress: p => { $("expBar").style.width = Math.round(p * 100) + "%"; },
+      onProgress: p => { $("expBar").style.width = Math.round(p * 100) + "%"; setExportBusy(p); },
       onError: e => toast("Encoder error: " + e.message, "bad"),
       cancelled: () => App.cancelExport,
     });
@@ -1440,8 +1535,28 @@ async function doExport() {
     App.exporting = false;
     $("expGo").disabled = false;
     $("expBar").style.width = "0%";
+    setExportBusy(null);
     status("Ready");
   }
+}
+
+/* An export takes minutes, and a button that still looks ready to press is an
+   invitation to press it again. It goes flat, says how far along it is, and
+   fills as it goes. */
+function setExportBusy(p) {
+  const btn = document.querySelector('.optbar [data-act="exportOpen"]');
+  if (!btn) return;
+  if (p === null) {
+    btn.classList.remove("busy");
+    btn.style.removeProperty("--done");
+    btn.textContent = "Export";
+    btn.removeAttribute("aria-busy");
+    return;
+  }
+  btn.classList.add("busy");
+  btn.setAttribute("aria-busy", "true");
+  btn.style.setProperty("--done", Math.round(p * 100) + "%");
+  btn.textContent = `Exporting ${Math.round(p * 100)}%`;
 }
 
 /* ---------------- menus ---------------- */
@@ -1453,7 +1568,8 @@ const MENUS = {
           ["Split at playhead", "split", "S"], ["Delete", "delete", "⌫"], ["Ripple delete", "ripple", "⇧⌫"],
           ["Duplicate", "duplicate", "⌘D"]],
   mClip: [["Add text", "addText"], ["Add sticker", "addSticker"], ["Record voiceover", "recordVoice"], null,
-          ["Detach audio", "detachAudio"], ["Reset transform", "resetTransform"], ["Fit to frame", "fitFrame"]],
+          ["Detach audio", "detachAudio"], ["Unlink audio", "unlinkAudio"],
+          ["Reset transform", "resetTransform"], ["Fit to frame", "fitFrame"]],
   mView: [["Zoom in", "zoomIn"], ["Zoom out", "zoomOut"], ["Fit timeline", "zoomFit"], null,
           ["Add video track", "addVideoTrack"], ["Add audio track", "addAudioTrack"]],
 };
@@ -1841,6 +1957,7 @@ timeline = new Timeline($("tlScroll"), {
 });
 wire();
 wireCropBox();
+syncLoopUi();
 new ResizeObserver(fitPreview).observe(document.querySelector(".vwrap"));
 addEventListener("resize", fitPreview);
 M.commit(App.hist, App.project, "New project");
@@ -1856,7 +1973,7 @@ window.__kilnStrip = () => { timeline.render(); };
 
 window.Kiln = {
   App, M, ACT, timeline, addMediaFiles, addToTimeline, generateSample, seek,
-  setSelection, doExport, exportVideo, renderAll, drawPreview,
+  setSelection, doExport, exportVideo, renderAll, drawPreview, setExportBusy,
   duration: () => M.duration(App.project),
   clips: () => App.project.tracks.flatMap(t => t.clips),
 };
