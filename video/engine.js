@@ -45,6 +45,7 @@ const App = {
   selection: [],
   picking: false,
   emojiQuery: "",
+  transEdge: "in",
   stabilising: false,
   poolSel: [],
   playhead: 0,
@@ -159,6 +160,7 @@ function drawPreview() {
    box, worse the shorter the window. */
 function fitPreview() {
   invalidate();
+  if (typeof paintCropBox === "function") paintCropBox();
   const cv = $("preview"), wrap = document.querySelector(".vwrap");
   if (!cv || !wrap) return;
   const box = wrap.getBoundingClientRect();
@@ -191,8 +193,10 @@ function renderAll() {
   timeline.render();
   renderPool();
   renderInspector();
+  renderTransitions();
   renderFrameBar();
-  renderCropPop();
+  renderCropMenu();
+  paintCropBox();
   syncStatus();
   syncPlayheadUi();
 }
@@ -224,6 +228,13 @@ function renderPool() {
 }
 /* ---------------- inspector ---------------- */
 const row = (label, inner) => `<label class="fld"><span>${label}</span>${inner}</label>`;
+/* A heading with a switch: every effect group can be turned off and back on
+   without losing what was set, which is how you compare "with" and "without"
+   without undoing your work. */
+const fxHead = (title, prop, on) =>
+  `<div class="ihead fx"><span>${title}</span>
+     <button class="sw${on ? " on" : ""}" data-fx="${prop}" role="switch" aria-checked="${on}"
+             title="${on ? "Turn this off" : "Turn this back on"}"><i></i></button></div>`;
 const slider = (prop, min, max, step, v, unit = "", key = false) =>
   `<input type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-prop="${prop}">
    <b>${typeof v === "number" ? (+v).toFixed(step < 1 ? 2 : 0) : v}${unit}</b>
@@ -244,41 +255,21 @@ function activeRatio(c) {
    compactly: the ratio on top and the platform under it, so it reads at a
    glance without a tooltip. */
 function renderFrameBar() {
-  const host = $("fbRatios");
-  if (!host) return;
+  const btn = $("cropBtn");
+  if (!btn) return;
   const c = firstSelected();
   const cur = c ? activeRatio(c) : projectRatio();
-  host.innerHTML = M.RATIOS.map(a => {
-    const platform = a.r ? a.sub.split(" · ")[0] : a.sub;
-    return `<button class="fbr${cur === a.id ? " on" : ""}" data-ratio="${a.id}"
-      title="${esc(a.label)} — ${esc(a.sub)}">${a.label}<small>${esc(platform)}</small></button>`;
-  }).join("");
-  $("cropBtn")?.classList.toggle("on", !$("cropPop").hidden);
+  const hit = M.RATIOS.find(a => a.id === cur && a.r);
+  // the button says what shape you are cutting for, so it needs no strip
+  const label = btn.querySelector("span");
+  if (label) label.textContent = Crop.on ? "Cropping…" : hit ? `Crop · ${hit.label}` : "Crop";
+  $("cropBtn")?.classList.toggle("on", Crop.on || !$("cropMenu").hidden);
 }
 /* With nothing selected the strip still shows what the project is set to */
 function projectRatio() {
   const a = App.project.w / App.project.h;
   const hit = M.RATIOS.find(r => r.r && Math.abs(r.r - a) < .01);
   return hit ? hit.id : "free";
-}
-
-/* The crop popover: the same four edges as the panel, where the picture is. */
-function renderCropPop() {
-  const pop = $("cropPop");
-  if (!pop || pop.hidden) return;
-  const c = firstSelected();
-  if (!c) { pop.innerHTML = `<div class="empty">Select a clip to crop it.</div>`; return; }
-  pop.innerHTML =
-    `<div class="ihead">Crop ${c.cropRatio ? "· locked to the frame" : "· free"}</div>
-     ${row("Left", slider("crop.l", 0, .45, .01, c.crop.l))}
-     ${row("Top", slider("crop.t", 0, .45, .01, c.crop.t))}
-     ${row("Right", slider("crop.r", 0, .45, .01, c.crop.r))}
-     ${row("Bottom", slider("crop.b", 0, .45, .01, c.crop.b))}
-     <div class="chips">
-       <button class="chip" data-act="cropReset">Reset</button>
-       <button class="chip" data-ratio="free">Unlock edges</button>
-       <button class="chip" data-act="cropClose">Done</button>
-     </div>`;
 }
 
 /* ---------------- the track stretch window ----------------
@@ -344,6 +335,131 @@ function applyTrackSpeed(v, done) {
   if (el) el.querySelector("b").textContent = fmtTime(len);
 }
 
+/* ---------------- cropping ----------------
+   One button, one menu: free crop or a platform shape. Free crop puts a box on
+   the picture — drag it, pull its corners, press Enter. Nothing is written to
+   the clip until it is applied, so Escape really does cancel.
+
+   The box is kept in *frame* coordinates (0..1 of the project), so it survives
+   the preview being resized and converts straight into the clip's crop. */
+const Crop = { on: false, box: null, ratio: null };
+
+function renderCropMenu() {
+  const menu = $("cropMenu");
+  if (!menu || menu.hidden) return;
+  const c = firstSelected();
+  const cur = c ? activeRatio(c) : projectRatio();
+  menu.innerHTML =
+    `<button class="ci${Crop.on ? " on" : ""}" data-crop="free">
+       <span class="sh"></span>Free crop<u>drag on the video</u></button>
+     <div class="csep"></div>` +
+    M.RATIOS.filter(a => a.r).map(a => {
+      const w = a.r >= 1 ? 20 : 20 * a.r, h = a.r >= 1 ? 20 / a.r : 20;
+      return `<button class="ci${cur === a.id ? " on" : ""}" data-crop="${a.id}">
+        <span class="sh" style="width:${w.toFixed(0)}px;height:${h.toFixed(0)}px"></span>
+        ${a.label}<u>${esc(a.sub.split(" · ")[0])}</u></button>`;
+    }).join("") +
+    `<div class="csep"></div>
+     <button class="ci" data-crop="orig">Original<u>reset</u></button>`;
+}
+
+/* where the picture actually is on screen, so the box can sit exactly on it */
+function previewRect() {
+  const cv = $("preview"), stage = $("stage");
+  const r = cv.getBoundingClientRect(), s = stage.getBoundingClientRect();
+  return { x: r.left - s.left, y: r.top - s.top, w: r.width, h: r.height };
+}
+function paintCropBox() {
+  const el = $("cropBox");
+  if (!Crop.on || !Crop.box) { el.hidden = true; return; }
+  const p = previewRect(), b = Crop.box;
+  el.hidden = false;
+  el.style.left = (p.x + b.x * p.w) + "px";
+  el.style.top = (p.y + b.y * p.h) + "px";
+  el.style.width = (b.w * p.w) + "px";
+  el.style.height = (b.h * p.h) + "px";
+  const c = firstSelected();
+  const px = c ? ` · ${Math.round(b.w * App.project.w)}×${Math.round(b.h * App.project.h)}` : "";
+  $("cropHint").innerHTML = `Drag to frame it${px} · <b>Enter</b> to apply · <b>Esc</b> to cancel`;
+}
+function startFreeCrop() {
+  /* Nothing selected? Crop what is on screen. Refusing to start because of a
+     selection the user never made is the kind of small no that makes a tool
+     feel fussy. */
+  let c = firstSelected();
+  if (!c) {
+    const here = visualClipsAt(App.project, App.playhead)
+      .filter(x => x.kind !== "text" && x.kind !== "sticker");
+    if (here.length) { setSelection([here[0].id]); c = here[0]; }
+  }
+  if (!c) return toast("Nothing to crop at the playhead", "warn");
+  Crop.on = true;
+  Crop.ratio = null;
+  // start from whatever crop the clip already has, so it can be adjusted
+  const b = c.crop || { l: 0, t: 0, r: 0, b: 0 };
+  Crop.box = { x: b.l, y: b.t, w: Math.max(.05, 1 - b.l - b.r), h: Math.max(.05, 1 - b.t - b.b) };
+  $("cropBox").hidden = false;
+  paintCropBox();
+  renderCropMenu();
+  toast("Drag the box, then press Enter");
+}
+function cancelCrop() {
+  if (!Crop.on) return;
+  Crop.on = false; Crop.box = null;
+  $("cropBox").hidden = true;
+  renderCropMenu();
+}
+function applyCrop() {
+  const c = firstSelected();
+  if (!Crop.on || !Crop.box || !c) return cancelCrop();
+  const b = Crop.box;
+  c.crop = {
+    l: clamp(b.x, 0, .9), t: clamp(b.y, 0, .9),
+    r: clamp(1 - b.x - b.w, 0, .9), b: clamp(1 - b.y - b.h, 0, .9),
+  };
+  c.cropRatio = null;                       // a hand-drawn crop is its own shape
+  cancelCrop();
+  commit("Crop"); refresh();
+  toast(`Cropped to ${Math.round(b.w * App.project.w)}×${Math.round(b.h * App.project.h)}`);
+}
+
+/* dragging the box and its eight grips */
+function wireCropBox() {
+  const el = $("cropBox");
+  el.addEventListener("pointerdown", e => {
+    if (!Crop.on || !Crop.box) return;
+    e.preventDefault();
+    e.stopPropagation();
+    document.body.classList.add("dragging");
+    const grip = e.target.dataset.grip || null;
+    const p = previewRect();
+    const start = { ...Crop.box }, sx = e.clientX, sy = e.clientY;
+    const move = ev => {
+      const dx = (ev.clientX - sx) / p.w, dy = (ev.clientY - sy) / p.h;
+      const b = { ...start };
+      const MIN = .06;
+      if (!grip) {                                   // move the whole box
+        b.x = clamp(start.x + dx, 0, 1 - start.w);
+        b.y = clamp(start.y + dy, 0, 1 - start.h);
+      } else {
+        if (grip.includes("w")) { const nx = clamp(start.x + dx, 0, start.x + start.w - MIN); b.w = start.w + (start.x - nx); b.x = nx; }
+        if (grip.includes("e")) b.w = clamp(start.w + dx, MIN, 1 - start.x);
+        if (grip.includes("n")) { const ny = clamp(start.y + dy, 0, start.y + start.h - MIN); b.h = start.h + (start.y - ny); b.y = ny; }
+        if (grip.includes("s")) b.h = clamp(start.h + dy, MIN, 1 - start.y);
+      }
+      Crop.box = b;
+      paintCropBox();
+    };
+    const up = () => {
+      document.body.classList.remove("dragging");
+      removeEventListener("pointermove", move);
+      removeEventListener("pointerup", up);
+    };
+    addEventListener("pointermove", move);
+    addEventListener("pointerup", up);
+  });
+}
+
 const FONTS = ["Inter, system-ui, sans-serif", "Georgia, serif", "Impact, sans-serif",
   "Courier New, monospace", "Trebuchet MS, sans-serif", "Palatino, serif", "Verdana, sans-serif"];
 
@@ -393,6 +509,54 @@ function stickerPanel(c) {
        or in the picture to come back here.</div>`;
 }
 
+/* Each transition gets a small moving picture of itself: two panels doing what
+   the transition does, so the list can be read at a glance instead of by name. */
+function transThumb(def) {
+  const k = { fade: "opacity:.45", dip: "opacity:.25;filter:brightness(2)",
+    blur: "filter:blur(3px);opacity:.6", wipe: "clip-path:inset(0 42% 0 0)",
+    iris: "clip-path:circle(30% at 50% 50%)", box: "clip-path:inset(22% 22%)",
+    split: "clip-path:inset(28% 0)", slide: "transform:translateX(-38%)",
+    zoom: "transform:scale(.55)", spin: "transform:rotate(28deg) scale(.6)",
+    shake: "transform:translateX(9%) rotate(3deg)" }[def.kind] || "";
+  return `<span class="trthumb"><i style="${k}"></i></span>`;
+}
+
+function renderTransitions() {
+  const host = $("iTrans");
+  if (!host) return;
+  const c = firstSelected();
+  if (!c) {
+    host.innerHTML = `<div class="empty">Select a clip, then pick a transition for its
+      start or its end.<br><br>A transition at a cut works best when the clip next to it
+      touches — use Close gaps on the timeline first.</div>`;
+    return;
+  }
+  const edge = App.transEdge || "in";
+  const cur = (edge === "in" ? c.transIn : c.transOut)?.type || "none";
+  const dur = (edge === "in" ? c.transIn : c.transOut)?.dur ?? .5;
+  const has = e => !!(e === "in" ? c.transIn : c.transOut);
+
+  host.innerHTML =
+    `<div class="ihead">Where it goes</div>
+     <div class="tredge">
+       <button class="${edge === "in" ? "on" : ""}" data-tedge="in">Start of clip${has("in") ? " ●" : ""}</button>
+       <button class="${edge === "out" ? "on" : ""}" data-tedge="out">End of clip${has("out") ? " ●" : ""}</button>
+     </div>
+     ${row("Length", `<input type="range" id="trDur" min=".1" max="3" step=".05" value="${dur}">
+        <b id="trDurV">${(+dur).toFixed(2)}s</b>`)}
+     <div class="chips">
+       <button class="chip" data-trans-pick="none">Remove</button>
+       <button class="chip" data-act="transBoth">Put it on both ends</button>
+     </div>` +
+    M.TRANSITION_GROUPS.map(g => `
+      <div class="ihead">${g}</div>
+      <div class="trgrid">${M.TRANSITIONS.filter(t => t.group === g).map(t =>
+        `<button class="trcard${cur === t.id ? " on" : ""}" data-trans-pick="${t.id}" title="${esc(t.name)}">
+           ${transThumb(t)}<span class="tn">${esc(t.name)}</span></button>`).join("")}</div>`).join("") +
+    `<div class="note">Pick one and it plays straight away — the playhead moves to the cut so
+      you can see it. ${M.TRANSITIONS.length - 1} to choose from.</div>`;
+}
+
 function renderInspector() {
   const c = firstSelected();
   const p = App.project;
@@ -402,7 +566,8 @@ function renderInspector() {
       $(id).innerHTML = `<div class="empty">Select a clip on the timeline to edit it.</div>`;
   } else {
     $("iTransform").innerHTML =
-      `<div class="ihead">Position &amp; scale</div>
+      fxHead("Position &amp; scale", "fxTransform", c.fxTransform !== false) +
+      `
        ${row("X", slider("x", -1920, 1920, 1, c.x, "px", true))}
        ${row("Y", slider("y", -1080, 1080, 1, c.y, "px", true))}
        ${row("Scale", slider("scale", .05, 4, .01, c.scale, "×", true))}
@@ -451,7 +616,8 @@ function renderInspector() {
        <div class="note">Changing speed re-times the clip on the timeline and keeps its audio in sync.</div>`;
 
     $("iColor").innerHTML =
-      `<div class="ihead">Colour correction</div>
+      fxHead("Colour correction", "fxColor", c.fxColor !== false) +
+      `
        ${row("Brightness", slider("brightness", 0, 2, .01, c.brightness))}
        ${row("Contrast", slider("contrast", 0, 2, .01, c.contrast))}
        ${row("Saturation", slider("saturate", 0, 3, .01, c.saturate))}
@@ -467,7 +633,7 @@ function renderInspector() {
          <button class="chip" data-look="punch">Punch</button>
          <button class="chip" data-look="fade">Faded</button>
        </div>
-       <div class="ihead">Green screen</div>
+       ${fxHead("Green screen", "fxKey", c.fxKey !== false)}
        <div class="chips">
          <button class="chip${c.chroma ? " on" : ""}" data-toggle="chroma">Key out a colour</button>
          <button class="chip${App.picking ? " on" : ""}" data-act="pickKey">Pick from the frame</button>
@@ -479,7 +645,7 @@ function renderInspector() {
        <div class="note">${hasKeyer()
          ? "Matched on colour, not brightness, so shadows on the screen key out with it. Raise similarity until the screen goes, then soften the edge."
          : "This browser has no WebGL2, so keying is off here — the clip still plays and exports."}</div>
-       <div class="ihead">Mask</div>
+       ${fxHead("Mask", "fxMask", c.fxMask !== false)}
        ${row("Shape", `<select data-prop="mask">${MASKS.map(m =>
          `<option value="${m}"${(c.mask || "none") === m ? " selected" : ""}>${m[0].toUpperCase() + m.slice(1)}</option>`).join("")}</select>`)}
        ${row("Size", slider("maskSize", .05, 1, .01, c.maskSize ?? .6))}
@@ -524,11 +690,9 @@ function renderInspector() {
            ${keys.length ? `<button class="kbtn" data-unkey="${prop}" title="Clear">✕</button>` : ""}</div>`;
        }).join("")}
        <div class="ihead">Transitions</div>
-       ${row("Into clip", `<select data-trans="in">${M.TRANSITIONS.map(t =>
-          `<option value="${t}"${c.transIn?.type === t ? " selected" : ""}>${t}</option>`).join("")}</select>`)}
-       ${row("Out of clip", `<select data-trans="out">${M.TRANSITIONS.map(t =>
-          `<option value="${t}"${c.transOut?.type === t ? " selected" : ""}>${t}</option>`).join("")}</select>`)}
-       ${row("Length", slider("transDur", .1, 3, .1, c.transOut?.dur ?? c.transIn?.dur ?? .5, "s"))}`;
+       <div class="note">They have a panel of their own now — the
+         <b style="font-weight:650">Transitions</b> tab, with ${M.TRANSITIONS.length - 1} to pick from
+         and a picture of each one.</div>`;
   }
 
   $("iProject").innerHTML =
@@ -560,19 +724,30 @@ function refresh({ silent, noTimeline } = {}) {
   invalidate();
   if (!noTimeline) timeline.render();      // a live drag repaints its own clip
   syncStatus();
-  if (!silent) renderInspector();
+  if (!silent) { renderInspector(); renderTransitions(); }
   renderFrameBar();
-  renderCropPop();
+  renderCropMenu();
+  paintCropBox();
 }
-function setSelection(ids) {
+function setSelection(ids, reveal = false) {
   invalidate();
   App.selection = ids;
+  /* Move the playhead onto the clip when it is not already there. Editing a
+     clip you cannot see was the whole of "the colour controls do not update":
+     they did, on a frame that was not on screen. */
+  if (reveal && ids.length === 1) {
+    const c = M.findClip(App.project, ids[0]);
+    if (c && (App.playhead < c.start || App.playhead > M.clipEnd(c)))
+      seek(c.start + Math.min(.25, c.dur / 2));
+  }
   timeline.render();
   renderInspector();
+  renderTransitions();
   renderFrameBar();
-  renderCropPop();
+  renderCropMenu();
+  paintCropBox();
   const c = firstSelected();
-  $("transSel").value = c?.transIn?.type || "none";
+  $("transSel").value = M.normaliseTransition(c?.transIn)?.type || "none";
 }
 
 async function addMediaFiles(files) {
@@ -706,18 +881,51 @@ const ACT = {
     commit("Remove stabilisation"); refresh();
   },
 
-  cropOpen: () => {
-    const pop = $("cropPop");
-    pop.hidden = !pop.hidden;
-    renderCropPop(); renderFrameBar();
+  /* Applying a transition also shows it: the playhead moves to the cut, which
+     is the only place it can be seen. */
+  transPick: id => {
+    const c = firstSelected();
+    if (!c) return toast("Select a clip first", "warn");
+    const edge = App.transEdge || "in";
+    const dur = Math.min(+($("trDur")?.value || .5), Math.max(.1, c.dur / 2));
+    const def = id === "none" ? null : { type: id, dur };
+    edge === "in" ? (c.transIn = def) : (c.transOut = def);
+    commit("Transition"); refresh();
+    if (def) {
+      const at = edge === "in" ? c.start + dur * .5 : M.clipEnd(c) - dur * .5;
+      seek(at);
+      toast(`${M.transitionById(id).name} on the ${edge === "in" ? "start" : "end"}`);
+    } else toast("Transition removed");
   },
-  cropClose: () => { $("cropPop").hidden = true; renderFrameBar(); },
-  cropReset: () => {
+  transBoth: () => {
     const c = firstSelected();
     if (!c) return;
-    c.crop = { l: 0, t: 0, r: 0, b: 0 };
-    commit("Reset crop"); refresh();
+    const src = c.transIn || c.transOut;
+    if (!src) return toast("Pick a transition first", "warn");
+    c.transIn = { ...src }; c.transOut = { ...src };
+    commit("Transition"); refresh();
+    toast("On both ends");
   },
+
+  cropOpen: () => {
+    const menu = $("cropMenu"), btn = $("cropBtn");
+    const open = menu.hidden;
+    document.querySelectorAll(".dropmenu").forEach(m => { m.hidden = true; });
+    menu.hidden = !open;
+    renderCropMenu();
+    if (!menu.hidden) {
+      // above the button if it fits, below if it does not
+      const r = btn.getBoundingClientRect();
+      const h = Math.min(menu.scrollHeight + 12, innerHeight * .7);
+      const above = r.top - h - 8 > 8;
+      menu.style.left = Math.max(8, Math.min(innerWidth - 244, r.left + r.width / 2 - 118)) + "px";
+      menu.style.top = (above ? r.top - h - 8 : Math.min(innerHeight - h - 8, r.bottom + 8)) + "px";
+    }
+    btn.classList.toggle("on", !menu.hidden || Crop.on);
+  },
+  cropClose: () => { $("cropMenu").hidden = true; $("cropBtn").classList.toggle("on", Crop.on); },
+  cropApply: applyCrop,
+  cropCancel: cancelCrop,
 
   /* Aspect ratio presets. They belong with cropping rather than with export:
      a 9:16 cut is an editing decision you need to see while you frame it, not
@@ -1202,6 +1410,29 @@ function wire() {
   });
 
   document.addEventListener("click", e => {
+  const te = e.target.closest("[data-tedge]");
+  if (te) { App.transEdge = te.dataset.tedge; renderTransitions(); return; }
+  const tp = e.target.closest("[data-trans-pick]");
+  if (tp) { ACT.transPick(tp.dataset.transPick); return; }
+  const cm = e.target.closest("[data-crop]");
+  if (cm) {
+    const what = cm.dataset.crop;
+    $("cropMenu").hidden = true;
+    if (what === "free") startFreeCrop();
+    else { cancelCrop(); ACT.ratio(what); }
+    $("cropBtn").classList.toggle("on", Crop.on);
+    return;
+  }
+  const fx = e.target.closest("[data-fx]");
+  if (fx) {
+    const c = firstSelected();
+    if (c) {
+      c[fx.dataset.fx] = c[fx.dataset.fx] === false;
+      commit("Toggle effect"); refresh();
+      toast(c[fx.dataset.fx] ? "Effect on" : "Effect off");
+    }
+    return;
+  }
   const rat = e.target.closest("[data-ratio]");
   if (rat) { ACT.ratio(rat.dataset.ratio); return; }
   const lay = e.target.closest("[data-layout]");
@@ -1244,13 +1475,20 @@ function wire() {
   document.addEventListener("pointerdown", e => {
     if (!e.target.closest(".menuwrap")) closeDropMenus();
     if (!$("speedPop").hidden && !e.target.closest("#speedPop,[data-track-speed]")) closeSpeedPop();
-    if (!$("cropPop").hidden && !e.target.closest("#cropPop,#cropBtn")) ACT.cropClose();
+    if (!$("cropMenu").hidden && !e.target.closest("#cropMenu,#cropBtn")) ACT.cropClose();
   }, true);
   addEventListener("keydown", e => {
+    if (Crop.on && (e.key === "Enter" || e.key === "Escape")) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.key === "Enter" ? applyCrop() : cancelCrop();
+      return;
+    }
     if (e.key !== "Escape") return;
     closeDropMenus();
+    $("cropMenu").hidden = true;
     if (!$("speedPop").hidden) closeSpeedPop();
-    if (!$("cropPop").hidden) ACT.cropClose();
+    if (!$("cropMenu").hidden) ACT.cropClose();
   });
 
   /* Double-clicking the picture edits the title that is on screen — the
@@ -1307,6 +1545,13 @@ function wire() {
       if (b && t.type === "range") b.textContent = (+v).toFixed(t.step < 1 ? 2 : 0) + (b.textContent.match(/[^\d.\-]+$/)?.[0] || "");
       refresh({ silent: true });
     }
+    if (t.id === "trDur") {
+      $("trDurV").textContent = (+t.value).toFixed(2) + "s";
+      const c = firstSelected();
+      const edge = App.transEdge || "in";
+      const def = edge === "in" ? c?.transIn : c?.transOut;
+      if (def) { def.dur = +t.value; refresh({ silent: true }); }
+    }
     if (t.id === "emojiQ") {
       App.emojiQuery = t.value;
       const keep = t.selectionStart;
@@ -1325,6 +1570,13 @@ function wire() {
   });
   $("app").addEventListener("change", e => {
     const t = e.target, c = firstSelected();
+    if (t.id === "trDur") {
+      $("trDurV").textContent = (+t.value).toFixed(2) + "s";
+      const c = firstSelected();
+      const edge = App.transEdge || "in";
+      const def = edge === "in" ? c?.transIn : c?.transOut;
+      if (def) { def.dur = +t.value; refresh({ silent: true }); }
+    }
     if (t.id === "emojiQ") {
       App.emojiQuery = t.value;
       const keep = t.selectionStart;
@@ -1451,7 +1703,8 @@ function wire() {
     if (e.key === "Escape") setSelection([]);
   });
 
-  $("transSel").innerHTML = M.TRANSITIONS.map(t => `<option value="${t}">${t}</option>`).join("");
+  $("transSel").innerHTML = M.TRANSITIONS.map(t =>
+    `<option value="${t.id}">${t.group ? t.group + " · " : ""}${t.name}</option>`).join("");
 }
 
 /* The Text and Sticker buttons open a small menu rather than inserting one
@@ -1496,7 +1749,7 @@ timeline = new Timeline($("tlScroll"), {
   get playhead() { return App.playhead; },
   get snapping() { return App.snapping; },
   onChange: refresh,
-  onSelect: setSelection,
+  onSelect: (ids, reveal) => setSelection(ids, reveal),
   onSeek: seek,
   onSplit: id => { setSelection([id]); ACT.split(); },
   onEditText: editTextClip,
@@ -1505,6 +1758,7 @@ timeline = new Timeline($("tlScroll"), {
   commit,
 });
 wire();
+wireCropBox();
 new ResizeObserver(fitPreview).observe(document.querySelector(".vwrap"));
 addEventListener("resize", fitPreview);
 M.commit(App.hist, App.project, "New project");

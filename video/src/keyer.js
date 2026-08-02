@@ -228,7 +228,8 @@ function masked(src, w, h, opts) {
 }
 
 export const needsStage = c =>
-  !!c && ((c.chroma && c.kind !== "text" && c.kind !== "sticker") || (c.mask && c.mask !== "none"));
+  !!c && ((c.chroma && c.fxKey !== false && c.kind !== "text" && c.kind !== "sticker") ||
+          (c.mask && c.mask !== "none" && c.fxMask !== false));
 
 /* Run whichever passes the clip asks for. Returns something drawImage takes,
    or null if nothing could be done — the caller then draws the source as it
@@ -237,10 +238,10 @@ export function stage(src, clip) {
   const w = src.videoWidth || src.width, h = src.videoHeight || src.height;
   if (!w || !h) return null;
   let out = src;
-  if (clip.chroma) {
+  if (clip.chroma && clip.fxKey !== false) {
     const k = keyed(out, w, h, clip);
     if (k) out = k;
   }
-  if (clip.mask && clip.mask !== "none") out = masked(out, w, h, clip);
+  if (clip.mask && clip.mask !== "none" && clip.fxMask !== false) out = masked(out, w, h, clip);
   return out === src ? null : out;
 }

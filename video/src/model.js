@@ -22,6 +22,8 @@ export const DEFAULT_CLIP = {
   crop: { l: 0, t: 0, r: 0, b: 0 }, cropRatio: null,   // null = free, else a number
   // colour
   brightness: 1, contrast: 1, saturate: 1, hue: 0, blur: 0, sepia: 0, grayscale: 0,
+  // each effect group can be switched off without losing its settings
+  fxColor: true, fxKey: true, fxMask: true, fxTransform: true,
   // green screen and shape masks — see src/keyer.js
   chroma: false, keyColor: "#00d000", keySimilarity: .18, keySmooth: .08, keySpill: .4,
   mask: "none", maskSize: .6, maskFeather: .1, maskX: 0, maskY: 0, maskInvert: false,
@@ -266,7 +268,55 @@ export const searchEmoji = q => {
   return ALL_EMOJI.filter(e => e.ch === t || e.k.includes(t));
 };
 
-export const TRANSITIONS = ["none", "crossfade", "dip to black", "dip to white", "wipe left", "wipe right", "slide up", "zoom"];
+/* ---------------- transitions ----------------
+   Each one is a name and a recipe the compositor knows how to draw. Grouping
+   them the way a person shops for them — dissolve, wipe, slide, zoom, spin —
+   is what makes a long list usable rather than a scroll.
+
+   `kind` picks the primitive; `o` tunes it. Adding a transition is adding a
+   row here, not a branch in the renderer. */
+export const TRANSITIONS = [
+  { id: "none", name: "None", group: "" },
+
+  { id: "crossfade",  name: "Cross dissolve", group: "Dissolve", kind: "fade" },
+  { id: "dip-black",  name: "Dip to black",   group: "Dissolve", kind: "dip", o: { color: "#000000" } },
+  { id: "dip-white",  name: "Dip to white",   group: "Dissolve", kind: "dip", o: { color: "#ffffff" } },
+  { id: "flash",      name: "Flash",          group: "Dissolve", kind: "dip", o: { color: "#ffffff", sharp: 3 } },
+  { id: "blur-diss",  name: "Blur dissolve",  group: "Dissolve", kind: "blur", o: { amount: 40 } },
+  { id: "film-burn",  name: "Film burn",      group: "Dissolve", kind: "dip", o: { color: "#ff9a3c" } },
+
+  { id: "wipe-left",  name: "Wipe left",      group: "Wipe", kind: "wipe", o: { dir: "left" } },
+  { id: "wipe-right", name: "Wipe right",     group: "Wipe", kind: "wipe", o: { dir: "right" } },
+  { id: "wipe-up",    name: "Wipe up",        group: "Wipe", kind: "wipe", o: { dir: "up" } },
+  { id: "wipe-down",  name: "Wipe down",      group: "Wipe", kind: "wipe", o: { dir: "down" } },
+  { id: "iris",       name: "Circle open",    group: "Wipe", kind: "iris" },
+  { id: "iris-close", name: "Circle close",   group: "Wipe", kind: "iris", o: { invert: true } },
+  { id: "box",        name: "Box open",       group: "Wipe", kind: "box" },
+  { id: "split",      name: "Split open",     group: "Wipe", kind: "split" },
+
+  { id: "slide-left", name: "Slide from left",  group: "Slide", kind: "slide", o: { x: -1 } },
+  { id: "slide-right",name: "Slide from right", group: "Slide", kind: "slide", o: { x: 1 } },
+  { id: "slide-up",   name: "Slide from below", group: "Slide", kind: "slide", o: { y: 1 } },
+  { id: "slide-down", name: "Slide from above", group: "Slide", kind: "slide", o: { y: -1 } },
+
+  { id: "zoom-in",    name: "Zoom in",        group: "Zoom", kind: "zoom", o: { from: .55 } },
+  { id: "zoom-out",   name: "Zoom out",       group: "Zoom", kind: "zoom", o: { from: 1.7 } },
+  { id: "whip",       name: "Whip zoom",      group: "Zoom", kind: "zoom", o: { from: .5, blur: 26 } },
+  { id: "pop",        name: "Pop",            group: "Zoom", kind: "zoom", o: { from: 1.25, fade: false } },
+
+  { id: "spin",       name: "Spin",           group: "Spin", kind: "spin", o: { turns: 1 } },
+  { id: "spin-zoom",  name: "Spin and zoom",  group: "Spin", kind: "spin", o: { turns: .5, from: .5 } },
+  { id: "shake",      name: "Shake",          group: "Spin", kind: "shake" },
+];
+export const transitionById = id => TRANSITIONS.find(t => t.id === id) || TRANSITIONS[0];
+export const TRANSITION_GROUPS = [...new Set(TRANSITIONS.filter(t => t.group).map(t => t.group))];
+
+/* Older projects stored the display name; map them to ids so a saved file
+   made before this list existed still opens. */
+const LEGACY = { "crossfade": "crossfade", "dip to black": "dip-black", "dip to white": "dip-white",
+  "wipe left": "wipe-left", "wipe right": "wipe-right", "slide up": "slide-up", "zoom": "zoom-in" };
+export const normaliseTransition = t => !t ? null
+  : { ...t, type: LEGACY[t.type] || t.type };
 
 export function newProject(name = "Untitled") {
   return {

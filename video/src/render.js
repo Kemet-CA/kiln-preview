@@ -5,11 +5,13 @@
    point: what you see while scrubbing is produced by the code that writes the
    file, so the export cannot drift away from the preview.
    ============================================================ */
-import { clipAt, clipEnd, mediaOf, valueAt, clamp } from "./model.js";
+import { clipAt, clipEnd, mediaOf, valueAt, clamp, transitionById, normaliseTransition } from "./model.js";
 import { stage, needsStage } from "./keyer.js";
 
 /* CSS filter string for a clip's colour correction */
 export function filterOf(c) {
+  // every effect group can be switched off without losing what was set
+  if (c.fxColor === false) return "none";
   const f = [];
   if (c.brightness !== 1) f.push(`brightness(${c.brightness})`);
   if (c.contrast !== 1) f.push(`contrast(${c.contrast})`);
@@ -23,9 +25,11 @@ export function filterOf(c) {
 
 /* how far a clip is into a transition at time t: 0 = not in one, 1 = fully across */
 function transitionProgress(clip, t) {
-  const inD = clip.transIn?.dur || 0, outD = clip.transOut?.dur || 0;
-  if (inD && t < clip.start + inD) return { edge: "in", k: (t - clip.start) / inD, def: clip.transIn };
-  if (outD && t > clipEnd(clip) - outD) return { edge: "out", k: (clipEnd(clip) - t) / outD, def: clip.transOut };
+  // normalise so a project saved with the old display names still plays
+  const tin = normaliseTransition(clip.transIn), tout = normaliseTransition(clip.transOut);
+  const inD = tin?.dur || 0, outD = tout?.dur || 0;
+  if (inD && t < clip.start + inD) return { edge: "in", k: (t - clip.start) / inD, def: tin };
+  if (outD && t > clipEnd(clip) - outD) return { edge: "out", k: (clipEnd(clip) - t) / outD, def: tout };
   return null;
 }
 
@@ -37,7 +41,7 @@ function sourceRect(clip, sw, sh) {
 }
 
 /* one visual clip, with its transform, colour and opacity applied */
-function drawClip(ctx, project, clip, t, sources, alphaMul = 1, slide = { x: 0, y: 0 }, zoomMul = 1) {
+function drawClip(ctx, project, clip, t, sources, alphaMul = 1, slide = { x: 0, y: 0 }, zoomMul = 1, extra = null) {
   const W = project.w, H = project.h;
   // see renderFrame: the context may already carry the preview's scale
   const opacity = clamp(valueAt(clip, "opacity", t) * alphaMul, 0, 1);
@@ -45,14 +49,16 @@ function drawClip(ctx, project, clip, t, sources, alphaMul = 1, slide = { x: 0, 
 
   ctx.save();
   ctx.globalAlpha = opacity;
-  ctx.filter = filterOf(clip);
+  const base = filterOf(clip);
+  ctx.filter = extra?.blur ? `${base === "none" ? "" : base + " "}blur(${extra.blur}px)`.trim() : base;
 
-  const x = valueAt(clip, "x", t), y = valueAt(clip, "y", t);
-  const scale = valueAt(clip, "scale", t) * zoomMul;
-  const rot = valueAt(clip, "rot", t);
+  const on = clip.fxTransform !== false;
+  const x = on ? valueAt(clip, "x", t) : 0, y = on ? valueAt(clip, "y", t) : 0;
+  const scale = (on ? valueAt(clip, "scale", t) : 1) * zoomMul;
+  const rot = on ? valueAt(clip, "rot", t) : 0;
   ctx.translate(W / 2 + x + slide.x * W, H / 2 + y + slide.y * H);
-  ctx.rotate(rot * Math.PI / 180);
-  ctx.scale(scale * (clip.flipH ? -1 : 1), scale * (clip.flipV ? -1 : 1));
+  ctx.rotate((rot + (extra?.rot || 0)) * Math.PI / 180);
+  ctx.scale(scale * (on && clip.flipH ? -1 : 1), scale * (on && clip.flipV ? -1 : 1));
 
   if (clip.kind === "text" || clip.kind === "sticker") {
     drawText(ctx, clip, W, H);
@@ -145,39 +151,144 @@ export function renderFrame(ctx, project, t, sources) {
     const clip = clipAt(track, t);
     if (!clip) continue;
     const tr = transitionProgress(clip, t);
-    if (!tr || tr.def.type === "none" || tr.def.type === "crossfade") {
-      const alpha = tr ? clamp(tr.k, 0, 1) : 1;
-      // the outgoing neighbour keeps playing underneath a crossfade
-      if (tr && tr.def.type === "crossfade") {
-        const other = track.clips.find(c => c !== clip &&
-          (tr.edge === "in" ? Math.abs(clipEnd(c) - clip.start) < .001 : Math.abs(c.start - clipEnd(clip)) < .001));
-        if (other) drawClip(ctx, project, other, t, sources, 1 - alpha);
-      }
-      drawClip(ctx, project, clip, t, sources, alpha);
-    } else if (tr.def.type === "dip to black" || tr.def.type === "dip to white") {
+    drawWithTransition(ctx, project, track, clip, t, sources, tr, W, H);
+  }
+}
+
+/* ------------------------------------------------------------
+   One clip, plus whatever its transition is doing to it. Every transition is
+   one of a handful of primitives — the library in model.js only picks which
+   and tunes it, so a new transition costs a row of data, not a branch here.
+   ------------------------------------------------------------ */
+function neighbourOf(track, clip, edge) {
+  return track.clips.find(c => c !== clip &&
+    (edge === "in" ? Math.abs(clipEnd(c) - clip.start) < .001
+                   : Math.abs(c.start - clipEnd(clip)) < .001));
+}
+
+function drawWithTransition(ctx, project, track, clip, t, sources, tr, W, H) {
+  const def = tr ? transitionById(tr.def.type) : null;
+  if (!tr || !def || def.id === "none" || !def.kind) {
+    drawClip(ctx, project, clip, t, sources, 1);
+    return;
+  }
+  const k = clamp(tr.k, 0, 1);                 // 0 at the cut, 1 fully arrived
+  const o = def.o || {};
+  const under = () => {
+    const other = neighbourOf(track, clip, tr.edge);
+    if (other) drawClip(ctx, project, other, t, sources, 1);
+  };
+
+  switch (def.kind) {
+    case "fade":
+      under();
+      drawClip(ctx, project, clip, t, sources, k);
+      break;
+
+    case "dip": {
       drawClip(ctx, project, clip, t, sources, 1);
       ctx.save();
-      ctx.globalAlpha = clamp(1 - tr.k, 0, 1);
-      ctx.fillStyle = tr.def.type === "dip to black" ? "#000" : "#fff";
+      const sharp = o.sharp || 1;
+      ctx.globalAlpha = clamp(Math.pow(1 - k, sharp), 0, 1);
+      ctx.fillStyle = o.color || "#000";
       ctx.fillRect(0, 0, W, H);
       ctx.restore();
-    } else if (tr.def.type.startsWith("wipe")) {
-      const k = clamp(tr.k, 0, 1);
+      break;
+    }
+
+    case "blur":
+      under();
+      drawClip(ctx, project, clip, t, sources, k, { x: 0, y: 0 }, 1,
+        { blur: (1 - k) * (o.amount || 30) });
+      break;
+
+    case "wipe": {
+      under();
       ctx.save();
       ctx.beginPath();
-      const w = W * k;
-      tr.def.type === "wipe left" ? ctx.rect(W - w, 0, w, H) : ctx.rect(0, 0, w, H);
+      const d = o.dir;
+      if (d === "left") ctx.rect(W - W * k, 0, W * k, H);
+      else if (d === "right") ctx.rect(0, 0, W * k, H);
+      else if (d === "up") ctx.rect(0, H - H * k, W, H * k);
+      else ctx.rect(0, 0, W, H * k);
       ctx.clip();
       drawClip(ctx, project, clip, t, sources, 1);
       ctx.restore();
-    } else if (tr.def.type === "slide up") {
-      drawClip(ctx, project, clip, t, sources, 1, { x: 0, y: (1 - clamp(tr.k, 0, 1)) });
-    } else if (tr.def.type === "zoom") {
-      const k = clamp(tr.k, 0, 1);
-      drawClip(ctx, project, clip, t, sources, k, { x: 0, y: 0 }, .6 + .4 * k);
-    } else {
-      drawClip(ctx, project, clip, t, sources, 1);
+      break;
     }
+
+    case "iris": {
+      under();
+      const max = Math.hypot(W, H) / 2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(W / 2, H / 2, max * (o.invert ? 1 - k : k), 0, Math.PI * 2);
+      ctx.clip();
+      drawClip(ctx, project, clip, t, sources, 1);
+      ctx.restore();
+      break;
+    }
+
+    case "box": {
+      under();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(W / 2 - (W / 2) * k, H / 2 - (H / 2) * k, W * k, H * k);
+      ctx.clip();
+      drawClip(ctx, project, clip, t, sources, 1);
+      ctx.restore();
+      break;
+    }
+
+    case "split": {
+      // two halves opening from the middle line
+      under();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, H / 2 - (H / 2) * k, W, H * k);
+      ctx.clip();
+      drawClip(ctx, project, clip, t, sources, 1);
+      ctx.restore();
+      break;
+    }
+
+    case "slide":
+      under();
+      drawClip(ctx, project, clip, t, sources, 1,
+        { x: (o.x || 0) * (1 - k), y: (o.y || 0) * (1 - k) });
+      break;
+
+    case "zoom": {
+      under();
+      const from = o.from ?? .6;
+      const scale = from + (1 - from) * k;
+      drawClip(ctx, project, clip, t, sources, o.fade === false ? 1 : k,
+        { x: 0, y: 0 }, scale, o.blur ? { blur: (1 - k) * o.blur } : null);
+      break;
+    }
+
+    case "spin": {
+      under();
+      const from = o.from ?? 1;
+      drawClip(ctx, project, clip, t, sources, k, { x: 0, y: 0 },
+        from + (1 - from) * k, { rot: (1 - k) * 360 * (o.turns || 1) });
+      break;
+    }
+
+    case "shake": {
+      /* A judder that settles. The two axes run at different frequencies and
+         it pulses slightly, so there is no moment where the shake happens to
+         be exactly nothing — a sine on its own crosses zero four times and the
+         effect vanishes on those frames. */
+      const amp = (1 - k) * .045;
+      drawClip(ctx, project, clip, t, sources, 1,
+        { x: amp * Math.sin(k * Math.PI * 9), y: amp * .6 * Math.cos(k * Math.PI * 7) },
+        1 + (1 - k) * .03);
+      break;
+    }
+
+    default:
+      drawClip(ctx, project, clip, t, sources, 1);
   }
 }
 
@@ -190,7 +301,9 @@ export function visualClipsAt(project, t) {
     if (!c) continue;
     out.push(c);
     const tr = transitionProgress(c, t);
-    if (tr?.def?.type === "crossfade") {
+    // anything that shows the neighbour underneath needs that neighbour ready
+    const kind = tr ? transitionById(tr.def.type).kind : null;
+    if (kind && kind !== "dip" && kind !== "shake") {
       const other = track.clips.find(x => x !== c &&
         (tr.edge === "in" ? Math.abs(clipEnd(x) - c.start) < .001 : Math.abs(x.start - clipEnd(c)) < .001));
       if (other) out.push(other);

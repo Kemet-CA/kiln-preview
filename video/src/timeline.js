@@ -117,6 +117,8 @@ export class Timeline {
 
   /* Drag on empty timeline space to rubber-band a selection. */
   marquee(e) {
+    e.preventDefault();
+    document.body.classList.add("dragging");
     const startX = e.clientX, startY = e.clientY;
     const box = document.createElement("div");
     box.className = "tl-marquee";
@@ -140,6 +142,7 @@ export class Timeline {
       this.app.onSelect(picked);
     };
     const up = () => {
+      document.body.classList.remove("dragging");
       removeEventListener("pointermove", move);
       removeEventListener("pointerup", up);
       box.remove();
@@ -196,10 +199,18 @@ export class Timeline {
       this.app.onSeek(Math.max(0, this.pxToTime(e.clientX - r.left)));
     };
     this.ruler.addEventListener("pointerdown", e => {
+      /* preventDefault stops the browser starting a text selection: dragging
+         the playhead was highlighting every label it passed over. */
+      e.preventDefault();
       this.ruler.setPointerCapture(e.pointerId);
+      document.body.classList.add("dragging");
       scrub(e);
       const move = ev => scrub(ev);
-      const up = () => { this.ruler.removeEventListener("pointermove", move); this.ruler.removeEventListener("pointerup", up); };
+      const up = () => {
+        document.body.classList.remove("dragging");
+        this.ruler.removeEventListener("pointermove", move);
+        this.ruler.removeEventListener("pointerup", up);
+      };
       this.ruler.addEventListener("pointermove", move);
       this.ruler.addEventListener("pointerup", up);
     });
@@ -233,8 +244,10 @@ export class Timeline {
       if (multi) this.app.onSelect(already
         ? (this.app.selection || []).filter(x => x !== id)
         : [...new Set([...(this.app.selection || []), id])]);
-      else if (!already) this.app.onSelect([id]);
+      else if (!already) this.app.onSelect([id], true);   // and show it
 
+      e.preventDefault();                 // no text selection while dragging a clip
+      document.body.classList.add("dragging");
       const edge = e.target.dataset.edge;
       const startX = e.clientX, startY = e.clientY;
       const orig = { start: clip.start, dur: clip.dur, in: clip.in };
@@ -290,6 +303,7 @@ export class Timeline {
         this.app.onChange({ silent: true, noTimeline: true });
       };
       const up = () => {
+        document.body.classList.remove("dragging");
         removeEventListener("pointermove", move);
         removeEventListener("pointerup", up);
         if (moved) this.app.commit(edge ? "Trim clip" : "Move clip");
