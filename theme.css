@@ -353,7 +353,15 @@
    them, so it wins everywhere without !important.
    ============================================================ */
 :root,
-:root[data-theme][data-mode]{--stagebg:#2A2A2C;--stagedot:rgba(255,255,255,.07)}
+:root[data-theme][data-mode]{
+  --stagebg:#2A2A2C;--stagedot:rgba(255,255,255,.07);
+  /* Anything sitting *on* the stage has to be legible against that grey, not
+     against the page — a light theme's own text colour is dark, which on the
+     stage is very nearly invisible. These are the colours for stage-mounted
+     controls, and they do not change with the theme because the stage does
+     not either. */
+  --stage-fg:#F1F0EE;--stage-fg2:rgba(241,240,238,.74);
+  --stage-hov:rgba(255,255,255,.13);--stage-line:rgba(255,255,255,.14)}
 
 /* A fine dot grid over that grey — enough to read as a surface and to show
    that a page is floating on it, faint enough to ignore while you work.

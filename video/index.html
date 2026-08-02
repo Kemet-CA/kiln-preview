@@ -66,8 +66,8 @@ input,select{font:inherit;color:inherit}
 .tb svg{width:14px;height:14px}
 .tb.txt{font-size:11.5px}
 .obsep{width:1px;height:17px;background:var(--line);flex:none;margin:0 3px}
-.tcode{font-family:var(--mono);font-size:11.5px;color:var(--t2);padding:0 6px;min-width:118px;text-align:center}
-.tcode b{color:var(--text)}
+.tcode{font-family:var(--mono);font-size:11.5px;color:var(--stage-fg2);padding:0 6px;min-width:118px;text-align:center}
+.tcode b{color:var(--stage-fg)}
 .sel{padding:3.5px 7px;border-radius:6px;border:var(--bw) solid var(--line);background:var(--s2);
   font-size:11.5px;color:var(--text);outline:0;box-shadow:var(--hs)}
 .optbar-r{margin-left:auto;display:flex;align-items:center;gap:7px}
@@ -98,15 +98,32 @@ input,select{font:inherit;color:inherit}
 /* ---------- preview ---------- */
 .stage{grid-area:stage;position:relative;overflow:hidden;display:flex;flex-direction:column;}
 #preview.picking{cursor:crosshair}
+.ratios{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:2px 0 8px}
+.ratio{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:6px 8px;border-radius:8px;
+  border:1px solid var(--line);background:var(--s2);text-align:left;min-width:0}
+.ratio b{font-size:11.5px;font-weight:650;color:var(--text);letter-spacing:-.01em}
+.ratio i{font-size:9.5px;font-style:normal;color:var(--t3);line-height:1.3;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.ratio:hover{border-color:var(--line2);background:var(--hov2)}
+.ratio.on{border-color:var(--ember);background:color-mix(in srgb,var(--ember) 12%,transparent)}
+.ratio.on b{color:var(--ember)}
 .stabtrack{height:4px;border-radius:99px;background:var(--s3);overflow:hidden;margin:2px 0 6px}
 .stabtrack i{display:block;height:100%;width:0;background:var(--ember);transition:width .15s linear}
 .vwrap{flex:1;min-height:0;display:grid;place-items:center;padding:16px}
 #preview{display:block;background:#000;border-radius:3px;
   box-shadow:0 20px 50px -24px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.07)}
-.transport{flex:none;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 0 12px}
-.tbig{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--btnp-fg);
-  background:var(--btnp-bg);box-shadow:var(--btnp-sh)}
-.tbig svg{width:15px;height:15px}
+.transport{flex:none;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 0 12px}
+/* The transport is on the stage, so it takes the stage's colours — see
+   packages/theme/theme.css. Using the page's text colours here made the
+   buttons dark grey on dark grey in every light theme. */
+.transport .tb{height:30px;min-width:32px;border-radius:8px;color:var(--stage-fg2)}
+.transport .tb svg{width:15px;height:15px}
+.transport .tb:hover{color:var(--stage-fg);background:var(--stage-hov)}
+.transport .tb:active{background:rgba(255,255,255,.2)}
+.tbig{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--btnp-fg);
+  background:var(--btnp-bg);box-shadow:var(--btnp-sh),0 0 0 3px rgba(255,255,255,.1);margin:0 4px}
+.tbig:hover{filter:brightness(1.1)}
+.tbig svg{width:17px;height:17px}
 .dz{position:absolute;inset:0;display:grid;place-items:center;background:var(--stagebg);z-index:6}
 .dz[hidden]{display:none}
 .dzi{width:min(520px,86%);border:1.5px dashed var(--line2);border-radius:14px;padding:38px 26px;text-align:center;background:var(--s1)}
@@ -211,13 +228,6 @@ input,select{font:inherit;color:inherit}
 .tl-play{position:absolute;top:0;left:0;width:2px;background:var(--ember);z-index:5;pointer-events:none;
   box-shadow:0 0 8px color-mix(in srgb,var(--ember) 60%,transparent)}
 .tl-play::before{content:"";position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--ember)}
-.tnames{width:96px;flex:none;overflow:hidden;padding-top:22px;border-right:1px solid var(--line);background:var(--s2)}
-.tname{height:56px;display:flex;align-items:center;gap:5px;padding:0 8px;font-size:11px;color:var(--t3);
-  border-bottom:1px solid var(--line)}
-.tname.audio{height:44px}
-.tname .tg{width:18px;height:18px;border-radius:4px;display:grid;place-items:center;color:var(--t4);font-size:10px}
-.tname .tg.off{color:var(--bad)}
-.tname .tg:hover{background:var(--hov2);color:var(--text)}
 
 /* ---------- status + toasts + export dialog ---------- */
 .sbar{grid-area:status;display:flex;align-items:center;padding:0 10px;border-top:1px solid var(--line);
@@ -256,7 +266,7 @@ input,select{font:inherit;color:inherit}
 .prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="2250597-0537">
+<meta name="kiln-build" content="4c9156f-0556">
 </head>
 <body>
 <div id="app">
@@ -317,12 +327,16 @@ input,select{font:inherit;color:inherit}
   <div class="stage" id="stage">
     <div class="vwrap"><canvas id="preview" width="1920" height="1080"></canvas></div>
     <div class="transport">
-      <button class="tb" data-act="toStart" title="Go to start (Home)">⏮</button>
-      <button class="tb" data-act="back1" title="Back one frame (←)">◀|</button>
+      <button class="tb" data-act="toStart" title="Go to start (Home)" aria-label="Go to start">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 6h2v12H7zm3 6 8-6v12z"/></svg></button>
+      <button class="tb" data-act="back1" title="Back one frame (←)" aria-label="Back one frame">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 12l8-6v12zM6 6h2v12H6z"/></svg></button>
       <button class="tbig" data-act="play" id="playBtn" title="Play / pause (Space)">
         <svg viewBox="0 0 24 24" fill="currentColor" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
-      <button class="tb" data-act="fwd1" title="Forward one frame (→)">|▶</button>
-      <button class="tb" data-act="toEnd" title="Go to end (End)">⏭</button>
+      <button class="tb" data-act="fwd1" title="Forward one frame (→)" aria-label="Forward one frame">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 12L7 18V6zM16 6h2v12h-2z"/></svg></button>
+      <button class="tb" data-act="toEnd" title="Go to end (End)" aria-label="Go to end">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 6h-2v12h2zM14 12 6 18V6z"/></svg></button>
       <span class="tcode"><b id="tcNow">0:00.00</b> / <span id="tcTotal">0:00.00</span></span>
     </div>
     <div class="dz" id="dz">
@@ -375,7 +389,6 @@ input,select{font:inherit;color:inherit}
       <span class="tcode" id="tlInfo" style="margin-left:auto"></span>
     </div>
     <div class="tlmain">
-      <div class="tnames" id="tNames"></div>
       <div class="tl-main">
         <div class="tl-heads" id="tlHeads"></div>
         <div class="tlscroll" id="tlScroll"></div>
@@ -404,11 +417,11 @@ input,select{font:inherit;color:inherit}
           <option value="master">Master · large file</option>
           <option value="custom">Custom</option></select></label>
         <label class="fld"><span>Resolution</span><select id="expRes">
-          <option value="480p">480p · 854×480</option>
-          <option value="720p">720p · 1280×720</option>
-          <option value="1080p" selected>1080p · 1920×1080</option>
+          <option value="480p">480p · small</option>
+          <option value="720p">720p · HD</option>
+          <option value="1080p" selected>1080p · Full HD</option>
           <option value="1440p" data-premium="1">1440p · 2K — premium</option>
-          <option value="4K" data-premium="1">4K · 3840×2160 — premium</option></select></label>
+          <option value="4K" data-premium="1">4K · Ultra HD — premium</option></select></label>
         <label class="fld"><span>Format</span><select id="expFmt">
           <option value="mp4">MP4 · widest support</option>
           <option value="webm">WebM · open</option></select></label>

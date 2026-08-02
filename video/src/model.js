@@ -19,7 +19,7 @@ export const DEFAULT_CLIP = {
   start: 0, dur: 0, in: 0, speed: 1,
   // transform
   x: 0, y: 0, scale: 1, rot: 0, flipH: false, flipV: false, opacity: 1,
-  crop: { l: 0, t: 0, r: 0, b: 0 },
+  crop: { l: 0, t: 0, r: 0, b: 0 }, cropRatio: null,   // null = free, else a number
   // colour
   brightness: 1, contrast: 1, saturate: 1, hue: 0, blur: 0, sepia: 0, grayscale: 0,
   // green screen and shape masks — see src/keyer.js
@@ -34,6 +34,67 @@ export const DEFAULT_CLIP = {
   bg: "", align: "center", stroke: 0, strokeColor: "#000000",
   keys: {},                            // { prop: [{ t, v }] } — t is 0..1 across the clip
 };
+
+/* ---------------- aspect ratios ----------------
+   The frame a video is cut for is a platform decision, not a taste one, so
+   the ratios carry the platform names — nobody thinks "I need 1.91:1", they
+   think "this is going on Facebook". Choosing one sets the project frame and
+   centre-crops the clips to fill it, so what the preview shows is what the
+   export will be. */
+export const RATIOS = [
+  { id: "orig",   label: "Original", sub: "the source's own size" },
+  { id: "free",   label: "Free",     sub: "crop each edge freely" },
+  { id: "9:16",   label: "9:16",     sub: "TikTok · Reels · Shorts", r: 9 / 16,  w: 1080, h: 1920 },
+  { id: "1:1",    label: "1:1",      sub: "Instagram post",          r: 1,       w: 1080, h: 1080 },
+  { id: "4:5",    label: "4:5",      sub: "Instagram portrait",      r: 4 / 5,   w: 1080, h: 1350 },
+  { id: "16:9",   label: "16:9",     sub: "YouTube",                 r: 16 / 9,  w: 1920, h: 1080 },
+  { id: "1.91:1", label: "1.91:1",   sub: "Facebook",                r: 1.91,    w: 1920, h: 1005 },
+];
+export const ratioById = id => RATIOS.find(x => x.id === id) || null;
+
+/* The centre crop that makes a source of sw×sh fill a frame of the given
+   ratio: take the excess off whichever axis has it, half from each side. */
+export function cropForRatio(sw, sh, ratio) {
+  const crop = { l: 0, t: 0, r: 0, b: 0 };
+  if (!sw || !sh || !ratio) return crop;
+  const have = sw / sh;
+  if (have > ratio) {                         // too wide: trim the sides
+    const keep = (sh * ratio) / sw;
+    crop.l = crop.r = clamp((1 - keep) / 2, 0, .49);
+  } else if (have < ratio) {                  // too tall: trim top and bottom
+    const keep = (sw / ratio) / sh;
+    crop.t = crop.b = clamp((1 - keep) / 2, 0, .49);
+  }
+  return crop;
+}
+
+/* Keeping a locked crop on ratio while one edge is dragged: whatever the user
+   just changed is respected, and the other axis is recomputed around it. */
+export function reflowCrop(crop, sw, sh, ratio, changed) {
+  if (!ratio || !sw || !sh) return crop;
+  const out = { ...crop };
+  const horizontal = changed === "l" || changed === "r";
+  if (horizontal) {
+    const vw = sw * (1 - out.l - out.r);
+    const vh = vw / ratio;
+    if (vh <= sh) { const c = clamp((1 - vh / sh) / 2, 0, .49); out.t = out.b = c; }
+    else {                                     // cannot get that tall: widen back
+      out.t = out.b = 0;
+      const c = clamp((1 - (sh * ratio) / sw) / 2, 0, .49);
+      out.l = out.r = c;
+    }
+  } else {
+    const vh = sh * (1 - out.t - out.b);
+    const vw = vh * ratio;
+    if (vw <= sw) { const c = clamp((1 - vw / sw) / 2, 0, .49); out.l = out.r = c; }
+    else {
+      out.l = out.r = 0;
+      const c = clamp((1 - (sw / ratio) / sh) / 2, 0, .49);
+      out.t = out.b = c;
+    }
+  }
+  return out;
+}
 
 export const TRANSITIONS = ["none", "crossfade", "dip to black", "dip to white", "wipe left", "wipe right", "slide up", "zoom"];
 

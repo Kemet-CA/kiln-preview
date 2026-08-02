@@ -34,11 +34,28 @@ function denoiseBuffer(ctx, buf, key) {
 }
 
 export const PRESETS = {
+  "480p":  { w: 854,  h: 480,  bitrate: 2.5e6 },
   "720p":  { w: 1280, h: 720,  bitrate: 5e6 },
   "1080p": { w: 1920, h: 1080, bitrate: 10e6 },
   "1440p": { w: 2560, h: 1440, bitrate: 18e6 },
   "4K":    { w: 3840, h: 2160, bitrate: 40e6 },
 };
+/* A resolution preset names how many lines the *short* edge gets — 1080p is
+   1920×1080 landscape and 1080×1920 portrait, the way a phone means it. The
+   old code took the preset's literal 16:9 numbers and scaled the project into
+   them on each axis separately, which squashed anything that was not 16:9.
+   Bitrate follows the pixel count so quality holds across shapes. */
+export function outputSize(project, preset) {
+  const P = PRESETS[preset] || PRESETS["1080p"];
+  const short = P.h;
+  const a = (project.w || 16) / (project.h || 9);
+  let w, h;
+  if (a >= 1) { h = short; w = Math.round(short * a); }
+  else { w = short; h = Math.round(short / a); }
+  w += w % 2; h += h % 2;                      // H.264 wants even dimensions
+  return { w, h, bitrate: Math.round(P.bitrate * (w * h) / (P.w * P.h)) };
+}
+
 export const FORMATS = {
   mp4:  { ext: "mp4",  mime: "video/mp4",  video: "avc",  audio: "aac"  },
   webm: { ext: "webm", mime: "video/webm", video: "vp09", audio: "opus" },
@@ -109,7 +126,8 @@ export async function exportVideo(project, opts, hooks = {}) {
   const total = duration(project);
   if (total <= 0) throw new Error("The timeline is empty");
 
-  const W = P.w, H = P.h;
+  const OUT = outputSize(project, preset);
+  const W = OUT.w, H = OUT.h;
   const canvas = new OffscreenCanvas(W, H);
   const ctx = canvas.getContext("2d", { alpha: false });
   // render at the project's own size, then scale — keeps text and transforms exact
@@ -140,7 +158,7 @@ export async function exportVideo(project, opts, hooks = {}) {
   videoEncoder.configure({
     codec: format === "mp4" ? avcCodec(W, H) : "vp09.00.10.08",
     width: W, height: H, framerate: fps,
-    bitrate: Math.round(P.bitrate * quality),
+    bitrate: Math.round(OUT.bitrate * quality),
     ...(format === "mp4" ? { avc: { format: "avc" } } : {}),
   });
 

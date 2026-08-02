@@ -14,7 +14,7 @@ import { analyse as analyseShake } from "./src/stabilise.js";
 import { renderFrame, visualClipsAt, audibleClipsAt, sourceTime, gainAt } from "./src/render.js";
 import { Timeline, fmtTime } from "./src/timeline.js";
 import { importFile, rehydrate, recordVoice, gifFrameAt } from "./src/media.js";
-import { exportVideo, PRESETS, supported as canEncode } from "./src/export.js";
+import { exportVideo, PRESETS, outputSize, supported as canEncode } from "./src/export.js";
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -189,7 +189,6 @@ function renderAll() {
   invalidate();
   timeline.render();
   renderPool();
-  renderTrackNames();
   renderInspector();
   syncStatus();
   syncPlayheadUi();
@@ -220,22 +219,23 @@ function renderPool() {
       </div>
     </div>`).join("");
 }
-function renderTrackNames() {
-  const host = $("tNames");
-  host.innerHTML = App.project.tracks.map(t => `
-    <div class="tname${t.kind === "audio" ? " audio" : ""}" data-tn="${t.id}">
-      <button class="tg${t.hidden || t.muted ? " off" : ""}" data-tg="${t.id}" title="${t.kind === "audio" ? "Mute" : "Hide"}">
-        ${t.kind === "audio" ? (t.muted ? "🔇" : "🔊") : (t.hidden ? "◌" : "◉")}</button>
-      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.name)}</span>
-    </div>`).join("");
-}
-
 /* ---------------- inspector ---------------- */
 const row = (label, inner) => `<label class="fld"><span>${label}</span>${inner}</label>`;
 const slider = (prop, min, max, step, v, unit = "", key = false) =>
   `<input type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-prop="${prop}">
    <b>${typeof v === "number" ? (+v).toFixed(step < 1 ? 2 : 0) : v}${unit}</b>
    ${key ? `<button class="kbtn" data-key="${prop}" title="Add a keyframe here">◆</button>` : ""}`;
+
+/* Which preset a clip is currently on: the stored lock if there is one, and
+   otherwise "free" — a clip with no crop and no lock reads as Original. */
+function activeRatio(c) {
+  if (c.cropRatio) {
+    const hit = M.RATIOS.find(a => a.r && Math.abs(a.r - c.cropRatio) < .005);
+    if (hit) return hit.id;
+  }
+  const untouched = !c.crop.l && !c.crop.t && !c.crop.r && !c.crop.b;
+  return untouched && !c.cropRatio ? "orig" : "free";
+}
 
 function renderInspector() {
   const c = firstSelected();
@@ -277,7 +277,13 @@ function renderInspector() {
        <div class="note">It measures how the frame moves, keeps the movement that
          looks deliberate and cancels the rest, then zooms in a little to cover the
          edges. The result is keyframes on X and Y — look in Animate to see them.</div>
-       <div class="ihead">Crop</div>
+       <div class="ihead">Crop &amp; aspect</div>
+       <div class="ratios">${M.RATIOS.map(a => `
+         <button class="ratio${activeRatio(c) === a.id ? " on" : ""}" data-ratio="${a.id}">
+           <b>${a.label}</b><i>${a.sub}</i></button>`).join("")}</div>
+       <div class="note">Choosing one sets the frame and centre-crops the clips to fill it, so the
+         preview is already the shape it will export as. The edges below stay locked to the ratio
+         until you pick Free.</div>
        ${row("Left", slider("crop.l", 0, .45, .01, c.crop.l))}
        ${row("Top", slider("crop.t", 0, .45, .01, c.crop.t))}
        ${row("Right", slider("crop.r", 0, .45, .01, c.crop.r))}
@@ -546,6 +552,44 @@ const ACT = {
     commit("Remove stabilisation"); refresh();
   },
 
+  /* Aspect ratio presets. They belong with cropping rather than with export:
+     a 9:16 cut is an editing decision you need to see while you frame it, not
+     a checkbox at the end that surprises you with what it left out. */
+  ratio: id => {
+    const spec = M.ratioById(id);
+    if (!spec) return;
+    // the selection if there is one, otherwise every visual clip in the project
+    let clips = selectedClips().filter(c => c.kind !== "text" && c.kind !== "sticker");
+    const wholeProject = !clips.length;
+    if (wholeProject)
+      clips = App.project.tracks.flatMap(t => t.clips).filter(c => c.kind !== "text" && c.kind !== "sticker");
+
+    if (id === "free") {
+      clips.forEach(c => { c.cropRatio = null; });
+      commit("Free crop"); refresh();
+      return toast("Crop edges unlocked");
+    }
+    if (id === "orig") {
+      clips.forEach(c => { c.crop = { l: 0, t: 0, r: 0, b: 0 }; c.cropRatio = null; });
+      const m = M.mediaOf(App.project, clips[0]);
+      if (m?.w && m?.h) { App.project.w = m.w; App.project.h = m.h; }
+      commit("Original aspect"); renderAll(); fitPreview();
+      return toast(`Back to the source's own ${App.project.w}×${App.project.h}`);
+    }
+
+    App.project.w = spec.w; App.project.h = spec.h;
+    clips.forEach(c => {
+      const m = M.mediaOf(App.project, c);
+      c.crop = M.cropForRatio(m?.w || spec.w, m?.h || spec.h, spec.r);
+      c.cropRatio = spec.r;
+      c.x = 0; c.y = 0; c.scale = 1;
+    });
+    commit("Aspect " + spec.label);
+    renderAll(); fitPreview();
+    toast(`${spec.label} — ${spec.sub} · ${spec.w}×${spec.h}` +
+      (wholeProject ? ` · ${clips.length} clip${clips.length === 1 ? "" : "s"}` : ""));
+  },
+
   /* Eyedropper: the next click on the preview reads the pixel under it and
      makes that the key colour. Reading the preview is enough — it is the same
      picture the export will key, at a smaller size. */
@@ -728,7 +772,6 @@ function overlayTrack(at, dur) {
   const n = App.project.tracks.filter(t => t.kind === "video").length + 1;
   const track = { id: M.uid("t"), kind: "video", name: `Video ${n}`, hidden: false, locked: false, muted: false, clips: [] };
   App.project.tracks.unshift(track);
-  renderTrackNames();
   return track;
 }
 /* right-click on a clip: the edits people reach for most, where the clip is */
@@ -861,9 +904,12 @@ function syncExportUi() {
   $("expBrV").textContent = $("expBr").value + " Mbps";
   $("expQV").textContent = $("expQ").value + "%";
 
-  const size = PRESETS[res] || PRESETS["1080p"];
+  // the output follows the project's shape, so a 9:16 edit exports 9:16
+  const size = outputSize(App.project, res);
   const fps = +$("expFps").value;
-  $("expOut").textContent = `${size.w}×${size.h} · ${fps} fps`;
+  const shape = Math.abs(App.project.w / App.project.h - 16 / 9) < .01 ? ""
+    : ` · ${(App.project.w / App.project.h).toFixed(2)}:1`;
+  $("expOut").textContent = `${size.w}×${size.h} · ${fps} fps${shape}`;
 
   const secs = M.duration(App.project);
   $("expLen").textContent = fmtTime(secs);
@@ -957,6 +1003,8 @@ function wire() {
   });
 
   document.addEventListener("click", e => {
+  const rat = e.target.closest("[data-ratio]");
+  if (rat) { ACT.ratio(rat.dataset.ratio); return; }
   const lay = e.target.closest("[data-layout]");
   if (lay) { ACT.layout(lay.dataset.layout); return; }
   const tdel = e.target.closest("[data-track-del]");
@@ -973,11 +1021,6 @@ function wire() {
     if (tab) {
       document.querySelectorAll(".itab").forEach(t => t.classList.toggle("on", t === tab));
       document.querySelectorAll(".ibody").forEach(b => b.classList.toggle("on", b.id === tab.dataset.it));
-    }
-    const tg = e.target.closest("[data-tg]");
-    if (tg) {
-      const track = App.project.tracks.find(t => t.id === tg.dataset.tg);
-      if (track) { track.kind === "audio" ? (track.muted = !track.muted) : (track.hidden = !track.hidden); renderTrackNames(); }
     }
     const mediaEl = e.target.closest("[data-media]");
     if (mediaEl) { App.poolSel = [mediaEl.dataset.media]; renderPool(); }
@@ -1013,7 +1056,15 @@ function wire() {
     if (t.dataset.prop && c) {
       const path = t.dataset.prop;
       let v = t.type === "range" ? +t.value : t.value;
-      if (path.startsWith("crop.")) c.crop[path.split(".")[1]] = v;
+      if (path.startsWith("crop.")) {
+        const edge = path.split(".")[1];
+        c.crop[edge] = v;
+        if (c.cropRatio) {
+          // a locked ratio means the other axis follows whatever was dragged
+          const m = M.mediaOf(App.project, c);
+          c.crop = M.reflowCrop(c.crop, m?.w || App.project.w, m?.h || App.project.h, c.cropRatio, edge);
+        }
+      }
       else if (path === "speed") {
         const media = M.mediaOf(App.project, c);
         const srcLen = c.dur * c.speed;
@@ -1106,7 +1157,6 @@ function wire() {
     const m = e.target.closest("[data-media]");
     if (m) e.dataTransfer.setData("text/kiln-media", m.dataset.media);
   });
-  $("tlScroll").addEventListener("scroll", () => { $("tNames").scrollTop = $("tlScroll").scrollTop; });
   $("tlScroll").addEventListener("dragover", e => e.preventDefault());
   $("tlScroll").addEventListener("drop", e => {
     e.preventDefault();
