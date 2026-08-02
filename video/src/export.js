@@ -17,6 +17,7 @@ import { duration, mediaOf } from "./model.js";
 import { renderFrame, visualClipsAt, sourceTime, audibleClipsAt, gainAt } from "./render.js";
 import { spectral } from "./dsp.js";        // the denoiser the Voice workspace uses
 import { gifFrameAt } from "./media.js";    // animated GIFs supply their own frames
+import { openReader, canDecode as canDemux } from "./decode.js";
 
 /* Real noise removal, not a gate: spectral subtraction against a profile
    learned from the quietest tenth of the clip. Applied to the decoded buffer
@@ -207,6 +208,41 @@ export async function exportVideo(project, opts, hooks = {}) {
       if (media?.el) els.set(clip.id, media.el);
     }
 
+  /* ---- one decode pass per clip ----
+     Every output frame a clip appears in, and the moment in the source each one
+     wants. Handing the whole list over lets the decoder walk the file once
+     instead of returning to a keyframe for every frame — which was the entire
+     cost of an export.
+
+     A clip that cannot be opened this way gets no reader and the loop below
+     seeks its <video> exactly as it always did. */
+  const readers = new Map();
+  if (canDemux()) {
+    hooks.onStage?.("Opening sources");
+    for (const track of project.tracks) {
+      for (const clip of track.clips) {
+        const media = mediaOf(project, clip);
+        if (!media || media.kind !== "video" || media.gif) continue;
+        const times = [];
+        const first = Math.max(0, Math.ceil(clip.start * fps));
+        const last = Math.min(frameCount - 1, Math.floor((clip.start + clip.dur) * fps));
+        for (let i = first; i <= last; i++) times.push(sourceTime(clip, i / fps));
+        if (times.length < 2) continue;              // not worth a pipeline
+        // the optimised path needs them in order; a reversed clip is not
+        let ordered = true;
+        for (let i = 1; i < times.length; i++) if (times[i] < times[i - 1]) { ordered = false; break; }
+        if (!ordered) continue;
+        const reader = await openReader(media, times, { width: W });
+        if (reader) readers.set(clip.id, { reader, next: first, frame: null });
+      }
+    }
+    hooks.onStage?.("Rendering frames");
+  }
+  const closeReaders = async () => {
+    for (const { reader } of readers.values()) await reader.close();
+    readers.clear();
+  };
+
   /* Where the time goes, kept because "export is slow" is not actionable
      without it: decoding source frames, compositing them and waiting for the
      encoder are three different problems with three different fixes. */
@@ -214,7 +250,7 @@ export async function exportVideo(project, opts, hooks = {}) {
   const clock = () => performance.now();
 
   for (let i = 0; i < frameCount; i++) {
-    if (hooks.cancelled?.()) { videoEncoder.close(); audioEncoder.close(); return null; }
+    if (hooks.cancelled?.()) { await closeReaders(); videoEncoder.close(); audioEncoder.close(); return null; }
     const t = i / fps;
 
     const sources = new Map();
@@ -225,6 +261,16 @@ export async function exportVideo(project, opts, hooks = {}) {
       if (media.kind === "image") {
         sources.set(clip.id, media.gif ? gifFrameAt(media, sourceTime(clip, t)) : media.el);
         continue;
+      }
+      /* The decoded path, when this clip has one: take the next picture from
+         the pass that is already open. */
+      const r = readers.get(clip.id);
+      if (r) {
+        const s0 = clock();
+        while (r.next <= i) { r.frame = await r.reader.next(); r.next++; }
+        spent.seek += clock() - s0;
+        spent.decoded = (spent.decoded || 0) + 1;
+        if (r.frame) { sources.set(clip.id, r.frame); continue; }
       }
       const el = els.get(clip.id) || media.el;
       if (!el) continue;
@@ -277,7 +323,8 @@ export async function exportVideo(project, opts, hooks = {}) {
     if (audioEncoder.encodeQueueSize > 8) await new Promise(r => setTimeout(r, 0));
   }
 
-  lastTimings = { ...spent, frames: frameCount, seeks: spent.seeks || 0 };
+  await closeReaders();
+  lastTimings = { ...spent, frames: frameCount, seeks: spent.seeks || 0, decoded: spent.decoded || 0 };
   hooks.onStage?.("Finishing file");
   await videoEncoder.flush();
   await audioEncoder.flush();
