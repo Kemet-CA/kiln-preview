@@ -4,9 +4,10 @@
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="search.css">
 <script src="theme.js"></script>
+<script src="i18n.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="8da83bb-1238">
+<meta name="kiln-build" content="0d0d2b6-1336">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -566,7 +567,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .hstats .si{width:34px;height:34px;flex:none;border-radius:11px;display:grid;place-items:center;
   background:color-mix(in srgb,var(--tint) 14%,var(--s2));color:var(--tint)}
 .hstats .si svg{width:17px;height:17px}
-.hstats .st{display:flex;flex-direction:column;gap:1px;text-align:left;min-width:0}
+.hstats .st{display:flex;flex-direction:column;gap:1px;text-align:start;min-width:0}
 .hstats .st b,.hstats .st span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hstats b{font-size:16px;font-weight:650;letter-spacing:-.02em;color:var(--text)}
 .hstats span{font-size:11px;color:var(--t2)}
@@ -623,7 +624,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   background:linear-gradient(180deg,var(--glass-sheen),transparent 46%);opacity:.9}
 
 .wcard{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:18px;
-  border-radius:18px;cursor:pointer;text-align:left;
+  border-radius:18px;cursor:pointer;text-align:start;
   /* No transition on background-color: it would cross-fade every card on a
      theme change, which lags the switch and means the colour on screen is not
      the colour the palette says for a fifth of a second. Hover changes it
@@ -734,6 +735,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   <nav class="wsnav" id="wsnav" aria-label="Workspaces"></nav>
   <div class="chrome-r">
     <span data-kiln-search></span>
+    <span class="klang" data-kiln-lang></span>
     <span data-kiln-coffee></span>
     <span data-kiln-clock></span>
     <span data-kiln-themebar></span>
@@ -746,36 +748,36 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
     <div class="floaters" id="floaters" aria-hidden="true"></div>
     <div class="hero-in">
       <h1 class="wordmark">Kiln</h1>
-      <p class="slogan">Shape &amp; Ship <b>Anything.</b></p>
-      <p class="intro" id="introQ">Why pay for a different subscription every month?</p>
+      <p class="slogan" data-i18n="hero.slogan">Shape &amp; Ship Anything.</p>
+      <p class="intro" id="introQ" data-i18n="hero.q">Why pay for a different subscription every month?</p>
       <ul class="feats" id="feats" aria-label="Everything Kiln does, free">
-        <li style="--fc:var(--f-photo)">Edit photos</li>
-        <li style="--fc:var(--f-video)">Cut videos</li>
-        <li class="hi" style="--fc:var(--f-voice)">Record voice</li>
-        <li style="--fc:var(--f-doc)">Write documents</li>
-        <li style="--fc:var(--f-pdf)">Read and sign PDFs</li>
-        <li style="--fc:var(--f-trans)">Translate anything</li>
-        <li style="--fc:var(--f-code)">Write code</li>
-        <li class="all">All here. All free.</li>
+        <li style="--fc:var(--f-photo)" data-i18n="f.photo">Edit photos</li>
+        <li style="--fc:var(--f-video)" data-i18n="f.video">Cut videos</li>
+        <li class="hi" style="--fc:var(--f-voice)" data-i18n="f.voice">Record voice</li>
+        <li style="--fc:var(--f-doc)" data-i18n="f.doc">Write documents</li>
+        <li style="--fc:var(--f-pdf)" data-i18n="f.pdf">Read and sign PDFs</li>
+        <li style="--fc:var(--f-trans)" data-i18n="f.trans">Translate anything</li>
+        <li style="--fc:var(--f-code)" data-i18n="f.code">Write code</li>
+        <li class="all" data-i18n="f.all">All here. All free.</li>
       </ul>
       <div class="hsearch"><span data-kiln-search data-kiln-search-big></span></div>
       <div class="hcta">
-        <button class="btn go" data-act="explore">Explore Workspaces
+        <button class="btn go" data-act="explore"><span data-i18n="cta.explore">Explore Workspaces</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
         <button class="btn quiet" id="openCmdk3">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
             stroke-linecap="round"><circle cx="11" cy="11" r="6.4"/><path d="m20 20-4.4-4.4"/></svg>
-          Browse all tools</button>
+          <span data-i18n="cta.browse">Browse all tools</span></button>
       </div>
       <ul class="hstats" id="hstats"></ul>
     </div>
   </header>
 
   <main class="wgrid-wrap" id="workspaces">
-    <div class="gridhead"><h2>Your Workspaces</h2>
-      <button class="all" id="openCmdk2">View all tools
+    <div class="gridhead"><h2 data-i18n="grid.head">Your Workspaces</h2>
+      <button class="all" id="openCmdk2"><span data-i18n="grid.all">View all tools</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     </div>
@@ -785,7 +787,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 
   <div class="foot"><div class="foot-in">
     <span class="kemet"><span class="mark" style="width:18px;height:18px;border-radius:6px"></span>
-      <b>Kiln by Kemet Studio</b></span>
+      <b data-i18n="foot.by">Kiln by Kemet Studio</b></span>
     <span style="margin-left:auto" class="fdim">© Kemet CA</span>
   </div></div>
 </section>
@@ -1208,13 +1210,12 @@ const IC_ARROW = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
   stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
 
 /* Three words per workspace, because a card is scanned, not read. */
-const TAGLINE={image:"Edit. Enhance. Create.",code:"Write. Run. Learn.",video:"Cut. Arrange. Export.",
-  voice:"Record. Clean. Transform.",color:"Pick. Harmonise. Copy.",documents:"Write. Format. Export.",
-  pdf:"Read. Edit. Convert.",translate:"Any language, on device.",storage:"Drives. Folders. Soon."};
-/* The card says what the thing is, not what it is called internally */
-const CARDNAME={image:"Photo Editor",video:"Video Editor",voice:"Voice Recorder and Editor",
-  color:"Colour Palette",documents:"Writer and Editor",pdf:"PDF Viewer and Editor",
-  translate:"Translator",code:"Code Editor",storage:"Storage"};
+/* The card says what the thing is, not what it is called internally — and it
+   says it in whichever language is on. The dictionary is the source; these
+   read through it so a language change is a redraw, not a reload. */
+const say=(k,fb)=>window.KilnLang?.t(k)||fb;
+const TAGLINE=id=>say("tag."+id,"");
+const CARDNAME=id=>say("card."+id,id);
 
 /* Two more the design asks for that do not exist yet. They are shown as what
    they are — clicking one says so rather than opening nothing. */
@@ -1223,21 +1224,24 @@ const SOON=[
    icon:'<path d="M12 3.2 13.7 9l5.8 1.7L13.7 12.4 12 18.2 10.3 12.4 4.5 10.7 10.3 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M18.5 15.5l.7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7z" fill="currentColor" opacity=".7"/>'},
 ];
 
+function drawCards(){
 $("cards").innerHTML=WS.map(w=>`
   <button class="wcard glass${w.n?"":" preview"}" data-go="${w.id}" style="--tint:${w.tint}" aria-label="Open ${w.name}">
     <span class="wi" style="color:${w.tint}">${SVG(w.icon)}</span>
-    <h3>${CARDNAME[w.id]||w.name}</h3>
-    <span class="wd">${TAGLINE[w.id]||""}</span>
-    <span class="wfoot"><span class="wn">${w.n?`${w.n} tools`:"Coming soon"}</span><span class="wgo">${IC_ARROW}</span></span>
+    <h3>${CARDNAME(w.id)||w.name}</h3>
+    <span class="wd">${TAGLINE(w.id)}</span>
+    <span class="wfoot"><span class="wn">${w.n?`${w.n} ${say("n.tools","tools")}`:say("n.comingSoon","Coming soon")}</span><span class="wgo">${IC_ARROW}</span></span>
   </button>`).join("")
   + SOON.map(w=>`
   <div class="wcard glass soon" data-soon="${w.name}" style="--tint:${w.tint}" role="button" tabindex="0"
        aria-label="${w.name} — not built yet">
     <span class="wi" style="color:${w.tint}">${SVG(w.icon)}</span>
-    <h3>${CARDNAME[w.id]||w.name}</h3>
-    <span class="wd">${w.tag}</span>
-    <span class="wfoot"><span class="wn">Soon</span><span class="wgo">${IC_ARROW}</span></span>
+    <h3>${CARDNAME(w.id)||w.name}</h3>
+    <span class="wd">${say("tag."+w.id,w.tag)}</span>
+    <span class="wfoot"><span class="wn">${say("n.soon","Soon")}</span><span class="wgo">${IC_ARROW}</span></span>
   </div>`).join("");
+}
+drawCards();
 
 /* ---- the stats bar ---- */
 const HIC={
@@ -1247,25 +1251,25 @@ const HIC={
   lock:'<rect x="4.8" y="10.5" width="14.4" height="9.7" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.4 10.5V7.8a3.6 3.6 0 0 1 7.2 0v2.7" fill="none" stroke="currentColor" stroke-width="1.7"/>',
   spark:'<path d="M12 3.6 13.5 9 19 10.5 13.5 12 12 17.4 10.5 12 5 10.5 10.5 9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
 };
-const STATS=[
-  ["grid", WS.length, "Workspaces", "var(--cat-image)"],
-  ["box", WS.reduce((t,w)=>t+(w.n||0),0), "Tools", "var(--cat-video)"],
-  ["shield", "100%", "Private", "var(--cat-voice)"],
-  ["lock", "Local-first", "Always yours", "var(--brand)"],
+const STATS=()=>[
+  ["grid", WS.length, say("stat.workspaces","Workspaces"), "var(--cat-image)"],
+  ["box", WS.reduce((t,w)=>t+(w.n||0),0), say("stat.tools","Tools"), "var(--cat-video)"],
+  ["shield", "100%", say("stat.private","Private"), "var(--cat-voice)"],
+  ["lock", say("stat.local","Local-first"), say("stat.yours","Always yours"), "var(--brand)"],
 ];
-$("hstats").innerHTML=STATS.map(([ic,big,small,tint])=>`
+$("hstats").innerHTML=STATS().map(([ic,big,small,tint])=>`
   <li style="--tint:${tint}"><span class="si">${SVG(HIC[ic])}</span>
     <span class="st"><b>${big}</b><span>${small}</span></span></li>`).join("");
 
 /* ---- what it is, in five lines, under the cards ---- */
-const FEATS=[
-  ["shield","Privacy first","Your files stay yours. Always.","var(--cat-image)"],
-  ["lock","Everything local","No cloud. No tracking. No account.","var(--cat-voice)"],
-  ["box","One workspace","Every tool, one place.","var(--cat-video)"],
-  ["grid","Open in a tab","Nothing to install.","var(--brand)"],
+const FEATS=()=>[
+  ["shield",say("feat.privacy","Privacy first"),say("feat.privacyD","Your files stay yours. Always."),"var(--cat-image)"],
+  ["lock",say("feat.local","Everything local"),say("feat.localD","No cloud. No tracking. No account."),"var(--cat-voice)"],
+  ["box",say("feat.one","One workspace"),say("feat.oneD","Every tool, one place."),"var(--cat-video)"],
+  ["grid",say("feat.tab","Open in a tab"),say("feat.tabD","Nothing to install."),"var(--brand)"],
   ["spark","Fast and quiet","Built for people who make things.","var(--cat-translate)"],
 ];
-$("hfeat").innerHTML=FEATS.map(([ic,t,d,tint])=>`
+$("hfeat").innerHTML=FEATS().map(([ic,t,d,tint])=>`
   <li style="--tint:${tint}"><span class="fi">${SVG(HIC[ic])}</span>
     <span><b>${t}</b><span>${d}</span></span></li>`).join("");
 
@@ -1312,18 +1316,42 @@ $("floaters").innerHTML=FLOATS.map(f=>{
   update();
 })();
 
+/* ---- redraw what a language change touches ----
+   The static strings are swapped in place by the language package. These three
+   are built from data, so they are rebuilt — and the reveal classes go back on
+   afterwards, or the new cards would sit at opacity 0 waiting for a scroll
+   that already happened. */
+function renderLocalised(){
+  drawCards();
+  $("hstats").innerHTML=STATS().map(([ic,big,small,tint])=>`
+    <li style="--tint:${tint}"><span class="si">${SVG(HIC[ic])}</span>
+      <span class="st"><b>${big}</b><span>${small}</span></span></li>`).join("");
+  $("hfeat").innerHTML=FEATS().map(([ic,t,d,tint])=>`
+    <li style="--tint:${tint}"><span class="fi">${SVG(HIC[ic])}</span>
+      <span class="ft"><b>${t}</b><span>${d}</span></span></li>`).join("");
+  /* Order matters here. The language package sets textContent on everything it
+     owns, which would wipe the words the intro was split into — so the writer
+     runs after it, not before. The reveal observer is rebuilt for the same
+     reason: the cards it was watching have just been replaced. */
+  writeIntro();
+  revealOnScroll();
+}
+addEventListener("kiln-lang",renderLocalised);
+
 /* ---- things arrive as you reach them ----
    One observer, one class, transform and opacity only. Anything already on
    screen at load is shown immediately, so nothing waits for a scroll that
    may never come. */
-(function revealOnScroll(){
+let io=null;
+function revealOnScroll(){
+  if(io)io.disconnect();
   const marks=[...document.querySelectorAll(".wcard,.hstats,.hfeat,.gridhead,.foot-in,.hcta,.hsearch")];
   marks.forEach(el=>el.classList.add("rise"));
   /* Cards in the same row arrive one after another rather than together — the
      stagger is what makes it read as a movement instead of a flash. It is set
      per card as it is seen, so a row scrolled past quickly does not queue up a
      long tail of delays. */
-  const io=new IntersectionObserver(entries=>{
+  io=new IntersectionObserver(entries=>{
     const seen=entries.filter(e=>e.isIntersecting);
     seen.forEach((e,i)=>{
       e.target.style.transitionDelay=(Math.min(i,6)*45)+"ms";
@@ -1332,7 +1360,7 @@ $("floaters").innerHTML=FLOATS.map(f=>{
     });
   },{root:$("screen-home"),rootMargin:"0px 0px -8% 0px",threshold:.08});
   marks.forEach(el=>io.observe(el));
-})();
+}
 
 /* ---- the intro writes itself ----
    Not a character-by-character typewriter, which is slow to read and janky to
@@ -1340,11 +1368,16 @@ $("floaters").innerHTML=FLOATS.map(f=>{
    writing without making anyone wait for it. The whole line is in the DOM from
    the start, so it is copyable and a screen reader gets the sentence at once
    rather than a word at a time. */
-(function writeIntro(){
+function writeIntro(){
   const el=document.querySelector(".hero .intro");
   const list=document.getElementById("feats");
   if(!el)return;
   if(matchMedia("(prefers-reduced-motion:reduce)").matches)return;
+  /* Whatever is in the element now is the sentence to write — the language
+     package has just put the right one there. Restoring from aria-label would
+     put the previous language back, which is exactly the bug this comment
+     exists to stop someone reinventing. */
+  el.classList.remove("writing");
   const walk=(node,out)=>{
     for(const child of [...node.childNodes]){
       if(child.nodeType===3){
@@ -1376,7 +1409,7 @@ $("floaters").innerHTML=FLOATS.map(f=>{
     li.style.animationDelay=(asked+120+i*130)+"ms";
   });
   list.classList.add("writing");
-})();
+}
 document.addEventListener("click",e=>{
   if(e.target.closest('[data-act="explore"]'))
     document.getElementById("workspaces").scrollIntoView({behavior:"smooth",block:"start"});
