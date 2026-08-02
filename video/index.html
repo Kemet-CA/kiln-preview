@@ -98,6 +98,24 @@ input,select{font:inherit;color:inherit}
 /* ---------- preview ---------- */
 .stage{grid-area:stage;position:relative;overflow:hidden;display:flex;flex-direction:column;}
 #preview.picking{cursor:crosshair}
+/* the framing strip under the picture — stage colours, because it is on the stage */
+.framebar{flex:none;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;padding:10px 12px 0}
+.fbgroup{display:flex;align-items:center;gap:3px;padding:3px;border-radius:10px;
+  background:rgba(0,0,0,.28);border:1px solid var(--stage-line)}
+.fbr{padding:4px 9px;border-radius:7px;font-size:11px;font-weight:600;color:var(--stage-fg2);white-space:nowrap}
+.fbr:hover{background:var(--stage-hov);color:var(--stage-fg)}
+.fbr.on{background:var(--btnp-bg);color:var(--btnp-fg)}
+.fbr small{display:block;font-size:8.5px;font-weight:500;opacity:.7;letter-spacing:.01em}
+.fbtn{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:9px;font-size:11px;font-weight:600;
+  color:var(--stage-fg2);background:rgba(0,0,0,.28);border:1px solid var(--stage-line)}
+.fbtn svg{width:13px;height:13px}
+.fbtn:hover,.fbtn.on{color:var(--stage-fg);background:var(--stage-hov)}
+.croppop{position:absolute;z-index:9;left:50%;transform:translateX(-50%);bottom:96px;width:min(320px,90%);
+  background:var(--s1);border:1px solid var(--line2);border-radius:12px;padding:12px 14px;
+  box-shadow:0 24px 60px -20px rgba(0,0,0,.7)}
+.croppop[hidden]{display:none}
+.croppop .ihead{margin-top:10px}
+.croppop .ihead:first-child{margin-top:0}
 .ratios{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:2px 0 8px}
 .ratio{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:6px 8px;border-radius:8px;
   border:1px solid var(--line);background:var(--s2);text-align:left;min-width:0}
@@ -107,6 +125,37 @@ input,select{font:inherit;color:inherit}
 .ratio:hover{border-color:var(--line2);background:var(--hov2)}
 .ratio.on{border-color:var(--ember);background:color-mix(in srgb,var(--ember) 12%,transparent)}
 .ratio.on b{color:var(--ember)}
+/* the little speed window a track header opens */
+.spop{position:fixed;z-index:60;width:236px;background:var(--s1);border:1px solid var(--line2);border-radius:12px;
+  padding:12px 14px;box-shadow:0 24px 60px -20px rgba(0,0,0,.6)}
+.spop[hidden]{display:none}
+.spop .shead{font-size:11px;font-weight:650;color:var(--text);margin-bottom:8px}
+.spop .srow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.spop input[type=range]{flex:1;min-width:0}
+.spop b{font-family:var(--mono);font-size:11px;color:var(--text);min-width:44px;text-align:right}
+.spop .chips{margin:0 0 8px}
+.spop .slen{font-size:10.5px;color:var(--t3);line-height:1.5}
+.menuwrap{position:relative;flex:none}
+.dropmenu{position:absolute;z-index:70;top:calc(100% + 5px);left:0;min-width:190px;background:var(--s1);
+  border:1px solid var(--line2);border-radius:11px;padding:5px;box-shadow:0 22px 50px -18px rgba(0,0,0,.55)}
+.dropmenu[hidden]{display:none}
+.dropmenu .mi{display:flex;width:100%;align-items:center;gap:8px;padding:7px 9px;border-radius:7px;
+  font-size:12px;color:var(--t1);text-align:left}
+.dropmenu .mi:hover{background:var(--hov2)}
+.dropmenu .mi i{font-style:normal;color:var(--t4);font-size:10.5px;margin-left:auto}
+.dropmenu .quickem{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;padding:4px}
+.dropmenu .quickem button{height:28px;border-radius:6px;font-size:16px;display:grid;place-items:center}
+.dropmenu .quickem button:hover{background:var(--hov2);transform:scale(1.15)}
+.emq{width:100%;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--s2);
+  padding:0 9px;font-size:11.5px;color:var(--text);margin-bottom:6px}
+.emq:focus{border-color:var(--ember);outline:none}
+.emlib{max-height:280px;overflow:auto;margin-bottom:8px}
+.emgrp{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--t4);margin:8px 0 4px}
+.emgrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:2px}
+.emb{height:28px;border-radius:6px;font-size:16px;line-height:1;display:grid;place-items:center}
+.emb:hover{background:var(--hov2);transform:scale(1.18)}
+.emb.on{background:color-mix(in srgb,var(--ember) 22%,transparent);box-shadow:inset 0 0 0 1px var(--ember)}
+.stcur{font-size:18px;text-align:center}
 .stabtrack{height:4px;border-radius:99px;background:var(--s3);overflow:hidden;margin:2px 0 6px}
 .stabtrack i{display:block;height:100%;width:0;background:var(--ember);transition:width .15s linear}
 .vwrap{flex:1;min-height:0;display:grid;place-items:center;padding:16px}
@@ -167,7 +216,12 @@ input,select{font:inherit;color:inherit}
 
 /* ---------- timeline ---------- */
 .tl{grid-area:tl;background:var(--s1);border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
-.tlbar{flex:none;display:flex;align-items:center;gap:5px;padding:5px 9px;border-bottom:1px solid var(--line);background:var(--s2)}
+.tlbar{flex:none;display:flex;align-items:center;gap:5px;padding:5px 9px;border-bottom:1px solid var(--line);
+  background:var(--s2);overflow-x:auto;scrollbar-width:none}
+.tlbar::-webkit-scrollbar{display:none}
+.tlbar>*{flex:none}
+.tlbar #snapBtn svg{width:14px;height:14px}
+.tlbar #snapBtn.on{color:var(--ember);background:color-mix(in srgb,var(--ember) 14%,transparent)}
 .tlnames{width:96px;flex:none}
 .tlmain{flex:1;min-height:0;display:flex}
 .tlscroll{flex:1;min-width:0;min-height:0;overflow:auto;position:relative}
@@ -180,14 +234,14 @@ input,select{font:inherit;color:inherit}
 /* min-width:0 or the 8000px timeline inside pushes this column-flex child
    wider than the panel, and the scroller never scrolls */
 .tl-main{flex:1;min-height:0;min-width:0;overflow:hidden;display:flex}
-.tl-heads{flex:none;width:var(--headw,148px);border-right:1px solid var(--line);background:var(--s2);
+.tl-heads{flex:none;width:var(--headw,176px);border-right:1px solid var(--line);background:var(--s2);
   overflow:hidden;display:flex;flex-direction:column}
 .tl-heads .spacer{height:22px;border-bottom:1px solid var(--line);flex:none}
 .thead{height:56px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;
   gap:6px;padding:0 8px}
 .thead .nm{flex:1;min-width:0;font-size:11.5px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .thead.audio .nm{color:var(--t3)}
-.thead .tbtn{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:var(--t4);flex:none}
+.thead .tbtn{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;color:var(--t4);flex:none}
 .thead .tbtn:hover{background:var(--hov2);color:var(--text)}
 .thead .tbtn.on{color:var(--ember)}
 .thead .tbtn.del:hover{color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,transparent)}
@@ -266,7 +320,7 @@ input,select{font:inherit;color:inherit}
 .prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="4c9156f-0556">
+<meta name="kiln-build" content="48abfee-0658">
 </head>
 <body>
 <div id="app">
@@ -289,13 +343,14 @@ input,select{font:inherit;color:inherit}
   <div class="optbar">
     <button class="tb" data-act="import" title="Import media (⌘I)">＋ Import</button>
     <div class="obsep"></div>
-    <button class="tb" data-act="split" title="Split at playhead (S)">✂ Split</button>
-    <button class="tb" data-act="delete" title="Delete clip (⌫)">Delete</button>
-    <button class="tb" data-act="ripple" title="Ripple delete — close the gap (⇧⌫)">Ripple</button>
-    <button class="tb" data-act="duplicate" title="Duplicate clip (⌘D)">Duplicate</button>
-    <div class="obsep"></div>
-    <button class="tb" data-act="addText" title="Add a title or caption">T Text</button>
-    <button class="tb" data-act="addSticker" title="Add a sticker or emoji">☺ Sticker</button>
+    <div class="menuwrap">
+      <button class="tb" data-drop="textMenu" title="Add a title or caption">T Text ▾</button>
+      <div class="dropmenu" id="textMenu" hidden></div>
+    </div>
+    <div class="menuwrap">
+      <button class="tb" data-drop="stickMenu" title="Add a sticker or emoji">☺ Sticker ▾</button>
+      <div class="dropmenu" id="stickMenu" hidden></div>
+    </div>
     <button class="tb" data-act="recordVoice" id="voiceBtn" title="Record a voiceover">● Voice</button>
     <div class="obsep"></div>
     <span style="font-size:11px;color:var(--t3)">Transition</span>
@@ -303,11 +358,6 @@ input,select{font:inherit;color:inherit}
     <div class="obsep"></div>
     <button class="tb" data-act="undo" title="Undo (⌘Z)">↶</button>
     <button class="tb" data-act="redo" title="Redo (⇧⌘Z)">↷</button>
-    <button class="tb on" data-act="snap" id="snapBtn" title="Snapping">⌁ Snap</button>
-    <button class="tb" data-act="closeGaps" title="Pull the clips together so there are no gaps">⇥ Close gaps</button>
-    <button class="tb" data-act="zoomOut" title="Zoom out timeline">−</button>
-    <button class="tb" data-act="zoomFit" title="Fit timeline">Fit</button>
-    <button class="tb" data-act="zoomIn" title="Zoom in timeline">+</button>
     <div class="optbar-r">
       <button class="btn btn-g" data-act="saveProject">Save project</button>
       <button class="btn btn-p" data-act="exportOpen">Export</button>
@@ -326,6 +376,16 @@ input,select{font:inherit;color:inherit}
 
   <div class="stage" id="stage">
     <div class="vwrap"><canvas id="preview" width="1920" height="1080"></canvas></div>
+    <!-- Framing lives on the player: the shape you are cutting for is something
+         you judge by looking at it, not by opening a panel. -->
+    <div class="framebar">
+      <div class="fbgroup" id="fbRatios"></div>
+      <button class="fbtn" data-act="cropOpen" id="cropBtn" title="Crop the selected clip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+          <path d="M7 2v15h15"/><path d="M2 7h15v15"/></svg><span>Crop</span></button>
+    </div>
+    <div class="croppop" id="cropPop" hidden></div>
+  <div class="spop" id="speedPop" hidden></div>
     <div class="transport">
       <button class="tb" data-act="toStart" title="Go to start (Home)" aria-label="Go to start">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 6h2v12H7zm3 6 8-6v12z"/></svg></button>
@@ -380,7 +440,15 @@ input,select{font:inherit;color:inherit}
       <button class="tb txt" data-act="addAudioTrack">＋ Audio track</button>
       <div class="obsep"></div>
       <button class="tb txt" data-act="split" title="Split the selected clip at the playhead (S)">✂ Split</button>
+      <button class="tb txt" data-act="duplicate" title="Duplicate the selected clip (⌘D)">⧉ Duplicate</button>
       <button class="tb txt" data-act="delete" title="Delete the selected clip (⌫)">🗑 Delete</button>
+      <button class="tb txt" data-act="ripple" title="Delete and close the gap (⇧⌫)">⇤ Ripple</button>
+      <div class="obsep"></div>
+      <button class="tb on" data-act="snap" id="snapBtn" title="Snapping — clips stick to edges and the playhead"
+              aria-label="Snapping" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M7 4v8a5 5 0 0 0 10 0V4"/><path d="M7 9h4M13 9h4"/></svg></button>
+      <button class="tb txt" data-act="closeGaps" title="Pull the clips together so there are no gaps">⇥ Close gaps</button>
       <div class="obsep"></div>
       <span style="font-size:11px;color:var(--t3)">Zoom</span>
       <button class="tb" data-act="zoomOut" title="Zoom out (⌘ + scroll)">−</button>

@@ -44,6 +44,7 @@ const App = {
   hist: M.makeHistory(),
   selection: [],
   picking: false,
+  emojiQuery: "",
   stabilising: false,
   poolSel: [],
   playhead: 0,
@@ -190,6 +191,8 @@ function renderAll() {
   timeline.render();
   renderPool();
   renderInspector();
+  renderFrameBar();
+  renderCropPop();
   syncStatus();
   syncPlayheadUi();
 }
@@ -235,6 +238,159 @@ function activeRatio(c) {
   }
   const untouched = !c.crop.l && !c.crop.t && !c.crop.r && !c.crop.b;
   return untouched && !c.cropRatio ? "orig" : "free";
+}
+
+/* The framing strip under the player. Same presets as the crop panel, drawn
+   compactly: the ratio on top and the platform under it, so it reads at a
+   glance without a tooltip. */
+function renderFrameBar() {
+  const host = $("fbRatios");
+  if (!host) return;
+  const c = firstSelected();
+  const cur = c ? activeRatio(c) : projectRatio();
+  host.innerHTML = M.RATIOS.map(a => {
+    const platform = a.r ? a.sub.split(" · ")[0] : a.sub;
+    return `<button class="fbr${cur === a.id ? " on" : ""}" data-ratio="${a.id}"
+      title="${esc(a.label)} — ${esc(a.sub)}">${a.label}<small>${esc(platform)}</small></button>`;
+  }).join("");
+  $("cropBtn")?.classList.toggle("on", !$("cropPop").hidden);
+}
+/* With nothing selected the strip still shows what the project is set to */
+function projectRatio() {
+  const a = App.project.w / App.project.h;
+  const hit = M.RATIOS.find(r => r.r && Math.abs(r.r - a) < .01);
+  return hit ? hit.id : "free";
+}
+
+/* The crop popover: the same four edges as the panel, where the picture is. */
+function renderCropPop() {
+  const pop = $("cropPop");
+  if (!pop || pop.hidden) return;
+  const c = firstSelected();
+  if (!c) { pop.innerHTML = `<div class="empty">Select a clip to crop it.</div>`; return; }
+  pop.innerHTML =
+    `<div class="ihead">Crop ${c.cropRatio ? "· locked to the frame" : "· free"}</div>
+     ${row("Left", slider("crop.l", 0, .45, .01, c.crop.l))}
+     ${row("Top", slider("crop.t", 0, .45, .01, c.crop.t))}
+     ${row("Right", slider("crop.r", 0, .45, .01, c.crop.r))}
+     ${row("Bottom", slider("crop.b", 0, .45, .01, c.crop.b))}
+     <div class="chips">
+       <button class="chip" data-act="cropReset">Reset</button>
+       <button class="chip" data-ratio="free">Unlock edges</button>
+       <button class="chip" data-act="cropClose">Done</button>
+     </div>`;
+}
+
+/* ---------------- the track stretch window ----------------
+   Speed is on the clip, but the question people ask is about the track in
+   front of them: "make this bit shorter". So it opens from the track header,
+   works on the selection if there is one and the whole track if there is not,
+   and shows the length it will end up as while the slider moves. */
+let speedFor = null;
+function openSpeedPop(trackId, anchor) {
+  const pop = $("speedPop");
+  if (speedFor === trackId && !pop.hidden) { closeSpeedPop(); return; }
+  speedFor = trackId;
+  pop.hidden = false;
+  renderSpeedPop();
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = Math.min(innerWidth - 248, Math.max(8, r.left - 100)) + "px";
+  pop.style.top = Math.min(innerHeight - 190, r.bottom + 6) + "px";
+}
+function closeSpeedPop() { speedFor = null; $("speedPop").hidden = true; }
+function speedTargets() {
+  const track = App.project.tracks.find(t => t.id === speedFor);
+  if (!track) return { track: null, clips: [] };
+  const picked = track.clips.filter(c => App.selection.includes(c.id));
+  return { track, clips: picked.length ? picked : track.clips, whole: !picked.length };
+}
+function renderSpeedPop() {
+  const pop = $("speedPop");
+  if (!pop || pop.hidden) return;
+  const { track, clips, whole } = speedTargets();
+  if (!track) return closeSpeedPop();
+  if (!clips.length) {
+    pop.innerHTML = `<div class="shead">${esc(track.name)}</div><div class="slen">Nothing on this track yet.</div>`;
+    return;
+  }
+  const speed = clips[0].speed || 1;
+  const len = clips.reduce((n, c) => n + c.dur, 0);
+  pop.innerHTML =
+    `<div class="shead">Stretch ${esc(track.name)}</div>
+     <div class="srow">
+       <input type="range" id="spVal" min=".25" max="4" step=".05" value="${speed}">
+       <b id="spNum">${(+speed).toFixed(2)}×</b>
+     </div>
+     <div class="chips">${[.25, .5, .75, 1, 1.5, 2, 4].map(v =>
+       `<button class="chip${Math.abs(speed - v) < .001 ? " on" : ""}" data-tspeed="${v}">${v}×</button>`).join("")}</div>
+     <div class="slen" id="spLen">${whole ? `${clips.length} clip${clips.length === 1 ? "" : "s"}` : "selected clips"}
+       · ${fmtTime(len)} → <b style="font-family:inherit">${fmtTime(len)}</b></div>`;
+}
+/* Applying it: the source length is fixed, so a new speed is a new duration.
+   Clips after the one that changed slide along, or the track would overlap. */
+function applyTrackSpeed(v, done) {
+  const { track, clips } = speedTargets();
+  if (!track || !clips.length) return;
+  for (const c of clips) {
+    const srcLen = c.dur * (c.speed || 1);
+    c.speed = v;
+    c.dur = Math.max(.1, srcLen / v);
+  }
+  M.closeGaps(track, Math.min(...clips.map(c => c.start)));
+  if (done) commit("Track speed");
+  refresh({ silent: true });
+  const len = clips.reduce((n, c) => n + c.dur, 0);
+  const el = $("spLen");
+  if (el) el.querySelector("b").textContent = fmtTime(len);
+}
+
+const FONTS = ["Inter, system-ui, sans-serif", "Georgia, serif", "Impact, sans-serif",
+  "Courier New, monospace", "Trebuchet MS, sans-serif", "Palatino, serif", "Verdana, sans-serif"];
+
+function textPanel(c) {
+  return `<div class="ihead">Text</div>
+     ${row("Content", `<textarea data-prop="text" rows="3" placeholder="Type your title…">${esc(c.text)}</textarea>`)}
+     <div class="ihead">Style</div>
+     <div class="chips">${M.TITLE_STYLES.map(t =>
+       `<button class="chip" data-title-style="${t.id}">${t.name}</button>`).join("")}</div>
+     ${row("Font", `<select data-prop="font">${FONTS.map(f =>
+        `<option value="${f}"${c.font === f ? " selected" : ""}>${f.split(",")[0]}</option>`).join("")}</select>`)}
+     ${row("Weight", `<select data-prop="weight">${[[300, "Light"], [400, "Regular"], [500, "Medium"],
+        [700, "Bold"], [800, "Extra bold"], [900, "Black"]].map(([v, l]) =>
+        `<option value="${v}"${(c.weight || 700) === v ? " selected" : ""}>${l}</option>`).join("")}</select>`)}
+     ${row("Size", slider("size", 12, 400, 1, c.size, "px", true))}
+     ${row("Line height", slider("lineHeight", .8, 2.4, .05, c.lineHeight ?? 1.2))}
+     <div class="chips">${["left", "center", "right"].map(a =>
+       `<button class="chip${(c.align || "center") === a ? " on" : ""}" data-align="${a}">${a}</button>`).join("")}</div>
+     <div class="ihead">Colour</div>
+     ${row("Fill", `<input type="color" data-prop="color" value="${c.color}">`)}
+     ${row("Outline", slider("stroke", 0, 24, 1, c.stroke, "px"))}
+     ${row("Outline colour", `<input type="color" data-prop="strokeColor" value="${c.strokeColor || "#000000"}">`)}
+     ${row("Shadow", slider("shadow", 0, 60, 1, c.shadow ?? 0, "px"))}
+     ${row("Box", `<input type="color" data-prop="bg" value="${(c.bg || "#000000").slice(0, 7)}">
+        <button class="chip" data-act="clearBg">None</button>`)}
+     ${row("Box padding", slider("pad", 0, 1.2, .05, c.pad ?? .3))}
+     <div class="note">A shadow or an outline is what keeps white text readable over a bright frame.
+       Drag it on the picture, or set X and Y in Transform.</div>`;
+}
+
+function stickerPanel(c) {
+  const q = (App.emojiQuery || "").trim();
+  const hits = q ? M.searchEmoji(q) : null;
+  const shown = hits ? [[`${hits.length} match${hits.length === 1 ? "" : "es"}`, hits]] : Object.entries(M.EMOJI);
+  return `<div class="ihead">Sticker</div>
+     ${row("Current", `<input type="text" data-prop="text" value="${esc(c.text)}" class="stcur">`)}
+     ${row("Size", slider("size", 24, 600, 2, c.size, "px", true))}
+     ${row("Rotation", slider("rot", -180, 180, 1, c.rot, "°", true))}
+     <div class="ihead">Library</div>
+     <input type="search" id="emojiQ" placeholder="Search — fire, heart, clap…" value="${esc(q)}" class="emq">
+     <div class="emlib">${shown.map(([name, list]) => !list.length ? "" : `
+       <div class="emgrp">${esc(name)}</div>
+       <div class="emgrid">${list.map(e =>
+         `<button class="emb${c.text === e.ch ? " on" : ""}" data-emoji="${e.ch}" title="${esc(e.k)}">${e.ch}</button>`).join("")}</div>`).join("")}
+     </div>
+     <div class="note">Pick one and it changes straight away. Double-click a sticker on the timeline
+       or in the picture to come back here.</div>`;
 }
 
 function renderInspector() {
@@ -352,20 +508,9 @@ function renderInspector() {
        speech. It runs on export, not in the live preview.</div>`;
 
     $("iText").innerHTML = (c.kind === "text" || c.kind === "sticker")
-      ? `<div class="ihead">${c.kind === "text" ? "Text" : "Sticker"}</div>
-         ${row("Content", `<textarea data-prop="text">${esc(c.text)}</textarea>`)}
-         ${row("Size", slider("size", 12, 300, 1, c.size, "px", true))}
-         ${row("Colour", `<input type="color" data-prop="color" value="${c.color}">`)}
-         ${row("Background", `<input type="color" data-prop="bg" value="${c.bg || "#000000"}">
-            <button class="chip" data-act="clearBg">None</button>`)}
-         ${row("Outline", slider("stroke", 0, 20, 1, c.stroke, "px"))}
-         ${row("Font", `<select data-prop="font">
-            ${["Inter, system-ui, sans-serif", "Georgia, serif", "Impact, sans-serif", "Courier New, monospace", "Trebuchet MS, sans-serif"]
-              .map(f => `<option value="${f}"${c.font === f ? " selected" : ""}>${f.split(",")[0]}</option>`).join("")}</select>`)}
-         <div class="ihead">Emoji</div>
-         <div class="chips">${["😀", "😍", "🔥", "✨", "👍", "🎉", "💡", "❤️", "⭐", "🚀"].map(e =>
-            `<button class="chip" data-emoji="${e}">${e}</button>`).join("")}</div>`
-      : `<div class="empty">This is a ${c.kind} clip.<br>Use Text or Sticker in the toolbar to add a title.</div>`;
+      ? (c.kind === "sticker" ? stickerPanel(c) : textPanel(c))
+      : `<div class="empty">This is a ${c.kind} clip.<br>Use Text or Sticker in the toolbar to add one,
+         or double-click a title on the timeline to edit it.</div>`;
 
     $("iKeys").innerHTML =
       `<div class="ihead">Keyframes</div>
@@ -408,15 +553,24 @@ function commit(label) {
   syncStatus();
 }
 function refresh({ silent, noTimeline } = {}) {
+  /* Anything that calls refresh has changed the edit, and the edit is what the
+     preview draws. Without this the model updated and the picture did not, so
+     a scale or colour change only appeared once something else — moving the
+     playhead, resizing — happened to mark the frame dirty. */
+  invalidate();
   if (!noTimeline) timeline.render();      // a live drag repaints its own clip
   syncStatus();
   if (!silent) renderInspector();
+  renderFrameBar();
+  renderCropPop();
 }
 function setSelection(ids) {
   invalidate();
   App.selection = ids;
   timeline.render();
   renderInspector();
+  renderFrameBar();
+  renderCropPop();
   const c = firstSelected();
   $("transSel").value = c?.transIn?.type || "none";
 }
@@ -552,6 +706,19 @@ const ACT = {
     commit("Remove stabilisation"); refresh();
   },
 
+  cropOpen: () => {
+    const pop = $("cropPop");
+    pop.hidden = !pop.hidden;
+    renderCropPop(); renderFrameBar();
+  },
+  cropClose: () => { $("cropPop").hidden = true; renderFrameBar(); },
+  cropReset: () => {
+    const c = firstSelected();
+    if (!c) return;
+    c.crop = { l: 0, t: 0, r: 0, b: 0 };
+    commit("Reset crop"); refresh();
+  },
+
   /* Aspect ratio presets. They belong with cropping rather than with export:
      a 9:16 cut is an editing decision you need to see while you frame it, not
      a checkbox at the end that surprises you with what it left out. */
@@ -646,22 +813,44 @@ const ACT = {
     toast(kind.startsWith("pip") ? "Picture in picture" : "Split screen");
   },
 
-  addText: () => {
+  addText: (styleId = "title") => {
+    const style = M.TITLE_STYLES.find(t => t.id === styleId) || M.TITLE_STYLES[0];
     const track = overlayTrack(App.playhead, 4);
     const clip = M.makeClip(null, App.playhead, {
-      kind: "text", dur: 4, name: "Title", text: "Your title here", size: 96,
+      kind: "text", dur: 4, name: style.name, text: style.name === "Quote" ? "“Say something”" : "Your title here",
+      ...style.o,
     });
     M.addClip(track, clip);
     commit("Add text"); refresh(); setSelection([clip.id]);
     document.querySelector('[data-it="iText"]')?.click();
+    // the content box is the first thing anyone wants, so put the cursor in it
+    const ta = document.querySelector('#iText textarea[data-prop="text"]');
+    if (ta) { ta.focus(); ta.select(); }
+    toast(`${style.name} added — type to replace it`);
   },
-  addSticker: () => {
+  titleStyle: id => {
+    const c = firstSelected();
+    const style = M.TITLE_STYLES.find(t => t.id === id);
+    if (!c || !style) return;
+    Object.assign(c, style.o);
+    c.name = style.name;
+    commit("Title style"); refresh();
+  },
+  setAlign: a => {
+    const c = firstSelected();
+    if (!c) return;
+    c.align = a;
+    commit("Align"); refresh();
+  },
+  addSticker: (emoji = "✨") => {
     const track = overlayTrack(App.playhead, 3);
     const clip = M.makeClip(null, App.playhead, {
-      kind: "sticker", dur: 3, name: "Sticker", text: "✨", size: 160,
+      kind: "sticker", dur: 3, name: "Sticker " + emoji, text: emoji, size: 160,
     });
     M.addClip(track, clip);
     commit("Add sticker"); refresh(); setSelection([clip.id]);
+    document.querySelector('[data-it="iText"]')?.click();
+    toast("Pick any sticker from the library on the right");
   },
   recordVoice: async () => {
     if (App.recorder) {
@@ -767,11 +956,21 @@ const ACT = {
 /* titles and stickers belong on a track that is free here — like every editor,
    they stack above the footage rather than replacing it */
 function overlayTrack(at, dur) {
-  const free = M.freeTrack(App.project, "video", at, dur);
+  const tracks = App.project.tracks;
+  /* A title has to be IN FRONT of the footage, and the compositor draws the
+     first track last — so "in front" means a lower index. Taking any free
+     track put titles underneath the video, where they rendered perfectly and
+     were never seen. The track has to be free *and* above whatever is playing.
+     */
+  const covered = tracks.findIndex(t =>
+    t.kind === "video" && !t.hidden && t.clips.some(c => at < M.clipEnd(c) && c.start < at + dur));
+  const limit = covered === -1 ? tracks.length : covered;
+  const free = tracks.slice(0, limit).find(t => t.kind === "video" && !t.locked &&
+    !t.clips.some(c => at < M.clipEnd(c) && c.start < at + dur));
   if (free) return free;
-  const n = App.project.tracks.filter(t => t.kind === "video").length + 1;
+  const n = tracks.filter(t => t.kind === "video").length + 1;
   const track = { id: M.uid("t"), kind: "video", name: `Video ${n}`, hidden: false, locked: false, muted: false, clips: [] };
-  App.project.tracks.unshift(track);
+  tracks.unshift(track);
   return track;
 }
 /* right-click on a clip: the edits people reach for most, where the clip is */
@@ -1007,6 +1206,16 @@ function wire() {
   if (rat) { ACT.ratio(rat.dataset.ratio); return; }
   const lay = e.target.closest("[data-layout]");
   if (lay) { ACT.layout(lay.dataset.layout); return; }
+  const dm = e.target.closest("[data-drop]");
+  if (dm) { openDropMenu(dm.dataset.drop); return; }
+  const at = e.target.closest("[data-add-title]");
+  if (at) { closeDropMenus(); ACT.addText(at.dataset.addTitle); return; }
+  const as = e.target.closest("[data-add-sticker]");
+  if (as) { closeDropMenus(); ACT.addSticker(as.dataset.addSticker); return; }
+  const tspc = e.target.closest("[data-tspeed]");
+  if (tspc) { applyTrackSpeed(+tspc.dataset.tspeed, true); renderSpeedPop(); return; }
+  const tsp = e.target.closest("[data-track-speed]");
+  if (tsp) { openSpeedPop(tsp.dataset.trackSpeed, tsp); return; }
   const tdel = e.target.closest("[data-track-del]");
   if (tdel) { ACT.deleteTrack(tdel.dataset.trackDel); return; }
   const ttog = e.target.closest("[data-track-toggle]");
@@ -1031,6 +1240,28 @@ function wire() {
   });
 
   // the eyedropper reads the preview where it was clicked
+  // a popover that will not go away is worse than no popover
+  document.addEventListener("pointerdown", e => {
+    if (!e.target.closest(".menuwrap")) closeDropMenus();
+    if (!$("speedPop").hidden && !e.target.closest("#speedPop,[data-track-speed]")) closeSpeedPop();
+    if (!$("cropPop").hidden && !e.target.closest("#cropPop,#cropBtn")) ACT.cropClose();
+  }, true);
+  addEventListener("keydown", e => {
+    if (e.key !== "Escape") return;
+    closeDropMenus();
+    if (!$("speedPop").hidden) closeSpeedPop();
+    if (!$("cropPop").hidden) ACT.cropClose();
+  });
+
+  /* Double-clicking the picture edits the title that is on screen — the
+     thing you are looking at is the thing you want to change. */
+  $("preview").addEventListener("dblclick", () => {
+    const here = visualClipsAt(App.project, App.playhead)
+      .filter(c => c.kind === "text" || c.kind === "sticker");
+    if (!here.length) return toast("No title or sticker at the playhead");
+    editTextClip(here[0].id);
+  });
+
   $("preview").addEventListener("click", e => {
     if (!App.picking) return;
     const c = firstSelected();
@@ -1076,6 +1307,17 @@ function wire() {
       if (b && t.type === "range") b.textContent = (+v).toFixed(t.step < 1 ? 2 : 0) + (b.textContent.match(/[^\d.\-]+$/)?.[0] || "");
       refresh({ silent: true });
     }
+    if (t.id === "emojiQ") {
+      App.emojiQuery = t.value;
+      const keep = t.selectionStart;
+      renderInspector();
+      const again = $("emojiQ");
+      if (again) { again.focus(); again.setSelectionRange(keep, keep); }
+    }
+    if (t.id === "spVal") {
+      $("spNum").textContent = (+t.value).toFixed(2) + "×";
+      applyTrackSpeed(+t.value, false);
+    }
     if (t.id === "pVol") { App.masterVol = +t.value; t.nextElementSibling.textContent = Math.round(App.masterVol * 100) + "%"; }
     if (t.id === "pName") { App.project.name = t.value; syncStatus(); }
     if (t.id === "expQ") $("expQV").textContent = t.value + "%";
@@ -1083,6 +1325,14 @@ function wire() {
   });
   $("app").addEventListener("change", e => {
     const t = e.target, c = firstSelected();
+    if (t.id === "emojiQ") {
+      App.emojiQuery = t.value;
+      const keep = t.selectionStart;
+      renderInspector();
+      const again = $("emojiQ");
+      if (again) { again.focus(); again.setSelectionRange(keep, keep); }
+    }
+    if (t.id === "spVal") { applyTrackSpeed(+t.value, true); renderSpeedPop(); }
     if (t.dataset.prop && c) commit("Adjust clip");
     if (t.dataset.trans && c) {
       const dur = c.transOut?.dur ?? c.transIn?.dur ?? .5;
@@ -1116,7 +1366,15 @@ function wire() {
       commit("Speed"); refresh();
     }
     const emo = e.target.closest("[data-emoji]");
-    if (emo && c) { c.text = emo.dataset.emoji; commit("Sticker"); refresh(); }
+    if (emo && c) {
+      c.text = emo.dataset.emoji;
+      c.name = (c.kind === "sticker" ? "Sticker " : "") + emo.dataset.emoji;
+      commit("Sticker"); refresh();
+    }
+    const ts = e.target.closest("[data-title-style]");
+    if (ts) { ACT.titleStyle(ts.dataset.titleStyle); return; }
+    const al = e.target.closest("[data-align]");
+    if (al) { ACT.setAlign(al.dataset.align); return; }
     const key = e.target.closest("[data-key]");
     if (key && c) {
       const prop = key.dataset.key;
@@ -1196,6 +1454,41 @@ function wire() {
   $("transSel").innerHTML = M.TRANSITIONS.map(t => `<option value="${t}">${t}</option>`).join("");
 }
 
+/* The Text and Sticker buttons open a small menu rather than inserting one
+   fixed thing — picking the look up front is quicker than adding a default
+   and then correcting it. */
+function openDropMenu(id) {
+  const menu = $(id);
+  const wasOpen = !menu.hidden;
+  document.querySelectorAll(".dropmenu").forEach(m => { m.hidden = true; });
+  if (wasOpen) return;
+  if (id === "textMenu") {
+    menu.innerHTML = M.TITLE_STYLES.map(t =>
+      `<button class="mi" data-add-title="${t.id}">${t.name}<i>${t.o.size}px</i></button>`).join("");
+  } else {
+    const quick = ["🔥", "✨", "❤️", "👍", "🎉", "💯", "😂", "⭐", "🚀", "👏", "😍", "💡"];
+    menu.innerHTML =
+      `<div class="quickem">${quick.map(e => `<button data-add-sticker="${e}">${e}</button>`).join("")}</div>
+       <button class="mi" data-add-sticker="✨">All ${M.ALL_EMOJI.length} stickers…<i>search</i></button>`;
+  }
+  menu.hidden = false;
+}
+const closeDropMenus = () => document.querySelectorAll(".dropmenu").forEach(m => { m.hidden = true; });
+
+/* Editing a title: select it, move the playhead onto it so it is on screen
+   while it is being changed, open its panel, and put the cursor in the box. */
+function editTextClip(id) {
+  const clip = M.findClip(App.project, id);
+  if (!clip) return;
+  setSelection([id]);
+  if (App.playhead < clip.start || App.playhead > M.clipEnd(clip)) seek(clip.start + clip.dur / 2);
+  document.querySelector('[data-it="iText"]')?.click();
+  document.body.classList.remove("foldR");
+  const box = document.querySelector('#iText textarea[data-prop="text"], #iText .stcur');
+  if (box) { box.focus(); box.select?.(); }
+  else document.getElementById("emojiQ")?.focus();
+}
+
 /* ---------------- boot ---------------- */
 timeline = new Timeline($("tlScroll"), {
   get project() { return App.project; },
@@ -1206,6 +1499,7 @@ timeline = new Timeline($("tlScroll"), {
   onSelect: setSelection,
   onSeek: seek,
   onSplit: id => { setSelection([id]); ACT.split(); },
+  onEditText: editTextClip,
   onDelete: id => { setSelection([id]); ACT.delete(); },
   onContext: openClipMenu,
   commit,

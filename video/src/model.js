@@ -32,6 +32,7 @@ export const DEFAULT_CLIP = {
   // text / sticker
   text: "", font: "Inter, system-ui, sans-serif", size: 64, color: "#ffffff",
   bg: "", align: "center", stroke: 0, strokeColor: "#000000",
+  weight: 700, shadow: 0, lineHeight: 1.2, pad: .3,
   keys: {},                            // { prop: [{ t, v }] } — t is 0..1 across the clip
 };
 
@@ -95,6 +96,175 @@ export function reflowCrop(crop, sw, sh, ratio, changed) {
   }
   return out;
 }
+
+/* ---------------- titles ----------------
+   A title is a look, not a font size. These are the looks, so adding one puts
+   something finished on screen instead of 64px of white Helvetica that then
+   has to be fixed by hand. */
+export const TITLE_STYLES = [
+  { id: "title",  name: "Title",       o: { size: 120, weight: 800, color: "#ffffff", stroke: 0, bg: "", align: "center", shadow: 24, y: 0 } },
+  { id: "sub",    name: "Subtitle",    o: { size: 64,  weight: 500, color: "#ffffff", stroke: 0, bg: "", align: "center", shadow: 16, y: 260 } },
+  { id: "caption",name: "Caption",     o: { size: 54,  weight: 700, color: "#ffffff", stroke: 0, bg: "#000000cc", align: "center", shadow: 0, y: 380 } },
+  { id: "lower",  name: "Lower third", o: { size: 58,  weight: 700, color: "#ffffff", stroke: 0, bg: "#111111e6", align: "left", shadow: 0, x: -520, y: 330 } },
+  { id: "bold",   name: "Bold outline",o: { size: 132, weight: 900, color: "#ffffff", stroke: 10, strokeColor: "#000000", bg: "", align: "center", shadow: 0, y: 0 } },
+  { id: "quote",  name: "Quote",       o: { size: 72,  weight: 400, font: "Georgia, serif", color: "#ffffff", stroke: 0, bg: "", align: "center", shadow: 18, y: 0 } },
+];
+
+/* ---------------- stickers ----------------
+   One emoji was never a sticker feature. Each one carries the words someone
+   would actually search for — "fire", "clap", "party" — because searching a
+   grid of pictures by its own character is no search at all. */
+const G = (name, spec) => [name, spec.split("|").map(e => {
+  const [ch, ...words] = e.trim().split(/\s+/);
+  return { ch, k: words.join(" ") };
+}).filter(e => e.ch)];
+export const EMOJI = Object.fromEntries([
+  G("Reactions", `
+    😀 grin happy smile
+    | 😂 laugh lol cry funny
+    | 🥹 touched proud tears
+    | 😍 love heart eyes
+    | 🤩 star struck wow
+    | 😎 cool sunglasses
+    | 🥳 party celebrate
+    | 😮 wow surprised shock
+    | 🤯 mind blown exploding
+    | 😭 cry sad sob
+    | 😡 angry mad rage
+    | 🤔 think hmm wonder
+    | 🙃 upside silly
+    | 😴 sleep tired bored
+    | 🤗 hug thanks
+    | 🙄 eye roll whatever
+    | 😬 grimace awkward
+    | 🥺 pleading please
+    | 😇 angel innocent
+    | 😜 wink tongue joke`),
+  G("Hands", `
+    👍 thumbs up like yes
+    | 👎 thumbs down no
+    | 👏 clap applause bravo
+    | 🙌 raise hands praise
+    | 🙏 pray thanks please
+    | 💪 muscle strong flex
+    | 🤝 handshake deal
+    | ✌️ peace victory
+    | 🤞 fingers crossed luck
+    | 👌 ok perfect
+    | 🫶 heart hands love
+    | 👋 wave hello bye
+    | 🤙 call shaka
+    | ☝️ point up one
+    | 🖐️ hand stop five
+    | 🤟 love you rock`),
+  G("Hearts", `
+    ❤️ red heart love
+    | 🧡 orange heart
+    | 💛 yellow heart
+    | 💚 green heart
+    | 💙 blue heart
+    | 💜 purple heart
+    | 🖤 black heart
+    | 🤍 white heart
+    | 💖 sparkle heart
+    | 💘 arrow heart cupid
+    | 💔 broken heart
+    | ❣️ heart exclamation
+    | 💕 two hearts
+    | 💞 revolving hearts
+    | 💓 beating heart
+    | 💗 growing heart`),
+  G("Symbols", `
+    🔥 fire lit hot
+    | ✨ sparkles shine magic
+    | ⭐ star favourite
+    | 🌟 glowing star
+    | 💥 boom explosion
+    | 💫 dizzy swirl
+    | ⚡ lightning fast power
+    | 💯 hundred perfect
+    | ✅ check done yes
+    | ❌ cross no wrong
+    | ❗ exclamation warning
+    | ❓ question ask
+    | ⚠️ warning caution
+    | 🚫 forbidden stop
+    | ♻️ recycle
+    | 🔔 bell notify alert`),
+  G("Objects", `
+    🎉 party tada celebrate 🎊 confetti party
+    | 🎁 gift present
+    | 🏆 trophy win prize
+    | 🥇 gold medal first
+    | 💡 idea bulb tip
+    | 📌 pin note
+    | 📎 clip attach
+    | 🔑 key unlock
+    | 💰 money bag cash
+    | 💎 diamond gem
+    | 🕐 clock time
+    | 📱 phone mobile
+    | 💻 laptop computer
+    | 🎬 clapper film movie
+    | 📷 camera photo`),
+  G("Characters", `
+    🤖 robot bot ai
+    | 👽 alien ufo
+    | 👻 ghost boo
+    | 💀 skull dead
+    | 🎃 pumpkin halloween
+    | 🤡 clown
+    | 😺 cat grin
+    | 🙈 see no monkey
+    | 🙉 hear no monkey
+    | 🙊 speak no monkey
+    | 🐶 dog puppy
+    | 🐱 cat kitten
+    | 🦄 unicorn magic
+    | 🐝 bee honey
+    | 🦋 butterfly
+    | 🐢 turtle slow`),
+  G("Food", `
+    🍕 pizza slice
+    | 🍔 burger
+    | 🍟 fries chips
+    | 🌮 taco
+    | 🍿 popcorn movie
+    | 🍩 donut
+    | 🍪 cookie biscuit
+    | 🎂 cake birthday
+    | 🍎 apple fruit
+    | 🍌 banana
+    | 🍓 strawberry
+    | 🍉 watermelon
+    | ☕ coffee tea
+    | 🍺 beer drink
+    | 🥤 soda cup
+    | 🍫 chocolate`),
+  G("Travel", `
+    🚀 rocket launch fast
+    | ✈️ plane flight travel
+    | 🚗 car drive
+    | 🚲 bike cycle
+    | 🏝️ island beach
+    | 🏔️ mountain
+    | 🌊 wave sea ocean
+    | ☀️ sun sunny
+    | 🌙 moon night
+    | ⛅ cloud weather
+    | 🌈 rainbow
+    | ❄️ snow cold winter
+    | 🌍 earth world globe
+    | 🗺️ map
+    | 🎯 target goal
+    | 🏁 finish flag race`),
+]);
+export const ALL_EMOJI = Object.values(EMOJI).flat();
+export const searchEmoji = q => {
+  const t = String(q || "").trim().toLowerCase();
+  if (!t) return [];
+  return ALL_EMOJI.filter(e => e.ch === t || e.k.includes(t));
+};
 
 export const TRANSITIONS = ["none", "crossfade", "dip to black", "dip to white", "wipe left", "wipe right", "slide up", "zoom"];
 

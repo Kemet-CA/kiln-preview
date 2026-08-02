@@ -67,9 +67,12 @@ export class Timeline {
     const eye = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2.6 12S6.4 5.6 12 5.6 21.4 12 21.4 12 17.6 18.4 12 18.4 2.6 12 2.6 12z"/><circle cx="12" cy="12" r="2.6"/></svg>`;
     const speaker = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 9.4h3.4L12 5.6v12.8L7.4 14.6H4z"/><path d="M15.6 9.6a4 4 0 0 1 0 4.8"/></svg>`;
     const bin = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 6.6h14.8M9.4 6.6V4.8h5.2v1.8"/><path d="M6.6 6.6 7.6 19a1.4 1.4 0 0 0 1.4 1.2h6a1.4 1.4 0 0 0 1.4-1.2l1-12.4"/><path d="M10.4 10.4v6M13.6 10.4v6"/></svg>`;
+    // a stretch arrow: the clearest picture of "make this longer or shorter"
+    const stretch = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"/><path d="M7 8.5 3.5 12 7 15.5"/><path d="M17 8.5 20.5 12 17 15.5"/><path d="M12 6.5v11"/></svg>`;
     heads.innerHTML = `<div class="spacer"></div>` + p.tracks.map(t => `
       <div class="thead${t.kind === "audio" ? " audio" : ""}" data-thead="${t.id}">
         <span class="nm" title="${esc(t.name)}">${esc(t.name)}</span>
+        <button class="tbtn" data-track-speed="${t.id}" title="Stretch or shrink the clips on this track">${stretch}</button>
         <button class="tbtn${t.hidden || t.muted ? "" : " on"}" data-track-toggle="${t.id}"
           title="${t.kind === "audio" ? "Mute this track" : "Hide this track"}">
           ${t.kind === "audio" ? speaker : eye}</button>
@@ -297,10 +300,20 @@ export class Timeline {
       addEventListener("pointerup", up);
     });
 
-    // double-click a clip to split it at the playhead
+    /* Double-click splits a clip — except a title or a sticker, where the
+       obvious meaning is "let me change what it says". Splitting a two-word
+       caption is not something anyone has ever wanted to do by accident. */
     this.body.addEventListener("dblclick", e => {
-      const el = e.target.closest(".tl-clip");
-      if (el) this.app.onSplit(el.dataset.clip);
+      /* Selecting on the first click re-renders the lanes, so the second click
+         lands on a different node and the browser dispatches dblclick on their
+         common ancestor — the body — with no clip in sight. Asking the document
+         what is under the pointer is the reliable answer. */
+      const el = e.target.closest(".tl-clip") ||
+        document.elementFromPoint(e.clientX, e.clientY)?.closest(".tl-clip");
+      if (!el) return;
+      const clip = findClip(this.project, el.dataset.clip);
+      if (clip && (clip.kind === "text" || clip.kind === "sticker")) this.app.onEditText?.(clip.id);
+      else this.app.onSplit(el.dataset.clip);
     });
 
     // ⌘/ctrl + wheel zooms, like every timeline

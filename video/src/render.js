@@ -76,26 +76,47 @@ function drawClip(ctx, project, clip, t, sources, alphaMul = 1, slide = { x: 0, 
 function drawText(ctx, clip, W, H) {
   const size = clip.size || 64;
   ctx.font = `${clip.weight || 700} ${size}px ${clip.font}`;
-  ctx.textAlign = "center";
+  const align = clip.align || "center";
+  ctx.textAlign = align === "left" ? "left" : align === "right" ? "right" : "center";
   ctx.textBaseline = "middle";
   const lines = String(clip.text || "").split("\n");
-  const lh = size * 1.2;
+  const lh = size * (clip.lineHeight || 1.2);
   const totalH = lh * lines.length;
+  const widest = Math.max(1, ...lines.map(l => ctx.measureText(l).width));
+  // the box hugs the text, and the text sits inside it the way it is aligned
+  const padX = size * (clip.pad ?? .3), padY = size * (clip.pad ?? .3) * .55;
+  const x0 = align === "left" ? 0 : align === "right" ? 0 : 0;
   if (clip.bg) {
-    const widest = Math.max(...lines.map(l => ctx.measureText(l).width));
+    const bx = align === "left" ? -padX : align === "right" ? -widest - padX : -widest / 2 - padX;
     ctx.fillStyle = clip.bg;
-    ctx.fillRect(-widest / 2 - size * .3, -totalH / 2 - size * .16, widest + size * .6, totalH + size * .32);
+    ctx.fillRect(bx, -totalH / 2 - padY, widest + padX * 2, totalH + padY * 2);
   }
   lines.forEach((line, i) => {
     const ly = -totalH / 2 + lh * (i + .5);
+    /* A drop shadow is what separates a title from whatever is behind it —
+       without one, white text on a bright frame simply disappears. */
+    if (clip.shadow > 0) {
+      ctx.save();
+      /* Chrome ignores shadowBlur while ctx.filter is set, and the compositor
+         sets a filter on every clip for colour correction — so the shadow pass
+         clears it. The shadow is black; not colour-correcting it changes
+         nothing anyone can see. */
+      ctx.filter = "none";
+      ctx.shadowColor = "rgba(0,0,0,.75)";
+      ctx.shadowBlur = clip.shadow;
+      ctx.shadowOffsetY = clip.shadow * .25;
+      ctx.fillStyle = clip.color;
+      ctx.fillText(line, x0, ly);
+      ctx.restore();
+    }
     if (clip.stroke > 0) {
       ctx.lineWidth = clip.stroke;
       ctx.strokeStyle = clip.strokeColor;
       ctx.lineJoin = "round";
-      ctx.strokeText(line, 0, ly);
+      ctx.strokeText(line, x0, ly);
     }
     ctx.fillStyle = clip.color;
-    ctx.fillText(line, 0, ly);
+    ctx.fillText(line, x0, ly);
   });
 }
 
