@@ -6,7 +6,7 @@
 <script src="theme.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="b93b623-1226">
+<meta name="kiln-build" content="8da83bb-1235">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -461,6 +461,21 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 /* How much light the glass catches depends on what is behind it: on a pale
    page the sheen is white and the edge is a shadow of itself; on a dark one
    both come from the light above. */
+/* ---- the colours of the answer row ----
+   Seven hues that stay apart from each other at 15px, tuned twice because a
+   colour that sings on a dark page is washed out on a pale one. The category
+   accents were tried first and could not do this job: PDF and Writer are the
+   warm pair the home page was asked to lose, and Translate and Code are the
+   same grey. */
+:root{
+  --f-photo:#38BDF8; --f-video:#818CF8; --f-voice:#F87171; --f-doc:#34D399;
+  --f-pdf:#C084FC;   --f-trans:#2DD4BF; --f-code:#F472B6;
+}
+:root[data-mode="light"]{
+  --f-photo:#0284C7; --f-video:#4F46E5; --f-voice:#DC2626; --f-doc:#047857;
+  --f-pdf:#7C3AED;   --f-trans:#0D9488; --f-code:#BE185D;
+}
+
 :root{--glass-edge:rgba(255,255,255,.16);--glass-sheen:rgba(255,255,255,.07);
   --glass-rim:rgba(255,255,255,.16);--glass-inner:rgba(255,255,255,.05);
   --card-hover:color-mix(in srgb,var(--card1) 100%,rgba(255,255,255,.05))}
@@ -484,7 +499,11 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .screen{position:relative;z-index:1}
 .hero{position:relative;border-bottom:1px solid var(--line)}
 .hero-in{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:52px 26px 40px;text-align:center}
-.wordmark{margin:0;font-size:clamp(56px,9vw,108px);line-height:.94;letter-spacing:-.055em;font-weight:700;
+/* The tracking used to be -.055em, which at 108px pulled the i and the l into
+   each other until the name read as "Klin". A wordmark that can be misread is
+   not a wordmark; it is loose enough now that the dot on the i has room and
+   the two uprights are plainly two letters. */
+.wordmark{margin:0;font-size:clamp(56px,9vw,108px);line-height:.98;letter-spacing:-.012em;font-weight:700;
   color:var(--text)}
 .slogan{margin:10px 0 0;font-size:clamp(18px,2.1vw,25px);letter-spacing:-.02em;font-weight:500;color:var(--t2)}
 .slogan b{font-weight:500;color:var(--brand-ink)}
@@ -504,13 +523,13 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
    everywhere else in Kiln, and a word in it reads as a warning. */
 .feats{list-style:none;margin:16px auto 0;padding:0;max-width:760px;
   display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:5px 0}
-.feats li{position:relative;font-size:clamp(13.5px,1.55vw,17px);font-weight:640;letter-spacing:-.018em;
-  line-height:1.5;color:var(--text);padding:0 13px}
+.feats li{position:relative;font-size:clamp(13.5px,1.55vw,17px);font-weight:660;letter-spacing:-.018em;
+  line-height:1.5;color:var(--fc,var(--text));padding:0 13px}
 /* a hairline between them rather than commas: it holds the row together at any
    width, and disappears wherever a line happens to break */
 .feats li+li:not(.all)::before{content:"";position:absolute;left:0;top:.32em;bottom:.32em;width:1px;
   background:var(--line2)}
-.feats li.hi{color:var(--cat-voice)}
+.feats li.hi{font-weight:720}
 /* the closer gets the row to itself */
 .feats li.all{flex-basis:100%;padding:0}
 .feats li.all{margin-top:9px;font-size:clamp(14px,1.6vw,17px);font-weight:600;letter-spacing:-.02em;
@@ -730,14 +749,13 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
       <p class="slogan">Shape &amp; Ship <b>Anything.</b></p>
       <p class="intro" id="introQ">Why pay for a different subscription every month?</p>
       <ul class="feats" id="feats" aria-label="Everything Kiln does, free">
-        <li>Edit photos</li>
-        <li>Cut videos</li>
-        <!-- one line carries the emphasis, in the Voice workspace's own colour -->
-        <li class="hi">Record voice</li>
-        <li>Write documents</li>
-        <li>Read and sign PDFs</li>
-        <li>Translate anything</li>
-        <li>Write code</li>
+        <li style="--fc:var(--f-photo)">Edit photos</li>
+        <li style="--fc:var(--f-video)">Cut videos</li>
+        <li class="hi" style="--fc:var(--f-voice)">Record voice</li>
+        <li style="--fc:var(--f-doc)">Write documents</li>
+        <li style="--fc:var(--f-pdf)">Read and sign PDFs</li>
+        <li style="--fc:var(--f-trans)">Translate anything</li>
+        <li style="--fc:var(--f-code)">Write code</li>
         <li class="all">All here. All free.</li>
       </ul>
       <div class="hsearch"><span data-kiln-search data-kiln-search-big></span></div>
