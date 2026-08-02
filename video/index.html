@@ -172,6 +172,9 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .spop .chips{margin:0 0 8px}
 .spop .slen{font-size:10.5px;color:var(--t3);line-height:1.5}
 .menuwrap{position:relative;flex:none}
+.menuwrap.split{display:flex;gap:1px}
+.menuwrap.split .car{padding:0 4px;min-width:16px;font-size:9px;color:var(--t4)}
+.menuwrap.split .car:hover{color:var(--text)}
 .dropmenu{position:absolute;z-index:70;top:calc(100% + 5px);left:0;min-width:190px;background:var(--s1);
   border:1px solid var(--line2);border-radius:11px;padding:5px;box-shadow:0 22px 50px -18px rgba(0,0,0,.55)}
 .dropmenu[hidden]{display:none}
@@ -205,6 +208,21 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .trthumb{width:100%;aspect-ratio:16/9;border-radius:5px;overflow:hidden;position:relative;
   background:linear-gradient(135deg,#3a3f52,#232633)}
 .trthumb i{position:absolute;inset:0;background:linear-gradient(135deg,var(--cat-video,#4a9eff),#8b5cf6)}
+/* keyframes, on the clip where the timing is */
+.kfrow{position:absolute;left:0;right:0;bottom:2px;height:11px;pointer-events:none}
+.kf{position:absolute;bottom:0;width:9px;height:9px;margin-left:-4.5px;background:var(--kfc,#4a9eff);
+  transform:rotate(45deg);border-radius:1.5px;box-shadow:0 0 0 1px rgba(0,0,0,.45);pointer-events:auto;
+  cursor:ew-resize}
+.kf:hover{transform:rotate(45deg) scale(1.35);z-index:3}
+.fxoff{font-size:11px;color:var(--t3);line-height:1.55;padding:2px 0 10px}
+.mitem{position:relative}
+.mdel{position:absolute;top:5px;right:5px;width:19px;height:19px;border-radius:6px;display:grid;
+  place-items:center;font-size:11px;color:var(--t4);background:var(--s1);opacity:0;transition:opacity .12s}
+.mitem:hover .mdel{opacity:1}
+.mdel:hover{color:var(--bad);background:color-mix(in srgb,var(--bad) 16%,var(--s1))}
+.kflegend{display:flex;flex-wrap:wrap;gap:4px 10px;margin:2px 0 8px}
+.kflegend span{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t3)}
+.kflegend i{width:8px;height:8px;transform:rotate(45deg);border-radius:1.5px}
 .emq{width:100%;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--s2);
   padding:0 9px;font-size:11.5px;color:var(--text);margin-bottom:6px}
 .emq:focus{border-color:var(--ember);outline:none}
@@ -215,6 +233,9 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .emb:hover{background:var(--hov2);transform:scale(1.18)}
 .emb.on{background:color-mix(in srgb,var(--ember) 22%,transparent);box-shadow:inset 0 0 0 1px var(--ember)}
 .stcur{font-size:18px;text-align:center}
+.btn-imp{background:var(--imp-bg,#12a594);color:#fff;border:1px solid rgba(0,0,0,.14);
+  box-shadow:0 1px 2px rgba(0,0,0,.18);font-weight:600}
+.btn-imp:hover{filter:brightness(1.08)}
 .stabtrack{height:4px;border-radius:99px;background:var(--s3);overflow:hidden;margin:2px 0 6px}
 .stabtrack i{display:block;height:100%;width:0;background:var(--ember);transition:width .15s linear}
 .vwrap{flex:1;min-height:0;display:grid;place-items:center;padding:16px}
@@ -380,7 +401,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="34a0924-0735">
+<meta name="kiln-build" content="9884c52-0818">
 </head>
 <body>
 <div id="app">
@@ -401,14 +422,16 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
   </div>
 
   <div class="optbar">
-    <button class="tb" data-act="import" title="Import media (⌘I)">＋ Import</button>
+    <button class="btn btn-imp" data-act="import" title="Import media (⌘I)">＋ Import</button>
     <div class="obsep"></div>
-    <div class="menuwrap">
-      <button class="tb" data-drop="textMenu" title="Add a title or caption">T Text ▾</button>
+    <div class="menuwrap split">
+      <button class="tb" data-act="addText" title="Add a title (click the arrow for other styles)">T Text</button>
+      <button class="tb car" data-drop="textMenu" title="Choose a title style" aria-label="Title styles">▾</button>
       <div class="dropmenu" id="textMenu" hidden></div>
     </div>
-    <div class="menuwrap">
-      <button class="tb" data-drop="stickMenu" title="Add a sticker or emoji">☺ Sticker ▾</button>
+    <div class="menuwrap split">
+      <button class="tb" data-act="addSticker" title="Add a sticker (click the arrow to pick one)">☺ Sticker</button>
+      <button class="tb car" data-drop="stickMenu" title="Pick a sticker" aria-label="Sticker picker">▾</button>
       <div class="dropmenu" id="stickMenu" hidden></div>
     </div>
     <button class="tb" data-act="recordVoice" id="voiceBtn" title="Record a voiceover">● Voice</button>

@@ -5,7 +5,7 @@
    labels, thumbnails and focus rings without hand-rolling hit-testing, and so
    the whole thing stays keyboard-reachable.
    ============================================================ */
-import { clamp, clipEnd, duration, findClip, trackOf, moveClip, trimClip, mediaOf } from "./model.js";
+import { clamp, clipEnd, duration, findClip, trackOf, moveClip, trimClip, mediaOf, allKeys } from "./model.js";
 
 const SNAP_PX = 7;
 
@@ -110,9 +110,55 @@ export class Timeline {
       ${thumb}<span class="clabel">${esc(label)}</span>
       ${badges ? `<span class="cbadge">${esc(badges)}</span>` : ""}
       ${c.kind === "audio" ? `<span class="cwave"></span>` : ""}
+      ${this.keyMarkers(c, w)}
       <button class="cdel" data-del="${c.id}" title="Delete this clip">✕</button>
       <span class="ch right" data-edge="right"></span>
     </div>`;
+  }
+
+  /* Keyframes live on the clip, coloured by what they animate — blue for the
+     transform, amber for colour, pink for opacity, purple for text, green for
+     audio. Seeing them means you can move one without opening a panel to find
+     out it was there. */
+  keyMarkers(c, w) {
+    const keys = allKeys(c);
+    if (!keys.length || w < 26) return "";
+    return `<span class="kfrow">` + keys.map(k =>
+      `<i class="kf" style="left:${(k.t * 100).toFixed(3)}%;--kfc:${k.color}"
+          data-kf="${c.id}" data-kf-prop="${k.prop}" data-kf-i="${k.i}"
+          title="${k.prop} ${typeof k.v === "number" ? k.v.toFixed(2) : k.v} — drag to move it"></i>`).join("") +
+      `</span>`;
+  }
+
+  /* Drag a keyframe along its clip. The stored position is 0..1 across the
+     clip, so this is the pixel offset turned back into that. */
+  dragKey(e, el) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.body.classList.add("dragging");
+    const clip = findClip(this.project, el.dataset.kf);
+    const prop = el.dataset.kfProp, i = +el.dataset.kfI;
+    const list = clip?.keys?.[prop];
+    if (!list || !list[i]) return;
+    const width = Math.max(1, this.timeToPx(clip.dur));
+    const startX = e.clientX, from = list[i].t;
+    let moved = false;
+    const move = ev => {
+      const t = Math.max(0, Math.min(1, from + (ev.clientX - startX) / width));
+      if (Math.abs(t - list[i].t) < .0005) return;
+      list[i].t = t;
+      moved = true;
+      el.style.left = (t * 100).toFixed(3) + "%";
+      this.app.onChange({ silent: true, noTimeline: true });
+    };
+    const up = () => {
+      document.body.classList.remove("dragging");
+      removeEventListener("pointermove", move);
+      removeEventListener("pointerup", up);
+      if (moved) { this.app.commit("Move keyframe"); this.render(); this.app.onChange(); }
+    };
+    addEventListener("pointermove", move);
+    addEventListener("pointerup", up);
   }
 
   /* Drag on empty timeline space to rubber-band a selection. */
@@ -229,6 +275,8 @@ export class Timeline {
 
     this.body.addEventListener("pointerdown", e => {
       if (e.button !== 0) return;
+      const kf = e.target.closest("[data-kf]");
+      if (kf) { this.dragKey(e, kf); return; }
       let clipEl = e.target.closest(".tl-clip");
       if (e.target.closest("[data-del]")) return;
       if (!clipEl) { this.marquee(e); return; }

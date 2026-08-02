@@ -46,6 +46,7 @@ const App = {
   picking: false,
   emojiQuery: "",
   transEdge: "in",
+  mediaBin: new Map(),      // media taken out of the list, kept for undo
   stabilising: false,
   poolSel: [],
   playhead: 0,
@@ -224,17 +225,32 @@ function renderPool() {
         <div class="mname">${esc(m.name)}</div>
         <div class="msub">${m.kind} · ${fmtTime(m.dur)}${m.w ? ` · ${m.w}×${m.h}` : ""}</div>
       </div>
+      <button class="mdel" data-media-del="${m.id}" title="Remove from the media list">✕</button>
     </div>`).join("");
 }
 /* ---------------- inspector ---------------- */
 const row = (label, inner) => `<label class="fld"><span>${label}</span>${inner}</label>`;
+/* What a keyable slider shows: the value at the playhead, not the stored base.
+   With keyframes on a property the base is no longer what you see, and a panel
+   that shows it is lying about the frame in front of you. */
+const kv = (c, prop) => c.keys?.[prop]?.length ? M.valueAt(c, prop, App.playhead) : c[prop];
+/* Transform starts off. Anything that sets a position, a scale or a rotation
+   has to switch it on as well, or the numbers land in the model and nothing
+   moves — the failure that is hardest to explain to the person looking at it. */
+const needTransform = c => { if (c) c.fxTransform = true; };
 /* A heading with a switch: every effect group can be turned off and back on
    without losing what was set, which is how you compare "with" and "without"
    without undoing your work. */
 const fxHead = (title, prop, on) =>
   `<div class="ihead fx"><span>${title}</span>
      <button class="sw${on ? " on" : ""}" data-fx="${prop}" role="switch" aria-checked="${on}"
-             title="${on ? "Turn this off" : "Turn this back on"}"><i></i></button></div>`;
+             title="${on ? "Turn this off" : "Turn this on"}"><i></i></button></div>`;
+/* A whole group: the switch, and its controls only once it is on. Effects
+   start off, so a clip looks like what was imported until something is asked
+   for — and a panel of controls that are doing nothing is worse than a switch
+   that says so. */
+const fxGroup = (title, prop, on, body, off) =>
+  fxHead(title, prop, on) + (on ? body : `<div class="fxoff">${off}</div>`);
 const slider = (prop, min, max, step, v, unit = "", key = false) =>
   `<input type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-prop="${prop}">
    <b>${typeof v === "number" ? (+v).toFixed(step < 1 ? 2 : 0) : v}${unit}</b>
@@ -566,13 +582,12 @@ function renderInspector() {
       $(id).innerHTML = `<div class="empty">Select a clip on the timeline to edit it.</div>`;
   } else {
     $("iTransform").innerHTML =
-      fxHead("Position &amp; scale", "fxTransform", c.fxTransform !== false) +
-      `
-       ${row("X", slider("x", -1920, 1920, 1, c.x, "px", true))}
-       ${row("Y", slider("y", -1080, 1080, 1, c.y, "px", true))}
-       ${row("Scale", slider("scale", .05, 4, .01, c.scale, "×", true))}
-       ${row("Rotation", slider("rot", -180, 180, 1, c.rot, "°", true))}
-       ${row("Opacity", slider("opacity", 0, 1, .01, c.opacity, "", true))}
+      fxGroup("Position &amp; scale", "fxTransform", !!c.fxTransform,
+      `${row("X", slider("x", -1920, 1920, 1, kv(c, "x"), "px", true))}
+       ${row("Y", slider("y", -1080, 1080, 1, kv(c, "y"), "px", true))}
+       ${row("Scale", slider("scale", .05, 4, .01, kv(c, "scale"), "×", true))}
+       ${row("Rotation", slider("rot", -180, 180, 1, kv(c, "rot"), "°", true))}
+       ${row("Opacity", slider("opacity", 0, 1, .01, kv(c, "opacity"), "", true))}
        <div class="chips">
          <button class="chip${c.flipH ? " on" : ""}" data-toggle="flipH">Flip horizontal</button>
          <button class="chip${c.flipV ? " on" : ""}" data-toggle="flipV">Flip vertical</button>
@@ -597,14 +612,15 @@ function renderInspector() {
        ${App.stabilising ? `<div class="stabtrack"><i id="stabBar"></i></div>` : ""}
        <div class="note">It measures how the frame moves, keeps the movement that
          looks deliberate and cancels the rest, then zooms in a little to cover the
-         edges. The result is keyframes on X and Y — look in Animate to see them.</div>
-       <div class="ihead">Crop &amp; aspect</div>
+         edges. The result is keyframes on X and Y — you can see them on the clip.</div>`,
+      `Switch this on to move, scale, rotate or fade the clip, arrange a
+       picture-in-picture, or stabilise handheld footage.`) +
+      `<div class="ihead">Crop &amp; aspect</div>
        <div class="ratios">${M.RATIOS.map(a => `
          <button class="ratio${activeRatio(c) === a.id ? " on" : ""}" data-ratio="${a.id}">
            <b>${a.label}</b><i>${a.sub}</i></button>`).join("")}</div>
-       <div class="note">Choosing one sets the frame and centre-crops the clips to fill it, so the
-         preview is already the shape it will export as. The edges below stay locked to the ratio
-         until you pick Free.</div>
+       <div class="note">Choosing one sets the frame and centre-crops the clips to fill it. There is a
+         Crop button under the picture too, with a box you can drag.</div>
        ${row("Left", slider("crop.l", 0, .45, .01, c.crop.l))}
        ${row("Top", slider("crop.t", 0, .45, .01, c.crop.t))}
        ${row("Right", slider("crop.r", 0, .45, .01, c.crop.r))}
@@ -616,13 +632,12 @@ function renderInspector() {
        <div class="note">Changing speed re-times the clip on the timeline and keeps its audio in sync.</div>`;
 
     $("iColor").innerHTML =
-      fxHead("Colour correction", "fxColor", c.fxColor !== false) +
-      `
-       ${row("Brightness", slider("brightness", 0, 2, .01, c.brightness))}
-       ${row("Contrast", slider("contrast", 0, 2, .01, c.contrast))}
-       ${row("Saturation", slider("saturate", 0, 3, .01, c.saturate))}
-       ${row("Hue", slider("hue", -180, 180, 1, c.hue, "°"))}
-       ${row("Blur", slider("blur", 0, 30, .5, c.blur, "px"))}
+      fxGroup("Colour correction", "fxColor", !!c.fxColor,
+      `${row("Brightness", slider("brightness", 0, 2, .01, kv(c, "brightness"), "", true))}
+       ${row("Contrast", slider("contrast", 0, 2, .01, kv(c, "contrast"), "", true))}
+       ${row("Saturation", slider("saturate", 0, 3, .01, kv(c, "saturate"), "", true))}
+       ${row("Hue", slider("hue", -180, 180, 1, kv(c, "hue"), "°", true))}
+       ${row("Blur", slider("blur", 0, 30, .5, kv(c, "blur"), "px", true))}
        <div class="ihead">Looks</div>
        <div class="chips">
          <button class="chip" data-look="none">Original</button>
@@ -632,9 +647,11 @@ function renderInspector() {
          <button class="chip" data-look="sepia">Sepia</button>
          <button class="chip" data-look="punch">Punch</button>
          <button class="chip" data-look="fade">Faded</button>
-       </div>
-       ${fxHead("Green screen", "fxKey", c.fxKey !== false)}
-       <div class="chips">
+       </div>`,
+      `Switch this on for brightness, contrast, saturation, hue, blur and the
+       ready-made looks.`) +
+      fxGroup("Green screen", "fxKey", !!c.fxKey,
+      `<div class="chips">
          <button class="chip${c.chroma ? " on" : ""}" data-toggle="chroma">Key out a colour</button>
          <button class="chip${App.picking ? " on" : ""}" data-act="pickKey">Pick from the frame</button>
        </div>
@@ -644,17 +661,30 @@ function renderInspector() {
        ${row("Spill removal", slider("keySpill", 0, 1, .01, c.keySpill ?? .4))}
        <div class="note">${hasKeyer()
          ? "Matched on colour, not brightness, so shadows on the screen key out with it. Raise similarity until the screen goes, then soften the edge."
-         : "This browser has no WebGL2, so keying is off here — the clip still plays and exports."}</div>
-       ${fxHead("Mask", "fxMask", c.fxMask !== false)}
-       ${row("Shape", `<select data-prop="mask">${MASKS.map(m =>
-         `<option value="${m}"${(c.mask || "none") === m ? " selected" : ""}>${m[0].toUpperCase() + m.slice(1)}</option>`).join("")}</select>`)}
-       ${row("Size", slider("maskSize", .05, 1, .01, c.maskSize ?? .6))}
-       ${row("Feather", slider("maskFeather", 0, 1, .01, c.maskFeather ?? .1))}
-       ${row("Offset X", slider("maskX", -.5, .5, .01, c.maskX ?? 0))}
-       ${row("Offset Y", slider("maskY", -.5, .5, .01, c.maskY ?? 0))}
-       <div class="chips">
-         <button class="chip${c.maskInvert ? " on" : ""}" data-toggle="maskInvert">Invert</button>
-       </div>`;
+         : "This browser has no WebGL2, so keying is off here — the clip still plays and exports."}</div>`,
+      `Switch this on to key out a green or blue screen.`) +
+      fxGroup("Mask", "fxMask", !!c.fxMask,
+      `${row("Shape", `<select data-prop="mask">${MASKS.map(m =>
+         `<option value="${m}"${(c.mask || "none") === m ? " selected" : ""}>${
+           m === "letterbox" ? "Cinematic bars" : m[0].toUpperCase() + m.slice(1)}</option>`).join("")}</select>`)}
+       ${c.mask === "letterbox"
+         ? `${row("Bar height", slider("barSize", 0, .45, .005, c.barSize ?? .12))}
+            ${row("Softness", slider("maskFeather", 0, 1, .01, c.maskFeather ?? .1))}
+            ${row("Strength", slider("maskOpacity", 0, 1, .01, c.maskOpacity ?? 1))}
+            <div class="note">Black bars top and bottom, the way a film frame sits inside a
+              16:9 one. Drag the height to bring them together or apart — nothing is cropped,
+              so the shot underneath is untouched.</div>`
+         : `${row("Size", slider("maskSize", .05, 1, .01, c.maskSize ?? .6))}
+            ${row("Feather", slider("maskFeather", 0, 1, .01, c.maskFeather ?? .1))}
+            ${row("Strength", slider("maskOpacity", 0, 1, .01, c.maskOpacity ?? 1))}
+            ${row("Offset X", slider("maskX", -.5, .5, .01, c.maskX ?? 0))}
+            ${row("Offset Y", slider("maskY", -.5, .5, .01, c.maskY ?? 0))}
+            <div class="chips">
+              <button class="chip${c.maskInvert ? " on" : ""}" data-toggle="maskInvert">Invert</button>
+            </div>
+            <div class="note">Strength is how much of the outside is taken away — at 0 the mask
+              does nothing, at 1 the outside is gone.</div>`}`,
+      `Switch this on for a shape mask or cinematic black bars.`);
 
     $("iAudio").innerHTML =
       `<div class="ihead">Clip audio</div>
@@ -680,14 +710,22 @@ function renderInspector() {
 
     $("iKeys").innerHTML =
       `<div class="ihead">Keyframes</div>
-       <div class="note">Move the playhead, then press ◆ next to a property to record its value there.
-       Between keyframes the value eases smoothly.</div>
-       ${M.KEYABLE.map(prop => {
-         const keys = c.keys[prop] || [];
-         return `<div class="fld"><span>${prop}</span>
-           <b style="width:auto;flex:1;text-align:left">${keys.length ? `${keys.length} keys` : "—"}</b>
-           <button class="kbtn" data-key="${prop}" title="Add a keyframe here">◆</button>
-           ${keys.length ? `<button class="kbtn" data-unkey="${prop}" title="Clear">✕</button>` : ""}</div>`;
+       <div class="note">Move the playhead, then press ◆ beside a property to pin its value there.
+         Between two keyframes the value eases from one to the other. They show up on the clip
+         itself — drag one sideways to change when it happens.</div>
+       <div class="kflegend">${Object.entries(M.KEY_GROUPS).map(([, g]) =>
+         `<span><i style="background:${g.color}"></i>${g.name}</span>`).join("")}</div>
+       ${Object.entries(M.KEY_GROUPS).map(([id, g]) => {
+         const rows = g.props.filter(prop => (c.keys[prop] || []).length || M.KEYABLE.includes(prop));
+         if (!rows.length) return "";
+         return `<div class="ihead">${g.name}</div>` + rows.map(prop => {
+           const keys = c.keys[prop] || [];
+           return `<div class="fld"><span>${prop}</span>
+             <b style="width:auto;flex:1;text-align:left;color:${keys.length ? g.color : "var(--t4)"}">
+               ${keys.length ? `${keys.length} keyframe${keys.length === 1 ? "" : "s"}` : "—"}</b>
+             <button class="kbtn" data-key="${prop}" title="Pin this value at the playhead">◆</button>
+             ${keys.length ? `<button class="kbtn" data-unkey="${prop}" title="Clear">✕</button>` : ""}</div>`;
+         }).join("");
        }).join("")}
        <div class="ihead">Transitions</div>
        <div class="note">They have a panel of their own now — the
@@ -861,6 +899,7 @@ const ACT = {
       const r = await analyseShake(media, c, {
         onProgress: k => { const el = $("stabBar"); if (el) el.style.width = Math.round(k * 100) + "%"; },
       });
+      needTransform(c);
       c.keys.x = r.x; c.keys.y = r.y;
       c.scale = Math.max(c.scale || 1, r.zoom);
       c.stabilised = true;
@@ -905,6 +944,29 @@ const ACT = {
     c.transIn = { ...src }; c.transOut = { ...src };
     commit("Transition"); refresh();
     toast("On both ends");
+  },
+
+  /* Taking something out of the media list. Anything of it on the timeline
+     goes too — leaving clips pointing at media that is gone would give a
+     timeline full of holes that draw nothing. */
+  removeMedia: id => {
+    const media = App.project.media.find(m => m.id === id);
+    if (!media) return;
+    const used = App.project.tracks.reduce((n, t) => n + t.clips.filter(c => c.mediaId === id).length, 0);
+    if (used && !confirm(`${media.name} is used by ${used} clip${used === 1 ? "" : "s"}. Remove it and them?`)) return;
+    App.project.tracks.forEach(t => { t.clips = t.clips.filter(c => c.mediaId !== id); });
+    App.project.media = App.project.media.filter(m => m.id !== id);
+    App.poolSel = App.poolSel.filter(x => x !== id);
+    setSelection(App.selection.filter(sid => M.findClip(App.project, sid)));
+    /* Keep the loaded object aside rather than freeing it. Undo restores the
+       edit from a JSON snapshot, which carries the media's name and id but not
+       its decoded element — so throwing the element away here would bring the
+       clip back as an empty frame. Revoking the object URL would make that
+       permanent. */
+    App.mediaBin.set(id, media);
+    try { media.el?.pause?.(); } catch {}
+    commit("Remove media"); renderAll();
+    toast(`Removed ${media.name}${used ? ` and ${used} clip${used === 1 ? "" : "s"}` : ""}`);
   },
 
   cropOpen: () => {
@@ -983,7 +1045,7 @@ const ACT = {
     const sel = selectedClips();
     if (!sel.length) return toast("Select the clips to arrange", "warn");
     const W = App.project.w, H = App.project.h;
-    const set = (c, o) => Object.assign(c, o);
+    const set = (c, o) => { needTransform(c); Object.assign(c, o); };
     const clear = c => set(c, { x: 0, y: 0, scale: 1, rot: 0, crop: { l: 0, t: 0, r: 0, b: 0 } });
 
     if (kind.startsWith("pip")) {
@@ -1026,6 +1088,7 @@ const ACT = {
     const track = overlayTrack(App.playhead, 4);
     const clip = M.makeClip(null, App.playhead, {
       kind: "text", dur: 4, name: style.name, text: style.name === "Quote" ? "“Say something”" : "Your title here",
+      fxTransform: true,            // the styles place themselves in the frame
       ...style.o,
     });
     M.addClip(track, clip);
@@ -1040,6 +1103,7 @@ const ACT = {
     const c = firstSelected();
     const style = M.TITLE_STYLES.find(t => t.id === id);
     if (!c || !style) return;
+    needTransform(c);
     Object.assign(c, style.o);
     c.name = style.name;
     commit("Title style"); refresh();
@@ -1053,7 +1117,7 @@ const ACT = {
   addSticker: (emoji = "✨") => {
     const track = overlayTrack(App.playhead, 3);
     const clip = M.makeClip(null, App.playhead, {
-      kind: "sticker", dur: 3, name: "Sticker " + emoji, text: emoji, size: 160,
+      kind: "sticker", dur: 3, name: "Sticker " + emoji, text: emoji, size: 160, fxTransform: true,
     });
     M.addClip(track, clip);
     commit("Add sticker"); refresh(); setSelection([clip.id]);
@@ -1219,7 +1283,7 @@ function restore() {
   App.project.name = restored.name;
   App.project.w = restored.w; App.project.h = restored.h; App.project.fps = restored.fps; App.project.bg = restored.bg;
   App.project.tracks = restored.tracks;
-  App.project.media = restored.media.map(m => byId.get(m.id) || m);
+  App.project.media = restored.media.map(m => byId.get(m.id) || App.mediaBin.get(m.id) || m);
   App.selection = [];
   renderAll();
 }
@@ -1410,6 +1474,8 @@ function wire() {
   });
 
   document.addEventListener("click", e => {
+  const mdel = e.target.closest("[data-media-del]");
+  if (mdel) { e.stopPropagation(); ACT.removeMedia(mdel.dataset.mediaDel); return; }
   const te = e.target.closest("[data-tedge]");
   if (te) { App.transEdge = te.dataset.tedge; renderTransitions(); return; }
   const tp = e.target.closest("[data-trans-pick]");
@@ -1525,6 +1591,17 @@ function wire() {
     if (t.dataset.prop && c) {
       const path = t.dataset.prop;
       let v = t.type === "range" ? +t.value : t.value;
+      /* Changing a keyed property at the playhead sets a keyframe there. Without
+         this the slider moved the base value, valueAt kept returning the
+         animated one, and the control looked broken — which is exactly what it
+         was reported as. */
+      if (M.KEYABLE.includes(path) && c.keys?.[path]?.length) {
+        M.setKey(c, path, App.playhead, v);
+        refresh({ silent: true });
+        const b = t.parentElement.querySelector("b");
+        if (b && t.type === "range") b.textContent = (+v).toFixed(t.step < 1 ? 2 : 0) + (b.textContent.match(/[^\d.\-]+$/)?.[0] || "");
+        return;
+      }
       if (path.startsWith("crop.")) {
         const edge = path.split(".")[1];
         c.crop[edge] = v;
@@ -1630,9 +1707,14 @@ function wire() {
     const key = e.target.closest("[data-key]");
     if (key && c) {
       const prop = key.dataset.key;
-      M.setKey(c, prop, App.playhead, M.valueAt(c, prop, App.playhead));
+      // the value it is showing right now, which is the base until keys exist
+      M.setKey(c, prop, App.playhead, kv(c, prop));
+      // animating something that is switched off would do nothing at all
+      const group = M.groupOfProp(prop);
+      if (group === "transform" || group === "animation") c.fxTransform = true;
+      if (group === "colour") c.fxColor = true;
       commit("Keyframe"); refresh();
-      toast(`Keyframe on ${prop}`);
+      toast(`Keyframe on ${prop} — ${(c.keys[prop] || []).length} now`);
     }
     const unkey = e.target.closest("[data-unkey]");
     if (unkey && c) { M.clearKeys(c, unkey.dataset.unkey); commit("Clear keyframes"); refresh(); }

@@ -149,87 +149,128 @@ function keyed(src, w, h, opts) {
 /* the mask pass: a shape with a soft edge, kept only where it covers */
 const maskOut = document.createElement("canvas");
 const maskCtx = maskOut.getContext("2d");
-// inverting needs one more surface; kept here so a 30 fps timeline is not
-// allocating a full-size canvas thirty times a second
-const invScratch = document.createElement("canvas");
-export const MASKS = ["none", "rectangle", "ellipse", "circle", "top", "bottom", "left", "right"];
+export const MASKS = ["none", "letterbox", "rectangle", "ellipse", "circle", "top", "bottom", "left", "right"];
+
+/* ------------------------------------------------------------
+   The mask pass, rewritten as: build an alpha layer, then apply it once.
+
+   The old version painted straight onto the output with `destination-in`
+   between fills, so every shape had to leave the context exactly as the next
+   one expected — which is why it worked some of the time. Building the mask
+   separately means each shape is just a fill, feathering is one blur, invert
+   is one composite, and the picture is touched once at the end.
+   ------------------------------------------------------------ */
+const maskLayer = document.createElement("canvas");
+
+function drawShape(m, w, h, opts) {
+  const size = Math.min(1, Math.max(.02, opts.maskSize ?? .6));
+  const cx = w / 2 + (opts.maskX ?? 0) * w, cy = h / 2 + (opts.maskY ?? 0) * h;
+  m.fillStyle = "#fff";
+  switch (opts.mask) {
+    case "rectangle": {
+      const rw = w * size, rh = h * size;
+      m.fillRect(cx - rw / 2, cy - rh / 2, rw, rh);
+      break;
+    }
+    case "circle": {
+      const r = Math.min(w, h) * size / 2;
+      m.beginPath(); m.arc(cx, cy, r, 0, Math.PI * 2); m.fill();
+      break;
+    }
+    case "ellipse": {
+      m.beginPath();
+      m.ellipse(cx, cy, w * size / 2, h * size / 2, 0, 0, Math.PI * 2);
+      m.fill();
+      break;
+    }
+    case "top":    m.fillRect(0, 0, w, cy); break;
+    case "bottom": m.fillRect(0, cy, w, h - cy); break;
+    case "left":   m.fillRect(0, 0, cx, h); break;
+    case "right":  m.fillRect(cx, 0, w - cx, h); break;
+    default:       m.fillRect(0, 0, w, h);
+  }
+}
 
 function masked(src, w, h, opts) {
   if (maskOut.width !== w || maskOut.height !== h) { maskOut.width = w; maskOut.height = h; }
   maskCtx.setTransform(1, 0, 0, 1, 0, 0);
   maskCtx.globalCompositeOperation = "source-over";
+  maskCtx.globalAlpha = 1;
+  maskCtx.filter = "none";
   maskCtx.clearRect(0, 0, w, h);
   maskCtx.drawImage(src, 0, 0, w, h);
 
-  const size = Math.min(1, Math.max(.02, opts.maskSize ?? .6));
-  const feather = Math.max(0, Math.min(1, opts.maskFeather ?? .1));
-  const cx = w / 2 + (opts.maskX ?? 0) * w, cy = h / 2 + (opts.maskY ?? 0) * h;
-  const shape = opts.mask;
+  const strength = Math.max(0, Math.min(1, opts.maskOpacity ?? 1));
+  if (strength <= .001) return maskOut;            // the mask is turned all the way down
 
-  maskCtx.globalCompositeOperation = "destination-in";
-  maskCtx.fillStyle = "#fff";
-  const soft = Math.max(1, feather * Math.min(w, h) * .5);
-
-  if (shape === "ellipse" || shape === "circle") {
-    const rx = (shape === "circle" ? Math.min(w, h) : w) * size / 2;
-    const ry = (shape === "circle" ? Math.min(w, h) : h) * size / 2;
-    // a radial gradient is the feather: solid to the inner edge, gone at the outer
-    const g = maskCtx.createRadialGradient(cx, cy, Math.max(0, Math.min(rx, ry) - soft), cx, cy, Math.max(rx, ry));
-    g.addColorStop(0, "rgba(255,255,255,1)");
-    g.addColorStop(1, "rgba(255,255,255,0)");
-    maskCtx.fillStyle = feather > .001 ? g : "#fff";
-    maskCtx.save();
-    maskCtx.translate(cx, cy);
-    maskCtx.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry));
-    maskCtx.translate(-cx, -cy);
-    if (feather > .001) { maskCtx.fillStyle = g; maskCtx.fillRect(-w, -h, w * 3, h * 3); }
-    else { maskCtx.beginPath(); maskCtx.arc(cx, cy, Math.max(rx, ry), 0, Math.PI * 2); maskCtx.fill(); }
-    maskCtx.restore();
-  } else if (shape === "rectangle") {
-    const rw = w * size, rh = h * size;
-    const x = cx - rw / 2, y = cy - rh / 2;
-    if (feather > .001) {
-      maskCtx.filter = `blur(${soft / 2}px)`;
-      maskCtx.fillRect(x + soft / 2, y + soft / 2, Math.max(1, rw - soft), Math.max(1, rh - soft));
-      maskCtx.filter = "none";
-    } else maskCtx.fillRect(x, y, rw, rh);
-  } else if (["top", "bottom", "left", "right"].includes(shape)) {
-    // a straight edge with a gradient across it — the half-frame reveal
-    const vertical = shape === "top" || shape === "bottom";
-    const cut = vertical ? cy : cx;
-    const span = Math.max(2, soft);
-    const g = maskCtx.createLinearGradient(
-      vertical ? 0 : cut - span, vertical ? cut - span : 0,
-      vertical ? 0 : cut + span, vertical ? cut + span : 0);
-    const near = shape === "top" || shape === "left";
-    g.addColorStop(0, near ? "rgba(255,255,255,1)" : "rgba(255,255,255,0)");
-    g.addColorStop(1, near ? "rgba(255,255,255,0)" : "rgba(255,255,255,1)");
-    maskCtx.fillStyle = g;
-    maskCtx.fillRect(0, 0, w, h);
+  /* Letterbox is not a hole in the picture, it is bars over it: the frame
+     stays full and two black bands sit on top. Cropping instead would leave
+     the shot floating on the project background, which is not what a
+     cinematic bar looks like. */
+  if (opts.mask === "letterbox") {
+    const bar = Math.max(0, Math.min(.45, opts.barSize ?? .12)) * h;
+    if (bar < .5) return maskOut;
+    const soft = Math.max(0, Math.min(1, opts.maskFeather ?? 0)) * bar;
+    maskCtx.globalAlpha = strength;
+    if (soft > .5) maskCtx.filter = `blur(${soft / 2}px)`;
+    maskCtx.fillStyle = "#000";
+    maskCtx.fillRect(0, -soft, w, bar + soft);
+    maskCtx.fillRect(0, h - bar, w, bar + soft);
+    maskCtx.filter = "none";
+    maskCtx.globalAlpha = 1;
+    return maskOut;
   }
+
+  // ---- shape masks: build the alpha layer, then apply it once ----
+  if (maskLayer.width !== w || maskLayer.height !== h) { maskLayer.width = w; maskLayer.height = h; }
+  const m = maskLayer.getContext("2d");
+  m.setTransform(1, 0, 0, 1, 0, 0);
+  m.globalCompositeOperation = "source-over";
+  m.globalAlpha = 1;
+  m.filter = "none";
+  m.clearRect(0, 0, w, h);
+
+  // what survives outside the shape: nothing at full strength, more as it drops
+  if (strength < 1) {
+    m.fillStyle = `rgba(255,255,255,${1 - strength})`;
+    m.fillRect(0, 0, w, h);
+  }
+
+  const feather = Math.max(0, Math.min(1, opts.maskFeather ?? 0));
+  const soft = feather * Math.min(w, h) * .25;
+  if (soft > .5) m.filter = `blur(${soft}px)`;
 
   if (opts.maskInvert) {
-    // keep the outside instead: redraw the source and cut the shape out of it
-    const inside = maskOut;
-    const tmp = invScratch;
-    if (tmp.width !== w || tmp.height !== h) { tmp.width = w; tmp.height = h; }
-    const tc = tmp.getContext("2d");
-    tc.setTransform(1, 0, 0, 1, 0, 0);
-    tc.globalCompositeOperation = "source-over";
-    tc.clearRect(0, 0, w, h);
-    tc.drawImage(src, 0, 0, w, h);
-    tc.globalCompositeOperation = "destination-out";
-    tc.drawImage(inside, 0, 0);
-    maskCtx.globalCompositeOperation = "copy";
-    maskCtx.drawImage(tmp, 0, 0);
+    // keep the outside: a full sheet with the shape cut out of it
+    m.fillStyle = "#fff";
+    m.filter = "none";
+    m.fillRect(0, 0, w, h);
+    m.globalCompositeOperation = "destination-out";
+    if (soft > .5) m.filter = `blur(${soft}px)`;
+    drawShape(m, w, h, opts);
+    m.globalCompositeOperation = "source-over";
+    if (strength < 1) {
+      // put the floor back under the hole
+      m.globalCompositeOperation = "destination-over";
+      m.filter = "none";
+      m.fillStyle = `rgba(255,255,255,${1 - strength})`;
+      m.fillRect(0, 0, w, h);
+      m.globalCompositeOperation = "source-over";
+    }
+  } else {
+    drawShape(m, w, h, opts);
   }
+  m.filter = "none";
+
+  maskCtx.globalCompositeOperation = "destination-in";
+  maskCtx.drawImage(maskLayer, 0, 0);
   maskCtx.globalCompositeOperation = "source-over";
   return maskOut;
 }
 
 export const needsStage = c =>
-  !!c && ((c.chroma && c.fxKey !== false && c.kind !== "text" && c.kind !== "sticker") ||
-          (c.mask && c.mask !== "none" && c.fxMask !== false));
+  !!c && ((c.chroma && c.fxKey && c.kind !== "text" && c.kind !== "sticker") ||
+          (c.fxMask && c.mask && c.mask !== "none"));
 
 /* Run whichever passes the clip asks for. Returns something drawImage takes,
    or null if nothing could be done — the caller then draws the source as it
@@ -238,10 +279,10 @@ export function stage(src, clip) {
   const w = src.videoWidth || src.width, h = src.videoHeight || src.height;
   if (!w || !h) return null;
   let out = src;
-  if (clip.chroma && clip.fxKey !== false) {
+  if (clip.chroma && clip.fxKey) {
     const k = keyed(out, w, h, clip);
     if (k) out = k;
   }
-  if (clip.mask && clip.mask !== "none" && clip.fxMask !== false) out = masked(out, w, h, clip);
+  if (clip.fxMask && clip.mask && clip.mask !== "none") out = masked(out, w, h, clip);
   return out === src ? null : out;
 }

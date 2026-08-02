@@ -11,8 +11,29 @@
 export const uid = (() => { let n = 1; return p => `${p}${n++}`; })();
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-/* properties that can be animated over time */
-export const KEYABLE = ["x", "y", "scale", "rot", "opacity", "volume"];
+/* Properties that can be animated over time, and the group each belongs to.
+   The group decides the colour of its markers on the clip, so a glance at the
+   timeline says what is being animated without opening anything. */
+export const KEY_GROUPS = {
+  transform: { name: "Transform", color: "#4a9eff", props: ["x", "y", "scale", "rot"] },
+  colour:    { name: "Colour",    color: "#f5a524", props: ["brightness", "contrast", "saturate", "hue", "blur"] },
+  animation: { name: "Animation", color: "#ec4899", props: ["opacity"] },
+  text:      { name: "Text",      color: "#a855f7", props: ["size"] },
+  audio:     { name: "Audio",     color: "#22c55e", props: ["volume"] },
+};
+export const KEYABLE = Object.values(KEY_GROUPS).flatMap(g => g.props);
+export const groupOfProp = prop =>
+  Object.entries(KEY_GROUPS).find(([, g]) => g.props.includes(prop))?.[0] || "transform";
+export const colourOfProp = prop => KEY_GROUPS[groupOfProp(prop)].color;
+
+/* every keyframe on a clip, flattened, with where it sits and what colour it is */
+export function allKeys(clip) {
+  const out = [];
+  for (const [prop, list] of Object.entries(clip.keys || {}))
+    for (let i = 0; i < list.length; i++)
+      out.push({ prop, i, t: list[i].t, v: list[i].v, color: colourOfProp(prop), group: groupOfProp(prop) });
+  return out.sort((a, b) => a.t - b.t);
+}
 
 export const DEFAULT_CLIP = {
   // timing (seconds)
@@ -22,11 +43,14 @@ export const DEFAULT_CLIP = {
   crop: { l: 0, t: 0, r: 0, b: 0 }, cropRatio: null,   // null = free, else a number
   // colour
   brightness: 1, contrast: 1, saturate: 1, hue: 0, blur: 0, sepia: 0, grayscale: 0,
-  // each effect group can be switched off without losing its settings
-  fxColor: true, fxKey: true, fxMask: true, fxTransform: true,
+  /* Effects start off. A clip should look like what was imported until
+     someone asks for something else, and a panel of controls that are doing
+     nothing is worse than a switch that says so. */
+  fxColor: false, fxKey: false, fxMask: false, fxTransform: false,
   // green screen and shape masks — see src/keyer.js
   chroma: false, keyColor: "#00d000", keySimilarity: .18, keySmooth: .08, keySpill: .4,
   mask: "none", maskSize: .6, maskFeather: .1, maskX: 0, maskY: 0, maskInvert: false,
+  maskOpacity: 1, barSize: .12,          // barSize: letterbox bar height, 0..0.45
   // audio
   volume: 1, fadeIn: 0, fadeOut: 0, muted: false,
   // transitions with the neighbour on the same track

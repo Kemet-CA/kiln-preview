@@ -9,15 +9,19 @@ import { clipAt, clipEnd, mediaOf, valueAt, clamp, transitionById, normaliseTran
 import { stage, needsStage } from "./keyer.js";
 
 /* CSS filter string for a clip's colour correction */
-export function filterOf(c) {
+export function filterOf(c, t = null) {
   // every effect group can be switched off without losing what was set
-  if (c.fxColor === false) return "none";
+  if (!c.fxColor) return "none";
+  // at a time, animated values win; without one, the plain settings
+  const v = p => (t === null ? c[p] : valueAt(c, p, t));
   const f = [];
-  if (c.brightness !== 1) f.push(`brightness(${c.brightness})`);
-  if (c.contrast !== 1) f.push(`contrast(${c.contrast})`);
-  if (c.saturate !== 1) f.push(`saturate(${c.saturate})`);
-  if (c.hue) f.push(`hue-rotate(${c.hue}deg)`);
-  if (c.blur) f.push(`blur(${c.blur}px)`);
+  const brightness = v("brightness"), contrast = v("contrast"), saturate = v("saturate");
+  const hue = v("hue"), blur = v("blur");
+  if (brightness !== 1) f.push(`brightness(${brightness})`);
+  if (contrast !== 1) f.push(`contrast(${contrast})`);
+  if (saturate !== 1) f.push(`saturate(${saturate})`);
+  if (hue) f.push(`hue-rotate(${hue}deg)`);
+  if (blur) f.push(`blur(${blur}px)`);
   if (c.sepia) f.push(`sepia(${c.sepia})`);
   if (c.grayscale) f.push(`grayscale(${c.grayscale})`);
   return f.join(" ") || "none";
@@ -49,10 +53,10 @@ function drawClip(ctx, project, clip, t, sources, alphaMul = 1, slide = { x: 0, 
 
   ctx.save();
   ctx.globalAlpha = opacity;
-  const base = filterOf(clip);
+  const base = filterOf(clip, t);
   ctx.filter = extra?.blur ? `${base === "none" ? "" : base + " "}blur(${extra.blur}px)`.trim() : base;
 
-  const on = clip.fxTransform !== false;
+  const on = !!clip.fxTransform;
   const x = on ? valueAt(clip, "x", t) : 0, y = on ? valueAt(clip, "y", t) : 0;
   const scale = (on ? valueAt(clip, "scale", t) : 1) * zoomMul;
   const rot = on ? valueAt(clip, "rot", t) : 0;
@@ -61,7 +65,7 @@ function drawClip(ctx, project, clip, t, sources, alphaMul = 1, slide = { x: 0, 
   ctx.scale(scale * (on && clip.flipH ? -1 : 1), scale * (on && clip.flipV ? -1 : 1));
 
   if (clip.kind === "text" || clip.kind === "sticker") {
-    drawText(ctx, clip, W, H);
+    drawText(ctx, clip, W, H, t);
   } else {
     const raw = sources.get(clip.id);
     /* Chroma key and masks need the pixels, which a 2D context cannot reach.
@@ -79,8 +83,8 @@ function drawClip(ctx, project, clip, t, sources, alphaMul = 1, slide = { x: 0, 
   ctx.restore();
 }
 
-function drawText(ctx, clip, W, H) {
-  const size = clip.size || 64;
+function drawText(ctx, clip, W, H, t = null) {
+  const size = (t === null ? clip.size : valueAt(clip, "size", t)) || 64;
   ctx.font = `${clip.weight || 700} ${size}px ${clip.font}`;
   const align = clip.align || "center";
   ctx.textAlign = align === "left" ? "left" : align === "right" ? "right" : "center";
