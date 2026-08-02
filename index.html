@@ -6,7 +6,7 @@
 <script src="theme.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="4adf4a5-1159">
+<meta name="kiln-build" content="12f30a6-1214">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -461,10 +461,12 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 /* How much light the glass catches depends on what is behind it: on a pale
    page the sheen is white and the edge is a shadow of itself; on a dark one
    both come from the light above. */
-:root{--glass-edge:rgba(255,255,255,.14);--glass-sheen:rgba(255,255,255,.06);
-  --glass-shine:rgba(255,255,255,.10);--card-hover:color-mix(in srgb,var(--card1) 100%,rgba(255,255,255,.05))}
-:root[data-mode="light"]{--glass-edge:rgba(255,255,255,.85);--glass-sheen:rgba(255,255,255,.55);
-  --glass-shine:rgba(255,255,255,.7);--card-hover:rgba(255,255,255,.9)}
+:root{--glass-edge:rgba(255,255,255,.16);--glass-sheen:rgba(255,255,255,.07);
+  --glass-rim:rgba(255,255,255,.16);--glass-inner:rgba(255,255,255,.05);
+  --card-hover:color-mix(in srgb,var(--card1) 100%,rgba(255,255,255,.05))}
+:root[data-mode="light"]{--glass-edge:rgba(255,255,255,.9);--glass-sheen:rgba(255,255,255,.6);
+  --glass-rim:rgba(255,255,255,.95);--glass-inner:rgba(255,255,255,.55);
+  --card-hover:rgba(255,255,255,.92)}
 
 .rise{opacity:0;transform:translate3d(0,14px,0);
   transition:opacity .5s var(--ez),transform .5s var(--ez)}
@@ -489,14 +491,31 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 /* One paragraph under the name: what this is and why it is worth the visit,
    before anyone has to work it out from a grid of icons. Measured so it is two
    or three lines rather than a wall. */
-.intro{margin:14px auto 0;max-width:58ch;font-size:clamp(14px,1.45vw,16.5px);line-height:1.62;
-  color:var(--t2);letter-spacing:-.005em;text-wrap:pretty}
-.intro b{font-weight:600;color:var(--brand-ink)}
+/* The question holds one line: it is a question, and a question broken across
+   two lines stops being one. It shrinks rather than wraps until a phone, where
+   wrapping is the lesser evil. */
+.intro{margin:16px auto 0;font-size:clamp(15px,2vw,22px);line-height:1.4;color:var(--t2);
+  letter-spacing:-.015em;white-space:nowrap;font-weight:500}
+
+/* Then the answer, one line at a time and big enough to be the answer. One
+   line is coloured, not seven: a hero in seven colours is a crayon box, and
+   the emphasis lands only if the rest stays quiet. It takes the Voice
+   workspace's own colour rather than red — red means "this deletes something"
+   everywhere else in Kiln, and a word in it reads as a warning. */
+.feats{list-style:none;margin:18px 0 0;padding:0;display:flex;flex-direction:column;align-items:center;gap:2px}
+.feats li{font-size:clamp(21px,3.4vw,36px);font-weight:730;letter-spacing:-.032em;line-height:1.22;
+  color:var(--text)}
+.feats li.hi{color:var(--cat-voice)}
+.feats li.all{margin-top:8px;font-size:clamp(15px,1.7vw,19px);font-weight:600;letter-spacing:-.02em;
+  color:var(--t2)}
+.feats.writing li{opacity:0;transform:translateY(.42em);animation:writeIn .5s var(--ez) forwards}
 /* each word arrives a beat after the one before it */
 .intro.writing .w{display:inline-block;opacity:0;transform:translateY(.32em);
   animation:writeIn .42s var(--ez) forwards}
 @keyframes writeIn{to{opacity:1;transform:none}}
-@media(prefers-reduced-motion:reduce){.intro.writing .w{opacity:1;transform:none;animation:none}}
+@media(prefers-reduced-motion:reduce){
+  .intro.writing .w,.feats.writing li{opacity:1;transform:none;animation:none}
+}
 .hsearch{display:flex;justify-content:center;margin-top:26px}
 .hsearch .kswrap.big{width:min(680px,100%);height:58px;border-radius:14px}
 .hsearch .kswrap.big .ksinput{font-size:15.5px}
@@ -560,15 +579,22 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
    to their own layers costs more than the blur does. */
 .glass{
   background:var(--card1);
-  backdrop-filter:blur(16px) saturate(1.5);
-  -webkit-backdrop-filter:blur(16px) saturate(1.5);
-  border:1px solid var(--glass-edge);
-  box-shadow:0 1px 2px rgba(8,12,24,.06), 0 14px 34px -20px rgba(8,12,24,.35);
+  backdrop-filter:blur(18px) saturate(1.6);
+  -webkit-backdrop-filter:blur(18px) saturate(1.6);
+  border:1.5px solid var(--glass-edge);
+  /* the rim, then the seat, then the lift: an inset line along the top edge
+     gives the pane thickness, a hairline all round keeps the border from
+     looking painted on, and the two outer shadows sit it on the page */
+  box-shadow:
+    inset 0 1px 0 var(--glass-rim),
+    inset 0 0 0 1px var(--glass-inner),
+    0 1px 2px rgba(8,12,24,.06),
+    0 16px 38px -22px rgba(8,12,24,.38);
   position:relative;
 }
-/* the light along the top edge — one pixel, and the thing that reads as glass */
+/* a still highlight across the top, which is where light rests on glass */
 .glass::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-  background:linear-gradient(180deg,var(--glass-sheen),transparent 42%);opacity:.9}
+  background:linear-gradient(180deg,var(--glass-sheen),transparent 46%);opacity:.9}
 
 .wcard{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:18px;
   border-radius:18px;cursor:pointer;text-align:left;
@@ -580,14 +606,17 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .wcard:hover,.wcard:focus-visible{transform:translateY(-5px) scale(1.012);
   border-color:color-mix(in srgb,var(--tint) 40%,var(--glass-edge));
   background:var(--card-hover);
-  box-shadow:0 2px 4px rgba(8,12,24,.07), 0 26px 46px -24px color-mix(in srgb,var(--tint) 34%,rgba(8,12,24,.5))}
-/* a slow shine that crosses the pane on hover, once */
+  box-shadow:
+    inset 0 1px 0 var(--glass-rim),
+    inset 0 0 0 1px var(--glass-inner),
+    0 2px 4px rgba(8,12,24,.07),
+    0 28px 50px -24px color-mix(in srgb,var(--tint) 34%,rgba(8,12,24,.5))}
+/* No light chases the pointer. Glass does not do that; a sweep across a pane
+   is a phone-advert effect, and on a grid of nine it is nine things moving.
+   The edge does the work instead: a rim that reads as thickness, brighter
+   along the top where light would sit and darker underneath where the pane
+   casts into its own edge. */
 .wcard>.wi,.wcard>h3,.wcard>.wd,.wcard>.wfoot{position:relative;z-index:1}
-.wcard::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;
-  background:linear-gradient(115deg,transparent 32%,var(--glass-shine) 46%,transparent 60%);
-  transform:translateX(-120%);opacity:0}
-.wcard:hover::before{transform:translateX(120%);opacity:1;
-  transition:transform .85s cubic-bezier(.22,.61,.36,1),opacity .2s}
 .wcard:focus-visible{outline:2px solid var(--tint);outline-offset:2px}
 .wcard .wi{width:46px;height:46px;flex:none;border-radius:13px;display:grid;place-items:center;
   background:color-mix(in srgb,var(--tint) 13%,var(--s2));
@@ -650,7 +679,9 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   .wsnav{display:none}                       /* the cards below are the navigation */
   .hero-in{padding:44px 18px 40px}
   .hero h1{font-size:clamp(34px,10vw,48px)}
-  .intro{font-size:14px;line-height:1.6;margin-top:11px}
+  .intro{font-size:15px;line-height:1.45;margin-top:12px;white-space:normal}
+  .feats li{font-size:clamp(19px,6.4vw,26px)}
+  .feats li.all{font-size:14.5px}
   .lede{font-size:14.5px;line-height:1.65}
   .hcta{gap:8px}
   .hcta .btn{flex:1 1 100%;justify-content:center;text-align:center}
@@ -689,9 +720,18 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
     <div class="hero-in">
       <h1 class="wordmark">Kiln</h1>
       <p class="slogan">Shape &amp; Ship <b>Anything.</b></p>
-      <p class="intro">Why pay for a different subscription every month when it is all in one place?
-        Edit photos, cut video, record a voiceover, write, read and sign PDFs, translate, write code —
-        <b>all here, and free.</b></p>
+      <p class="intro" id="introQ">Why pay for a different subscription every month?</p>
+      <ul class="feats" id="feats" aria-label="Everything Kiln does, free">
+        <li>Edit photos</li>
+        <li>Cut videos</li>
+        <!-- one line carries the emphasis, in the Voice workspace's own colour -->
+        <li class="hi">Record voice</li>
+        <li>Write documents</li>
+        <li>Read and sign PDFs</li>
+        <li>Translate anything</li>
+        <li>Write code</li>
+        <li class="all">All here. All free.</li>
+      </ul>
       <div class="hsearch"><span data-kiln-search data-kiln-search-big></span></div>
       <div class="hcta">
         <button class="btn go" data-act="explore">Explore Workspaces
@@ -1276,6 +1316,7 @@ $("floaters").innerHTML=FLOATS.map(f=>{
    rather than a word at a time. */
 (function writeIntro(){
   const el=document.querySelector(".hero .intro");
+  const list=document.getElementById("feats");
   if(!el)return;
   if(matchMedia("(prefers-reduced-motion:reduce)").matches)return;
   const walk=(node,out)=>{
@@ -1296,8 +1337,19 @@ $("floaters").innerHTML=FLOATS.map(f=>{
     }
   };
   el.setAttribute("aria-label",el.textContent.replace(/\s+/g," ").trim());
-  walk(el,{n:0});
+  const count={n:0};
+  walk(el,count);
   el.classList.add("writing");
+
+  /* The answer waits for the question. Each line then arrives a beat after the
+     one before it, which is the whole point — a list that appears at once is a
+     paragraph, and a list that builds is being told to you. */
+  if(!list)return;
+  const asked=count.n*26+420;
+  [...list.children].forEach((li,i)=>{
+    li.style.animationDelay=(asked+120+i*130)+"ms";
+  });
+  list.classList.add("writing");
 })();
 document.addEventListener("click",e=>{
   if(e.target.closest('[data-act="explore"]'))
