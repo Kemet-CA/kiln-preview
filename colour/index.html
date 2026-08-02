@@ -13,7 +13,7 @@
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);font-size:13px;
-  line-height:1.5;letter-spacing:-.008em;-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none;--lw:300px;--rw:300px}
+  line-height:1.5;letter-spacing:-.008em;-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none;--lw:340px;--rw:320px}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left;padding:0}
 input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--ember);outline-offset:1px;border-radius:4px}
@@ -69,7 +69,7 @@ input,select{font:inherit;color:inherit}
 
 /* ---------- picker ---------- */
 .pick{grid-area:pick;background:var(--s1);border-right:1px solid var(--line);
-  display:flex;flex-direction:column;justify-content:center;min-height:0;overflow-y:auto}
+  display:flex;flex-direction:column;min-height:0;overflow-y:auto;padding-top:6px}
 /* the wheel: hue around the circle, saturation out from the middle. Brightness
    is the slider under it, and the wheel dims with it. */
 .wheelwrap{position:relative;flex:none;margin:4px auto 12px;line-height:0;touch-action:none}
@@ -88,6 +88,14 @@ input,select{font:inherit;color:inherit}
 #alphaBar{background-image:linear-gradient(90deg,transparent,var(--cur)),
   repeating-conic-gradient(rgba(127,127,127,.35) 0 25%,transparent 0 50%);background-size:auto,10px 10px}
 .hexrow{display:flex;gap:6px;padding:12px 12px 10px}
+/* what is left of the column after the wheel and the sliders: the colours you
+   have been using, as many as fit */
+.recent{flex:1;min-height:0;overflow-y:auto;align-content:start;padding:8px 12px 12px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(32px,1fr));gap:6px}
+.recent button{aspect-ratio:1;border-radius:8px;border:var(--bw) solid var(--line2);cursor:pointer;
+  box-shadow:var(--hs);transition:transform .12s var(--ez)}
+.recent button:hover{transform:scale(1.08);border-color:var(--ember)}
+.recent .none{grid-column:1/-1;color:var(--t4);font-size:11.5px;line-height:1.6;padding:2px}
 .hexin{flex:1;min-width:0;padding:6px 9px;border-radius:7px;border:var(--bw) solid var(--line);
   background:var(--s2);color:var(--text);font-family:var(--mono);font-size:13px;outline:0;text-transform:uppercase}
 .hexin:focus{border-color:var(--ember)}
@@ -98,13 +106,17 @@ input,select{font:inherit;color:inherit}
 .phead .sp{margin-left:auto;color:var(--t4);text-transform:none;letter-spacing:0;font-size:10px}
 
 /* ---------- formats list ---------- */
-.fmt{display:flex;align-items:center;gap:8px;padding:5px 12px;font-size:12px;cursor:copy;border-radius:0;
-  width:100%}   /* a button shrinks to fit, and a long value would run past the panel */
+/* key over value, not beside it: the panel is 300px and half of these values
+   are longer than that, and a values panel that ellipsises its values is
+   worth nothing. A button shrinks to fit, hence width:100%. */
+.fmt{display:flex;flex-direction:column;align-items:stretch;gap:1px;padding:6px 11px;
+  font-size:12px;cursor:copy;border-radius:7px;width:100%;position:relative}
 .fmt:hover{background:var(--hov)}
-.fmt .k{color:var(--t3);width:104px;flex:none;font-size:11px}
-.fmt .v{font-family:var(--mono);font-size:11.5px;color:var(--text);overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}   /* min-width:0 or a long value pushes past the panel */
-.fmt .c{opacity:0;color:var(--t4);font-size:10px;flex:none}
+.fmt .k{color:var(--t3);font-size:10px;letter-spacing:.04em;text-transform:uppercase;
+  font-family:var(--mono)}
+.fmt .v{font-family:var(--mono);font-size:12px;color:var(--text);line-height:1.45;
+  overflow-wrap:anywhere;white-space:normal;text-align:left}
+.fmt .c{position:absolute;right:10px;top:6px;opacity:0;color:var(--t4);font-size:10px}
 .fmt:hover .c{opacity:1}
 .fmt.copied{background:color-mix(in srgb,var(--ok) 18%,transparent)}
 .fmt.copied .c{opacity:1;color:var(--ok)}
@@ -196,7 +208,7 @@ input,select{font:inherit;color:inherit}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="f88c137-1650">
+<meta name="kiln-build" content="9522c50-1700">
 </head>
 <body>
 <div id="app">
@@ -249,6 +261,8 @@ input,select{font:inherit;color:inherit}
     </div>
     <div class="slider" id="valBar"><span class="knob" id="valKnob"></span></div>
     <div class="slider" id="alphaBar"><span class="knob" id="alphaKnob"></span></div>
+    <div class="phead">Recent<span class="sp" id="recentHint">colours you have used</span></div>
+    <div class="recent" id="recent"></div>
   </aside>
 
   <div class="stage">

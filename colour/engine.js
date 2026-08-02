@@ -25,6 +25,7 @@ const App = {
   count: 5,
   cvd: "",
   swatches: load("kiln-colour-swatches", []),
+  recent: load("kiln-colour-recent", []),
   palettes: load("kiln-colour-palettes", []),
 };
 const rgb = () => C.hsvToRgb(App.hsv);
@@ -95,7 +96,7 @@ function placeWheelDot() {
 function sizeWheel() {
   const pane = document.querySelector(".pick");
   const wrap = document.querySelector(".wheelwrap");
-  const room = pane.clientHeight - 250;                 // circles, hex row, two sliders
+  const room = pane.clientHeight - 130;                 // hex row and the two sliders
   const side = Math.max(150, Math.min(pane.clientWidth - 28, room));
   wrap.style.width = wrap.style.height = side + "px";
   wheelPx = 0;                                          // force a repaint at the new size
@@ -118,7 +119,8 @@ function paintPicker() {
   $("sbHex").textContent = hex;
   $("sbCon").textContent = C.contrast(c, { r: 0, g: 0, b: 0 }).toFixed(2) + ":1";
 }
-function setColor(c, { silent, keepPrev } = {}) {
+function setColor(c, { silent, keepPrev, quiet } = {}) {
+  if (!quiet) remember();
   // remember what it was, so the small circle can put it back
   if (!keepPrev) {
     const now = C.toHex(rgb());
@@ -133,6 +135,7 @@ function dragOn(el, onMove) {
     const r = el.getBoundingClientRect();
     onMove(C.clamp((e.clientX - r.left) / r.width, 0, 1), C.clamp((e.clientY - r.top) / r.height, 0, 1));
     paintAll();
+    remember();          // dragging never goes through setColor, so record it here
   };
   el.addEventListener("pointerdown", e => {
     el.setPointerCapture(e.pointerId);
@@ -199,6 +202,28 @@ function paintPalette() {
 }
 
 /* ---------------- saved swatches and palettes ---------------- */
+/* Recent colours. Recorded when a colour settles rather than on every frame of
+   a drag, or the strip would fill with the hundred shades you passed through
+   on the way. */
+let recentTimer = 0;
+function remember() {
+  clearTimeout(recentTimer);
+  recentTimer = setTimeout(() => {
+    const hex = C.toHex(rgb());
+    App.recent = [hex, ...App.recent.filter(h => h !== hex)].slice(0, 60);
+    save("kiln-colour-recent", App.recent);
+    paintRecent();
+  }, 450);
+}
+function paintRecent() {
+  const box = $("recent");
+  if (!box) return;
+  box.innerHTML = App.recent.length
+    ? App.recent.map(h => `<button data-recent="${h}" style="background:${h}" title="${h}"></button>`).join("")
+    : `<div class="none">Colours you pick land here, and are still here next time.</div>`;
+  $("recentHint").textContent = App.recent.length ? `${App.recent.length} kept` : "colours you have used";
+}
+
 function paintSwatches() {
   $("pSwatches").innerHTML = App.swatches.length
     ? `<div class="swgrid">${App.swatches.map((hex, i) =>
@@ -391,6 +416,8 @@ function wire() {
       return;
     }
     const sw = e.target.closest("[data-sw]");
+    const rec = e.target.closest("[data-recent]");
+    if (rec) { setColor(C.parseHex(rec.dataset.recent), { quiet: true }); return; }
     if (sw) { setColor(C.parseHex(App.swatches[+sw.dataset.sw])); return; }
     const pal = e.target.closest("[data-pal]");
     if (pal) {
@@ -455,6 +482,7 @@ wire();
 randomise();
 paintAll();
 paintSwatches();
+paintRecent();
 paintPalettes();
 
-window.Kiln = { App, C, ACT, setColor, rgb, randomise, paintAll, paintSwatches, paintPalettes, copy };
+window.Kiln = { App, C, ACT, setColor, rgb, randomise, paintAll, paintSwatches, paintPalettes, paintRecent, copy };
