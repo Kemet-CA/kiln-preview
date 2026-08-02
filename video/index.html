@@ -155,6 +155,24 @@ input,select{font:inherit;color:inherit}
 .tl-ruler .tk{position:absolute;top:4px;font-family:var(--mono);font-size:9px;color:var(--t4);
   padding-left:4px;border-left:1px solid var(--line2);height:14px}
 .tl-body{position:relative}
+/* Track headers: a fixed column beside the lanes, so a track can be named,
+   silenced and thrown away without hunting through a menu. */
+/* min-width:0 or the 8000px timeline inside pushes this column-flex child
+   wider than the panel, and the scroller never scrolls */
+.tl-main{flex:1;min-height:0;min-width:0;overflow:hidden;display:flex}
+.tl-heads{flex:none;width:var(--headw,148px);border-right:1px solid var(--line);background:var(--s2);
+  overflow:hidden;display:flex;flex-direction:column}
+.tl-heads .spacer{height:22px;border-bottom:1px solid var(--line);flex:none}
+.thead{height:56px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;
+  gap:6px;padding:0 8px}
+.thead .nm{flex:1;min-width:0;font-size:11.5px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thead.audio .nm{color:var(--t3)}
+.thead .tbtn{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:var(--t4);flex:none}
+.thead .tbtn:hover{background:var(--hov2);color:var(--text)}
+.thead .tbtn.on{color:var(--ember)}
+.thead .tbtn.del:hover{color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,transparent)}
+.thead svg{width:13px;height:13px}
+.tl-main>.tlscroll{flex:1;min-width:0}
 .tl-track{position:relative;height:56px;border-bottom:1px solid var(--line);background:
   repeating-linear-gradient(90deg,transparent 0 59px,var(--gridln) 59px 60px)}
 .tl-track.audio{height:44px;background-color:color-mix(in srgb,var(--celadon) 5%,transparent)}
@@ -168,7 +186,11 @@ input,select{font:inherit;color:inherit}
 .tl-clip.sel{outline:2px solid var(--ember);outline-offset:-1px;z-index:3}
 .tl-clip .clabel{font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
 .tl-clip .cbadge{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--t2);opacity:.8;pointer-events:none}
-.tl-clip .cthumb{width:38px;height:calc(100% - 10px);border-radius:3px;background:#000 center/cover no-repeat;flex:none;pointer-events:none}
+/* the filmstrip: one wide image of frames, mapped so a frame sits where it
+   happens — scale it to the media's full length and slide it by the in-point */
+.cthumb.strip{position:absolute;inset:0;width:auto;height:100%;border-radius:inherit;
+  background-repeat:no-repeat;opacity:.62;pointer-events:none;z-index:0}
+.cthumb{width:38px;height:calc(100% - 10px);border-radius:3px;background:#000 center/cover no-repeat;flex:none;pointer-events:none}
 .tl-clip .cwave{position:absolute;left:0;right:0;bottom:0;height:16px;pointer-events:none;opacity:.5;
   background:repeating-linear-gradient(90deg,currentColor 0 1px,transparent 1px 4px);color:var(--celadon)}
 .cdel{position:absolute;top:3px;right:3px;width:17px;height:17px;border-radius:5px;display:none;
@@ -207,6 +229,19 @@ input,select{font:inherit;color:inherit}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 .modal{position:fixed;inset:0;z-index:150;display:grid;place-items:center;background:rgba(0,0,0,.5);backdrop-filter:blur(3px)}
 .modal[hidden]{display:none}
+.mbox.wide{width:min(640px,94vw)}
+.expgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+.expsum{display:flex;gap:20px;flex-wrap:wrap;margin-top:12px;padding:10px 12px;border-radius:10px;
+  border:1px solid var(--line);background:var(--s2)}
+.expsum div{display:flex;flex-direction:column;gap:2px}
+.expsum span{font-size:10px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--t4)}
+.expsum b{font-size:13px;color:var(--text);font-weight:600}
+.premium{display:flex;flex-direction:column;gap:3px;margin-top:10px;padding:10px 12px;border-radius:10px;
+  border:1px solid color-mix(in srgb,var(--warn) 42%,transparent);
+  background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.premium b{font-size:12.5px;color:var(--text)}
+.premium span{font-size:11.5px;color:var(--t2);line-height:1.55}
+@media(max-width:640px){.expgrid{grid-template-columns:1fr}}
 .mbox{width:min(430px,92vw);border:var(--bw) solid var(--line2);border-radius:12px;background:var(--popbg);
   box-shadow:var(--popshadow);overflow:hidden}
 .mbox h3{margin:0;padding:13px 15px;font-size:13.5px;border-bottom:1px solid var(--line)}
@@ -216,7 +251,7 @@ input,select{font:inherit;color:inherit}
 .prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="a2b44ca-2044">
+<meta name="kiln-build" content="1a304eb-2119">
 </head>
 <body>
 <div id="app">
@@ -335,7 +370,10 @@ input,select{font:inherit;color:inherit}
     </div>
     <div class="tlmain">
       <div class="tnames" id="tNames"></div>
-      <div class="tlscroll" id="tlScroll"></div>
+      <div class="tl-main">
+        <div class="tl-heads" id="tlHeads"></div>
+        <div class="tlscroll" id="tlScroll"></div>
+      </div>
     </div>
   </div>
 
@@ -349,20 +387,55 @@ input,select{font:inherit;color:inherit}
 </div>
 
 <div class="modal" id="exportModal" hidden>
-  <div class="mbox">
+  <div class="mbox wide">
     <h3>Export video</h3>
     <div class="mbody">
-      <label class="fld"><span>Resolution</span><select id="expRes">
-        <option value="720p">720p · 1280×720</option>
-        <option value="1080p" selected>1080p · 1920×1080</option>
-        <option value="1440p">1440p · 2560×1440</option>
-        <option value="4K">4K · 3840×2160</option></select></label>
-      <label class="fld"><span>Format</span><select id="expFmt">
-        <option value="mp4">MP4 · H.264 + AAC</option>
-        <option value="webm">WebM · VP9 + Opus</option></select></label>
-      <label class="fld"><span>Frame rate</span><select id="expFps">
-        <option value="24">24 fps</option><option value="30" selected>30 fps</option><option value="60">60 fps</option></select></label>
-      <label class="fld"><span>Quality</span><input type="range" id="expQ" min="40" max="140" value="100"><b id="expQV">100%</b></label>
+      <div class="expgrid">
+        <label class="fld"><span>Quality preset</span><select id="expPreset">
+          <option value="web">Web · smaller file</option>
+          <option value="standard" selected>Standard · balanced</option>
+          <option value="high">High · closer to the source</option>
+          <option value="master">Master · large file</option>
+          <option value="custom">Custom</option></select></label>
+        <label class="fld"><span>Resolution</span><select id="expRes">
+          <option value="480p">480p · 854×480</option>
+          <option value="720p">720p · 1280×720</option>
+          <option value="1080p" selected>1080p · 1920×1080</option>
+          <option value="1440p" data-premium="1">1440p · 2K — premium</option>
+          <option value="4K" data-premium="1">4K · 3840×2160 — premium</option></select></label>
+        <label class="fld"><span>Format</span><select id="expFmt">
+          <option value="mp4">MP4 · widest support</option>
+          <option value="webm">WebM · open</option></select></label>
+        <label class="fld"><span>Video codec</span><select id="expCodec"></select></label>
+        <label class="fld"><span>Frame rate</span><select id="expFps">
+          <option value="24">24 fps · film</option>
+          <option value="25">25 fps · PAL</option>
+          <option value="30" selected>30 fps</option>
+          <option value="50">50 fps</option>
+          <option value="60">60 fps · smooth</option></select></label>
+        <label class="fld"><span>Video bitrate</span>
+          <input type="range" id="expBr" min="1" max="60" step="1" value="10"><b id="expBrV">10 Mbps</b></label>
+        <label class="fld"><span>Audio</span><select id="expAud">
+          <option value="0">No audio</option>
+          <option value="96">96 kbps · voice</option>
+          <option value="128" selected>128 kbps · good</option>
+          <option value="192">192 kbps · high</option>
+          <option value="256">256 kbps · transparent</option></select></label>
+        <label class="fld"><span>Quality</span><input type="range" id="expQ" min="40" max="140" value="100"><b id="expQV">100%</b></label>
+      </div>
+
+      <div class="expsum">
+        <div><span>Output</span><b id="expOut">1920×1080 · 30 fps</b></div>
+        <div><span>Length</span><b id="expLen">0:00</b></div>
+        <div><span>Estimated size</span><b id="expSize">—</b></div>
+      </div>
+      <div class="premium" id="expPrem" hidden>
+        <b>2K and 4K are a premium export.</b>
+        <span>Everything up to 1080p is free and always will be. Larger frames take
+          many times longer to encode in a browser tab, and that is what the paid
+          tier will cover. Pick 1080p to export now.</span>
+      </div>
+
       <div class="prog"><i id="expBar"></i></div>
       <div class="note" id="expNote">Rendering happens on your machine — nothing is uploaded.</div>
     </div>

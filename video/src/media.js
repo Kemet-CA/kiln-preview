@@ -77,11 +77,57 @@ export async function importFile(file, id = uid("m")) {
     media.dur = isFinite(el.duration) ? el.duration : 10;
     media.w = el.videoWidth || 0;
     media.h = el.videoHeight || 0;
-    if (kind === "video") media.poster = await posterOf(el).catch(() => null);
+    if (kind === "video") {
+      media.poster = await posterOf(el).catch(() => null);
+      // the strip takes a moment; let the pool show the poster first
+      filmstripOf(el).then(strip => {
+        if (!strip) return;
+        media.strip = strip;
+        window.__kilnStrip?.(media);
+      }).catch(() => {});
+    }
   }
   media.buffer = await file.arrayBuffer();
   putBlob(id, file);
   return media;
+}
+
+/* ---------------- the filmstrip ----------------
+   One wide image of frames taken across the whole clip, so the timeline shows
+   where the scenes are rather than the same still repeated. Built once per
+   media on import and cached with it; seeking a <video> is slow, so the count
+   is kept to what is useful at timeline sizes.
+
+   Built after the poster so the pool has something to show immediately. */
+async function filmstripOf(el, frames = 12) {
+  const dur = el.duration;
+  if (!isFinite(dur) || dur <= 0) return null;
+  const fh = 44;
+  const fw = Math.max(1, Math.round(fh * (el.videoWidth / Math.max(1, el.videoHeight)) || 78));
+  const c = document.createElement("canvas");
+  c.width = fw * frames; c.height = fh;
+  const x = c.getContext("2d");
+  let broken = false;
+  const onErr = () => { broken = true; };
+  el.addEventListener("error", onErr);
+  for (let i = 0; i < frames; i++) {
+    // the element can be torn down while this is still seeking — stop rather
+    // than keep asking a blob that is no longer there
+    if (broken || !el.isConnected && !el.src) break;
+    const at = (i + 0.5) / frames * dur;
+    await new Promise(res => {
+      let done = false;
+      const finish = () => { if (done) return; done = true; el.removeEventListener("seeked", finish); res(); };
+      el.addEventListener("seeked", finish);
+      setTimeout(finish, 700);                       // never hang on a stubborn file
+      el.currentTime = Math.min(at, dur - 0.02);
+    });
+    try { x.drawImage(el, i * fw, 0, fw, fh); } catch {}
+  }
+  el.removeEventListener("error", onErr);
+  if (broken) return null;
+  el.currentTime = 0;
+  return c.toDataURL("image/jpeg", 0.55);
 }
 
 /* a small still from one second in, for the timeline and the media pool */

@@ -55,15 +55,45 @@ export class Timeline {
       <div class="tl-track${track.kind === "audio" ? " audio" : ""}" data-track="${track.id}">
         ${track.clips.map(c => this.clipHtml(c, track)).join("")}
       </div>`).join("");
+    this.renderHeads(p);
     this.syncPlayhead();
+  }
+
+  /* One row per track, beside the lanes: what it is, whether it is heard or
+     seen, and a way to throw it away. */
+  renderHeads(p) {
+    const heads = document.getElementById("tlHeads");
+    if (!heads) return;
+    const eye = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2.6 12S6.4 5.6 12 5.6 21.4 12 21.4 12 17.6 18.4 12 18.4 2.6 12 2.6 12z"/><circle cx="12" cy="12" r="2.6"/></svg>`;
+    const speaker = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 9.4h3.4L12 5.6v12.8L7.4 14.6H4z"/><path d="M15.6 9.6a4 4 0 0 1 0 4.8"/></svg>`;
+    const bin = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 6.6h14.8M9.4 6.6V4.8h5.2v1.8"/><path d="M6.6 6.6 7.6 19a1.4 1.4 0 0 0 1.4 1.2h6a1.4 1.4 0 0 0 1.4-1.2l1-12.4"/><path d="M10.4 10.4v6M13.6 10.4v6"/></svg>`;
+    heads.innerHTML = `<div class="spacer"></div>` + p.tracks.map(t => `
+      <div class="thead${t.kind === "audio" ? " audio" : ""}" data-thead="${t.id}">
+        <span class="nm" title="${esc(t.name)}">${esc(t.name)}</span>
+        <button class="tbtn${t.hidden || t.muted ? "" : " on"}" data-track-toggle="${t.id}"
+          title="${t.kind === "audio" ? "Mute this track" : "Hide this track"}">
+          ${t.kind === "audio" ? speaker : eye}</button>
+        <button class="tbtn del" data-track-del="${t.id}" title="Delete this track and everything on it">${bin}</button>
+      </div>`).join("");
   }
 
   clipHtml(c, track) {
     const left = this.timeToPx(c.start), w = Math.max(6, this.timeToPx(c.dur));
     const sel = this.app.selection?.includes(c.id) ? " sel" : "";
     const media = mediaOf(this.project, c);
-    const thumb = media?.poster && c.kind !== "text" && c.kind !== "sticker"
-      ? `<span class="cthumb" style="background-image:url(${media.poster})"></span>` : "";
+    /* A filmstrip if the media has one: scaled so it covers the whole media,
+       then slid by the in-point, which puts every frame where it happens. */
+    let thumb = "";
+    if (c.kind !== "text" && c.kind !== "sticker" && media) {
+      if (media.strip && media.dur) {
+        const full = w * (media.dur / Math.max(c.dur * (c.speed || 1), .001));
+        const offset = -(c.in || 0) / media.dur * full;
+        thumb = `<span class="cthumb strip" style="background-image:url(${media.strip});` +
+          `background-size:${full.toFixed(1)}px 100%;background-position:${offset.toFixed(1)}px 0"></span>`;
+      } else if (media.poster) {
+        thumb = `<span class="cthumb" style="background-image:url(${media.poster})"></span>`;
+      }
+    }
     const label = c.kind === "text" ? (c.text?.split("\n")[0] || "Text")
       : c.kind === "sticker" ? (c.text || "Sticker") : (c.name || media?.name || "Clip");
     const badges = [

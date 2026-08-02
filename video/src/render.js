@@ -38,6 +38,7 @@ function sourceRect(clip, sw, sh) {
 /* one visual clip, with its transform, colour and opacity applied */
 function drawClip(ctx, project, clip, t, sources, alphaMul = 1, slide = { x: 0, y: 0 }, zoomMul = 1) {
   const W = project.w, H = project.h;
+  // see renderFrame: the context may already carry the preview's scale
   const opacity = clamp(valueAt(clip, "opacity", t) * alphaMul, 0, 1);
   if (opacity <= 0.001) return;
 
@@ -101,8 +102,13 @@ function drawText(ctx, clip, W, H) {
    ------------------------------------------------------------ */
 export function renderFrame(ctx, project, t, sources) {
   const W = project.w, H = project.h;
+  /* The caller may have scaled the context — the preview composites at the
+     size it is shown rather than at the project's resolution. So "reset the
+     transform" means back to whatever the caller set, not to identity. */
+  const base = typeof ctx.getTransform === "function" ? ctx.getTransform() : null;
+  const rebase = () => { if (base) ctx.setTransform(base); else ctx.setTransform(1, 0, 0, 1, 0, 0); };
   ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  rebase();
   ctx.globalAlpha = 1;
   ctx.filter = "none";
   ctx.fillStyle = project.bg;

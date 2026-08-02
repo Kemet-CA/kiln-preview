@@ -55,8 +55,18 @@ let timeline;
 const selectedClips = () => App.selection.map(id => M.findClip(App.project, id)).filter(Boolean);
 const firstSelected = () => selectedClips()[0] || null;
 
-/* ---------------- preview ---------------- */
+/* ---------------- preview ----------------
+   The compositor is not cheap: it draws the whole timeline, with filters, into
+   a canvas. Running it sixty times a second regardless of whether anything had
+   changed cost 455 ms of every idle second at 1080p — which is why everything
+   else in the editor felt slow. It now runs when something has actually
+   changed, and at the size the preview is shown rather than the size the
+   project exports at. */
 let lastTick = 0;
+let dirty = true;
+const invalidate = () => { dirty = true; };
+window.__kilnInvalidate = invalidate;
+
 function loop(now) {
   const dt = lastTick ? (now - lastTick) / 1000 : 0;
   lastTick = now;
@@ -65,14 +75,28 @@ function loop(now) {
     const end = M.duration(App.project);
     if (App.playhead >= end) { App.playhead = end; setPlaying(false); }
     syncPlayheadUi();
+    dirty = true;                 // the playhead moved, so the frame differs
   }
-  drawPreview();
+  if (dirty && !App.exporting) { dirty = false; drawPreview(); }
   requestAnimationFrame(loop);
 }
 function drawPreview() {
   const p = App.project;
   const cv = $("preview");
-  if (cv.width !== p.w || cv.height !== p.h) { cv.width = p.w; cv.height = p.h; fitPreview(); }
+  /* The preview is shown at a few hundred pixels wide; compositing at the
+     project's full resolution and then letting the browser scale it down is
+     five times the fill for no visible gain. The compositor still works in
+     project coordinates — the context is scaled, not the maths. */
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const shown = cv.getBoundingClientRect().width || p.w;
+  const scale = Math.min(1, (shown * dpr) / p.w);
+  const wantW = Math.max(64, Math.round(p.w * scale));
+  const wantH = Math.max(36, Math.round(p.h * scale));
+  if (cv.width !== wantW || cv.height !== wantH) {
+    cv.width = wantW; cv.height = wantH;
+    fitPreview();
+  }
+  ctx.setTransform(cv.width / p.w, 0, 0, cv.height / p.h, 0, 0);
   const t = App.playhead;
 
   const wanted = new Set();
@@ -87,6 +111,16 @@ function drawPreview() {
       media.el.playbackRate = clamp(clip.speed, .0625, 16);
       if (App.playing) {
         if (media.el.paused) media.el.play().catch(() => {});
+        // draw when the decoder actually has a new frame, not on a guess
+        if (media.el.requestVideoFrameCallback && !media.el.__kilnRvfc) {
+          media.el.__kilnRvfc = true;
+          const tick = () => {
+            invalidate();
+            if (!media.el.paused) media.el.requestVideoFrameCallback(tick);
+            else media.el.__kilnRvfc = false;
+          };
+          media.el.requestVideoFrameCallback(tick);
+        }
         // nudge back into sync only when it has drifted noticeably
         if (Math.abs(media.el.currentTime - want) > .25) media.el.currentTime = want;
       } else if (Math.abs(media.el.currentTime - want) > .02) {
@@ -116,6 +150,7 @@ function drawPreview() {
    resolved against an indefinite flex height and let the picture overflow its
    box, worse the shorter the window. */
 function fitPreview() {
+  invalidate();
   const cv = $("preview"), wrap = document.querySelector(".vwrap");
   if (!cv || !wrap) return;
   const box = wrap.getBoundingClientRect();
@@ -133,6 +168,7 @@ function setPlaying(on) {
   if (!on) for (const m of App.project.media) m.el && m.kind !== "image" && m.el.pause();
 }
 function seek(t) {
+  invalidate();
   App.playhead = clamp(t, 0, Math.max(0, M.duration(App.project)));
   syncPlayheadUi();
 }
@@ -143,6 +179,7 @@ function syncPlayheadUi() {
 
 /* ---------------- rendering the shell ---------------- */
 function renderAll() {
+  invalidate();
   timeline.render();
   renderPool();
   renderTrackNames();
@@ -321,6 +358,7 @@ function refresh({ silent, noTimeline } = {}) {
   if (!silent) renderInspector();
 }
 function setSelection(ids) {
+  invalidate();
   App.selection = ids;
   timeline.render();
   renderInspector();
@@ -449,6 +487,23 @@ const ACT = {
       toast("Recording — press Voice again to stop");
     } catch { toast("Microphone permission was refused", "bad"); }
   },
+  deleteTrack: id => {
+    const p = App.project;
+    if (p.tracks.length <= 1) return toast("A project needs at least one track", "warn");
+    const t = p.tracks.find(t => t.id === id);
+    if (!t) return;
+    const n = t.clips.length;
+    p.tracks = p.tracks.filter(x => x.id !== id);
+    App.selection = App.selection.filter(id2 => !t.clips.some(c => c.id === id2));
+    commit("Delete track"); renderAll();
+    toast(n ? `${t.name} and ${n} clip${n === 1 ? "" : "s"} deleted` : `${t.name} deleted`);
+  },
+  toggleTrack: id => {
+    const t = App.project.tracks.find(t => t.id === id);
+    if (!t) return;
+    if (t.kind === "audio") t.muted = !t.muted; else t.hidden = !t.hidden;
+    commit("Toggle track"); renderAll();
+  },
   addVideoTrack: () => {
     const n = App.project.tracks.filter(t => t.kind === "video").length + 1;
     App.project.tracks.unshift({ id: M.uid("t"), kind: "video", name: `Video ${n}`, hidden: false, locked: false, muted: false, clips: [] });
@@ -502,6 +557,7 @@ const ACT = {
   },
   exportOpen: () => {
     if (!M.duration(App.project)) return toast("The timeline is empty", "warn");
+    syncExportUi();
     $("expNote").textContent = canEncode()
       ? "Rendering happens on your machine — nothing is uploaded."
       : "This browser cannot encode video (WebCodecs unavailable).";
@@ -618,6 +674,63 @@ async function generateSample() {
 }
 
 /* ---------------- export ---------------- */
+/* Free up to 1080p. Larger frames are many times the encode time in a tab,
+   and that is what the paid tier is meant to cover. */
+const PREMIUM = new Set(["1440p", "4K"]);
+
+/* Quality presets set the bitrate the way a person would: by intent. */
+const EXPORT_PRESETS = {
+  web:      { mbps: { "480p": 1.5, "720p": 3,  "1080p": 6,  "1440p": 10, "4K": 20 }, q: 85,  audio: "96"  },
+  standard: { mbps: { "480p": 2.5, "720p": 5,  "1080p": 10, "1440p": 18, "4K": 35 }, q: 100, audio: "128" },
+  high:     { mbps: { "480p": 4,   "720p": 8,  "1080p": 16, "1440p": 28, "4K": 55 }, q: 115, audio: "192" },
+  master:   { mbps: { "480p": 8,   "720p": 16, "1080p": 30, "1440p": 50, "4K": 90 }, q: 140, audio: "256" },
+};
+const CODECS = {
+  mp4:  [["avc", "H.264 · plays everywhere"], ["hevc", "H.265 · smaller, less support"]],
+  webm: [["vp09", "VP9 · good compression"], ["av01", "AV1 · best, slowest"]],
+};
+
+function syncExportUi() {
+  const res = $("expRes").value, fmt = $("expFmt").value;
+  const preset = $("expPreset").value;
+  // the codec list follows the container
+  const list = CODECS[fmt] || CODECS.mp4;
+  if ($("expCodec").dataset.for !== fmt) {
+    $("expCodec").dataset.for = fmt;
+    $("expCodec").innerHTML = list.map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+  }
+  if (preset !== "custom") {
+    const P = EXPORT_PRESETS[preset];
+    $("expBr").value = String(Math.round(P.mbps[res] ?? 10));
+    $("expQ").value = String(P.q);
+    $("expAud").value = P.audio;
+  }
+  $("expBrV").textContent = $("expBr").value + " Mbps";
+  $("expQV").textContent = $("expQ").value + "%";
+
+  const size = PRESETS[res] || PRESETS["1080p"];
+  const fps = +$("expFps").value;
+  $("expOut").textContent = `${size.w}×${size.h} · ${fps} fps`;
+
+  const secs = M.duration(App.project);
+  $("expLen").textContent = fmtTime(secs);
+  /* An estimate, and honestly a rough one: a modern encoder undershoots its
+     ceiling on quiet footage, so this is the top of the range rather than a
+     promise. */
+  const vBits = (+$("expBr").value * 1e6) * secs;
+  const aBits = (+$("expAud").value * 1000) * secs;
+  const bytes = (vBits + aBits) / 8 * 1.02;            // ~2% for the container
+  $("expSize").textContent = secs > 0
+    ? (bytes > 1073741824 ? (bytes / 1073741824).toFixed(2) + " GB" : Math.max(1, Math.round(bytes / 1048576)) + " MB")
+    : "—";
+
+  const locked = PREMIUM.has(res);
+  $("expPrem").hidden = !locked;
+  $("expGo").disabled = locked || App.exporting;
+  $("expGo").textContent = locked ? "1080p and below are free" : "Start export";
+}
+window.syncExportUi = syncExportUi;
+
 async function doExport() {
   if (App.exporting) return;
   App.exporting = true;
@@ -625,10 +738,21 @@ async function doExport() {
   setPlaying(false);
   const preset = $("expRes").value, format = $("expFmt").value;
   const fps = +$("expFps").value, quality = +$("expQ").value / 100;
+  if (PREMIUM.has(preset)) {
+    toast("2K and 4K are a premium export — 1080p and below are free", "warn");
+    App.exporting = false;
+    return;
+  }
+  const bitrate = +$("expBr").value * 1e6;
+  const audioKbps = +$("expAud").value;
   $("expGo").disabled = true;
   const t0 = performance.now();
   try {
-    const blob = await exportVideo(App.project, { preset, format, fps, quality }, {
+    const blob = await exportVideo(App.project, {
+      preset, format, fps, quality, bitrate,
+      audioBitrate: audioKbps * 1000, audio: audioKbps > 0,
+      codec: $("expCodec").value || undefined,
+    }, {
       onStage: s => { $("expNote").textContent = s + "…"; status(s); },
       onProgress: p => { $("expBar").style.width = Math.round(p * 100) + "%"; },
       onError: e => toast("Encoder error: " + e.message, "bad"),
@@ -680,6 +804,10 @@ function wire() {
   });
 
   document.addEventListener("click", e => {
+  const tdel = e.target.closest("[data-track-del]");
+  if (tdel) { ACT.deleteTrack(tdel.dataset.trackDel); return; }
+  const ttog = e.target.closest("[data-track-toggle]");
+  if (ttog) { ACT.toggleTrack(ttog.dataset.trackToggle); return; }
     if (!e.target.closest("#clipMenu")) closeClipMenu();
     const mi = e.target.closest(".mi");
     if (mi?.dataset.act) { ACT[mi.dataset.act]?.(); closeClipMenu(); }
@@ -816,7 +944,10 @@ function wire() {
     addToTimeline(id, Math.max(0, at), trackEl?.dataset.track);
   });
 
-  $("expQ").addEventListener("input", e => { $("expQV").textContent = e.target.value + "%"; });
+  for (const id of ["expPreset", "expRes", "expFmt", "expFps", "expAud", "expCodec"])
+    $(id).addEventListener("change", syncExportUi);
+  for (const id of ["expBr", "expQ"])
+    $(id).addEventListener("input", () => { $("expPreset").value = "custom"; syncExportUi(); });
 
   addEventListener("keydown", e => {
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
@@ -866,6 +997,9 @@ requestAnimationFrame(loop);
 status("Ready");
 
 /* test + console handle */
+/* a filmstrip arriving late repaints the timeline that is waiting for it */
+window.__kilnStrip = () => { timeline.render(); };
+
 window.Kiln = {
   App, M, ACT, timeline, addMediaFiles, addToTimeline, generateSample, seek,
   setSelection, doExport, exportVideo, renderAll, drawPreview,
