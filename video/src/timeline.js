@@ -132,7 +132,7 @@ export class Timeline {
     return `<span class="kfrow">` + keys.map(k =>
       `<i class="kf" style="left:${(k.t * 100).toFixed(3)}%;--kfc:${k.color}"
           data-kf="${c.id}" data-kf-prop="${k.prop}" data-kf-i="${k.i}"
-          title="${k.prop} ${typeof k.v === "number" ? k.v.toFixed(2) : k.v} — drag to move it"></i>`).join("") +
+          title="${k.prop} ${typeof k.v === "number" ? k.v.toFixed(2) : k.v} — drag to move it, right-click or ⌥-click to delete"></i>`).join("") +
       `</span>`;
   }
 
@@ -273,6 +273,14 @@ export class Timeline {
       if (del) { e.stopPropagation(); this.app.onDelete(del.dataset.del); }
     });
     this.body.addEventListener("contextmenu", e => {
+      // right-click on a keyframe deletes it rather than opening the clip menu
+      const kf = e.target.closest("[data-kf]");
+      if (kf) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.app.onDeleteKey?.(kf.dataset.kf, kf.dataset.kfProp, +kf.dataset.kfI);
+        return;
+      }
       const el = e.target.closest(".tl-clip");
       if (!el) return;
       e.preventDefault();
@@ -282,7 +290,12 @@ export class Timeline {
     this.body.addEventListener("pointerdown", e => {
       if (e.button !== 0) return;
       const kf = e.target.closest("[data-kf]");
-      if (kf) { this.dragKey(e, kf); return; }
+      if (kf) {
+        // ⌥-click deletes one, which is the fastest way to undo a mistake
+        if (e.altKey) { e.preventDefault(); this.app.onDeleteKey?.(kf.dataset.kf, kf.dataset.kfProp, +kf.dataset.kfI); return; }
+        this.dragKey(e, kf);
+        return;
+      }
       let clipEl = e.target.closest(".tl-clip");
       if (e.target.closest("[data-del]")) return;
       if (!clipEl) { this.marquee(e); return; }

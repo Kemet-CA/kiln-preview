@@ -419,6 +419,22 @@ export function setKey(clip, prop, time, value) {
   list.sort((a, b) => a.t - b.t);
 }
 export function clearKeys(clip, prop) { delete clip.keys[prop]; }
+/* one keyframe, by the property it belongs to and its place in the list */
+export function removeKey(clip, prop, i) {
+  const list = clip.keys?.[prop];
+  if (!list || !list[i]) return false;
+  list.splice(i, 1);
+  if (!list.length) delete clip.keys[prop];
+  return true;
+}
+/* every keyframe belonging to a group of properties — what "turn the effect
+   off" has to do, or the animation lingers on a switched-off effect */
+export function clearGroupKeys(clip, group) {
+  const props = KEY_GROUPS[group]?.props || [];
+  let n = 0;
+  for (const prop of props) if (clip.keys?.[prop]) { delete clip.keys[prop]; n++; }
+  return n;
+}
 
 /* ---------------- editing ---------------- */
 export function addClip(track, clip) {
@@ -448,8 +464,37 @@ export function splitClip(track, clip, t) {
   right.dur = clip.dur - cut;
   right.in = clip.in + cut * clip.speed;
   right.transIn = null;
+  right.linkedTo = null;                       // a half is not the other's pair
+  /* Keyframes are stored as a position from 0 to 1 across the clip, so a plain
+     copy gives both halves the whole animation — the same keys twice, each
+     squeezed into half the time. Each side keeps only the keys that fall
+     inside it, rescaled to its own length. */
+  const k = cut / clip.dur;                    // where the cut lands, 0..1
+  const keys = clip.keys || {};
+  const leftKeys = {}, rightKeys = {};
+  for (const [prop, list] of Object.entries(keys)) {
+    const L = [], R = [];
+    for (const key of list) {
+      if (key.t <= k) L.push({ t: k > 0 ? key.t / k : 0, v: key.v });
+      else R.push({ t: k < 1 ? (key.t - k) / (1 - k) : 1, v: key.v });
+    }
+    /* Both halves get the value at the cut pinned to their shared edge. Without
+       it each side holds whatever single key fell inside it and the movement
+       disappears — split a clip that travels 0 → 800 and you would get one
+       half stuck at 0 and the other stuck at 800. With it, playing across the
+       cut looks exactly as it did before. */
+    if (list.length) {
+      const atCut = valueAt(clip, prop, t);
+      if (!L.some(k => k.t > .999)) L.push({ t: 1, v: atCut });
+      if (!R.some(k => k.t < .001)) R.unshift({ t: 0, v: atCut });
+    }
+    if (L.length) leftKeys[prop] = L.sort((a, b) => a.t - b.t);
+    if (R.length) rightKeys[prop] = R.sort((a, b) => a.t - b.t);
+  }
   clip.dur = cut;
   clip.transOut = null;
+  clip.keys = leftKeys;
+  right.keys = rightKeys;
   addClip(track, right);
   return right;
 }

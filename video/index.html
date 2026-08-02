@@ -215,12 +215,22 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
   transform:rotate(45deg);border-radius:1.5px;box-shadow:0 0 0 1px rgba(0,0,0,.45);pointer-events:auto;
   cursor:ew-resize}
 .kf:hover{transform:rotate(45deg) scale(1.35);z-index:3}
-.fxoff{font-size:11px;color:var(--t3);line-height:1.55;padding:2px 0 10px}
+.fxbody{transition:opacity .14s}
+.fxbody.off{opacity:.4}
+.fxbody.off::after{content:"switched off";display:block;font-size:10px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--t4);margin:-2px 0 8px}
 .mitem{position:relative}
 .mdel{position:absolute;top:5px;right:5px;width:19px;height:19px;border-radius:6px;display:grid;
   place-items:center;font-size:11px;color:var(--t4);background:var(--s1);opacity:0;transition:opacity .12s}
 .mitem:hover .mdel{opacity:1}
 .mdel:hover{color:var(--bad);background:color-mix(in srgb,var(--bad) 16%,var(--s1))}
+.kflist{display:flex;flex-wrap:wrap;gap:3px;margin:-4px 0 8px}
+.kfchip{display:flex;align-items:center;gap:4px;padding:3px 6px;border-radius:6px;font-size:10px;
+  color:var(--t3);background:var(--s2);border:1px solid var(--line);font-family:var(--mono)}
+.kfchip b{color:var(--kfc);font-weight:600}
+.kfchip i{font-style:normal;color:var(--t4);font-size:9px}
+.kfchip:hover{border-color:var(--bad);color:var(--text)}
+.kfchip:hover i{color:var(--bad)}
 .kflegend{display:flex;flex-wrap:wrap;gap:4px 10px;margin:2px 0 8px}
 .kflegend span{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t3)}
 .kflegend i{width:8px;height:8px;transform:rotate(45deg);border-radius:1.5px}
@@ -412,7 +422,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="9c60556-0908">
+<meta name="kiln-build" content="9e0f344-0932">
 </head>
 <body>
 <div id="app">

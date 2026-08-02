@@ -149,16 +149,30 @@ function drawPreview() {
       }
     }
   }
-  // audio-only clips still need their element running
+  /* ---- sound ----
+     Elements are imported muted, because importing a file should not make a
+     noise. Nothing ever unmuted them, so the preview has never been audible.
+
+     One element can be wanted by two clips — a video and the linked audio clip
+     that carries its sound — so the gain is worked out per element rather than
+     per clip: the loudest audible clip using it wins, and an element no clip
+     wants is silent rather than paused mid-frame. */
+  const gains = new Map();
   for (const { clip } of audibleClipsAt(p, t)) {
     const media = M.mediaOf(p, clip);
     if (!media?.el || media.kind === "image") continue;
     wanted.add(media.el);
     const want = sourceTime(clip, t);
-    media.el.volume = clamp(gainAt(clip, t) * App.masterVol, 0, 1);
+    gains.set(media.el, Math.max(gains.get(media.el) || 0, gainAt(clip, t) * App.masterVol));
     media.el.playbackRate = clamp(clip.speed, .0625, 16);
     if (App.playing && media.el.paused) media.el.play().catch(() => {});
     if (!App.playing && Math.abs(media.el.currentTime - want) > .02) media.el.currentTime = want;
+  }
+  for (const el of wanted) {
+    const g = clamp(gains.get(el) || 0, 0, 1);
+    // silent while scrubbing: a burst of sound on every seek is not useful
+    el.muted = g <= 0.001 || !App.playing;
+    el.volume = g;
   }
   for (const m of p.media) {
     if (m.el && m.kind !== "image" && !wanted.has(m.el) && !m.el.paused) m.el.pause();
@@ -260,6 +274,11 @@ const kv = (c, prop) => c.keys?.[prop]?.length ? M.valueAt(c, prop, App.playhead
    has to switch it on as well, or the numbers land in the model and nothing
    moves — the failure that is hardest to explain to the person looking at it. */
 const needTransform = c => { if (c) c.fxTransform = true; };
+/* which keyframe groups belong to which switch */
+const FX_KEY_GROUPS = {
+  fxTransform: ["transform", "animation"],
+  fxColor: ["colour"],
+};
 /* A heading with a switch: every effect group can be turned off and back on
    without losing what was set, which is how you compare "with" and "without"
    without undoing your work. */
@@ -267,12 +286,14 @@ const fxHead = (title, prop, on) =>
   `<div class="ihead fx"><span>${title}</span>
      <button class="sw${on ? " on" : ""}" data-fx="${prop}" role="switch" aria-checked="${on}"
              title="${on ? "Turn this off" : "Turn this on"}"><i></i></button></div>`;
-/* A whole group: the switch, and its controls only once it is on. Effects
-   start off, so a clip looks like what was imported until something is asked
-   for — and a panel of controls that are doing nothing is worse than a switch
-   that says so. */
+/* A whole group: the switch, then its controls — always. Hiding the controls
+   when the effect is off meant reaching for a slider took two clicks and a
+   guess about which switch owned it. The switch decides whether the effect
+   applies; the panel stays where it is either way, dimmed while it is off so
+   the state is still obvious. */
 const fxGroup = (title, prop, on, body, off) =>
-  fxHead(title, prop, on) + (on ? body : `<div class="fxoff">${off}</div>`);
+  fxHead(title, prop, on) +
+  `<div class="fxbody${on ? "" : " off"}" title="${on ? "" : esc(off)}">${body}</div>`;
 const slider = (prop, min, max, step, v, unit = "", key = false) =>
   `<input type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-prop="${prop}">
    <b>${typeof v === "number" ? (+v).toFixed(step < 1 ? 2 : 0) : v}${unit}</b>
@@ -746,7 +767,12 @@ function renderInspector() {
              <b style="width:auto;flex:1;text-align:left;color:${keys.length ? g.color : "var(--t4)"}">
                ${keys.length ? `${keys.length} keyframe${keys.length === 1 ? "" : "s"}` : "—"}</b>
              <button class="kbtn" data-key="${prop}" title="Pin this value at the playhead">◆</button>
-             ${keys.length ? `<button class="kbtn" data-unkey="${prop}" title="Clear">✕</button>` : ""}</div>`;
+             ${keys.length ? `<button class="kbtn" data-unkey="${prop}" title="Remove them all">✕</button>` : ""}</div>` +
+             (keys.length ? `<div class="kflist">${keys.map((k, i) =>
+               `<button class="kfchip" data-delkey="${prop}" data-delkey-i="${i}"
+                  style="--kfc:${g.color}" title="Remove this keyframe">
+                  ${(k.t * (c.dur || 1)).toFixed(2)}s
+                  <b>${typeof k.v === "number" ? (+k.v).toFixed(2) : k.v}</b><i>✕</i></button>`).join("")}</div>` : "");
          }).join("");
        }).join("")}
        <div class="ihead">Transitions</div>
@@ -1609,9 +1635,20 @@ function wire() {
   if (fx) {
     const c = firstSelected();
     if (c) {
-      c[fx.dataset.fx] = c[fx.dataset.fx] === false;
+      const prop = fx.dataset.fx;
+      const now = !c[prop];
+      c[prop] = now;
+      /* Switching an effect off takes its keyframes with it. Animation on an
+         effect that is not running is invisible work waiting to surprise
+         whoever turns it back on. */
+      let dropped = 0;
+      if (!now) {
+        for (const g of FX_KEY_GROUPS[prop] || []) dropped += M.clearGroupKeys(c, g);
+      }
       commit("Toggle effect"); refresh();
-      toast(c[fx.dataset.fx] ? "Effect on" : "Effect off");
+      toast(now ? "Effect on"
+        : dropped ? `Effect off — ${dropped} keyframe track${dropped === 1 ? "" : "s"} removed`
+        : "Effect off");
     }
     return;
   }
@@ -1832,6 +1869,14 @@ function wire() {
       commit("Keyframe"); refresh();
       toast(`Keyframe on ${prop} — ${(c.keys[prop] || []).length} now`);
     }
+    const dk = e.target.closest("[data-delkey]");
+    if (dk && c) {
+      if (M.removeKey(c, dk.dataset.delkey, +dk.dataset.delkeyI)) {
+        commit("Delete keyframe"); refresh();
+        toast("Keyframe removed");
+      }
+      return;
+    }
     const unkey = e.target.closest("[data-unkey]");
     if (unkey && c) { M.clearKeys(c, unkey.dataset.unkey); commit("Clear keyframes"); refresh(); }
   });
@@ -1951,6 +1996,12 @@ timeline = new Timeline($("tlScroll"), {
   onSeek: seek,
   onSplit: id => { setSelection([id]); ACT.split(); },
   onEditText: editTextClip,
+  onDeleteKey: (clipId, prop, i) => {
+    const c = M.findClip(App.project, clipId);
+    if (!c || !M.removeKey(c, prop, i)) return;
+    commit("Delete keyframe"); refresh();
+    toast(`Keyframe removed — ${(c.keys[prop] || []).length} left on ${prop}`);
+  },
   onDelete: id => { setSelection([id]); ACT.delete(); },
   onContext: openClipMenu,
   commit,
