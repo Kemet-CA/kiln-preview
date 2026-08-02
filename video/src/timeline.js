@@ -112,6 +112,40 @@ export class Timeline {
     </div>`;
   }
 
+  /* Drag on empty timeline space to rubber-band a selection. */
+  marquee(e) {
+    const startX = e.clientX, startY = e.clientY;
+    const box = document.createElement("div");
+    box.className = "tl-marquee";
+    /* On the host, not the body: selecting re-renders the body, which would
+       destroy the rectangle the pointer is still drawing. */
+    this.host.appendChild(box);
+    const bodyRect = () => this.host.getBoundingClientRect();
+    let picked = [];
+    const move = ev => {
+      const r = bodyRect();
+      const x1 = Math.min(startX, ev.clientX), x2 = Math.max(startX, ev.clientX);
+      const y1 = Math.min(startY, ev.clientY), y2 = Math.max(startY, ev.clientY);
+      box.style.left = (x1 - r.left + this.host.scrollLeft) + "px";
+      box.style.top = (y1 - r.top + this.host.scrollTop) + "px";
+      box.style.width = (x2 - x1) + "px";
+      box.style.height = (y2 - y1) + "px";
+      picked = [...this.body.querySelectorAll(".tl-clip")].filter(el => {
+        const c = el.getBoundingClientRect();
+        return c.right > x1 && c.left < x2 && c.bottom > y1 && c.top < y2;
+      }).map(el => el.dataset.clip);
+      this.app.onSelect(picked);
+    };
+    const up = () => {
+      removeEventListener("pointermove", move);
+      removeEventListener("pointerup", up);
+      box.remove();
+      if (!picked.length) this.app.onSelect([]);
+    };
+    addEventListener("pointermove", move);
+    addEventListener("pointerup", up);
+  }
+
   syncPlayhead() {
     const x = this.timeToPx(this.app.playhead);
     this.playhead.style.transform = `translateX(${x}px)`;
@@ -183,20 +217,37 @@ export class Timeline {
       if (e.button !== 0) return;
       let clipEl = e.target.closest(".tl-clip");
       if (e.target.closest("[data-del]")) return;
-      if (!clipEl) { this.app.onSelect([]); return; }
+      if (!clipEl) { this.marquee(e); return; }
       const id = clipEl.dataset.clip;
       const clip = findClip(this.project, id);
       const track = trackOf(this.project, id);
       if (!clip || track.locked) return;
 
       const multi = e.shiftKey || e.metaKey || e.ctrlKey;
-      this.app.onSelect(multi ? [...new Set([...(this.app.selection || []), id])] : [id]);
+      const already = (this.app.selection || []).includes(id);
+      // dragging one of several selected clips moves the whole set, so a
+      // shift-click before a drag does not throw the selection away
+      if (multi) this.app.onSelect(already
+        ? (this.app.selection || []).filter(x => x !== id)
+        : [...new Set([...(this.app.selection || []), id])]);
+      else if (!already) this.app.onSelect([id]);
 
       const edge = e.target.dataset.edge;
       const startX = e.clientX, startY = e.clientY;
       const orig = { start: clip.start, dur: clip.dur, in: clip.in };
       const media = mediaOf(this.project, clip);
       let moved = false;
+      /* Everything selected travels together. Their offsets from the clip
+         under the pointer are fixed at the start of the gesture, so the set
+         keeps its shape however far it is dragged. */
+      const group = (this.app.selection || [])
+        .filter(x => x !== id)
+        .map(x => {
+          const c = findClip(this.project, x);
+          const t = trackOf(this.project, x);
+          return c && t && !t.locked ? { id: x, clip: c, offset: c.start - clip.start, trackId: t.id } : null;
+        })
+        .filter(Boolean);
 
       /* Only the dragged element moves while the pointer is down. Re-rendering
          the whole timeline mid-drag would destroy the node under the pointer —
@@ -225,6 +276,8 @@ export class Timeline {
           const toId = overTrack?.dataset.track || track.id;
           const want = this.snap(Math.max(0, orig.start + this.pxToTime(dx)), id);
           moveClip(this.project, id, toId, want);
+          for (const g of group) moveClip(this.project, g.id, g.trackId, Math.max(0, want + g.offset));
+          if (group.length) this.render();
           if (toId !== track.id) {                      // a track change does need a re-render
             this.render();
             const again = this.body.querySelector(`[data-clip="${id}"]`);

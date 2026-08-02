@@ -15,6 +15,23 @@ import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from "../vendor/mp4
 import { Muxer as WebmMuxer, ArrayBufferTarget as WebmTarget } from "../vendor/webm-muxer.mjs";
 import { duration, mediaOf } from "./model.js";
 import { renderFrame, visualClipsAt, sourceTime, audibleClipsAt, gainAt } from "./render.js";
+import { spectral } from "./dsp.js";        // the denoiser the Voice workspace uses
+import { gifFrameAt } from "./media.js";    // animated GIFs supply their own frames
+
+/* Real noise removal, not a gate: spectral subtraction against a profile
+   learned from the quietest tenth of the clip. Applied to the decoded buffer
+   before it is mixed, and cached, because it is not cheap. */
+const denoised = new Map();
+function denoiseBuffer(ctx, buf, key) {
+  if (denoised.has(key)) return denoised.get(key);
+  const out = ctx.createBuffer(buf.numberOfChannels, buf.length, buf.sampleRate);
+  for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+    const clean = spectral(buf.getChannelData(ch), buf.sampleRate, { denoise: 60 });
+    out.copyToChannel(clean.length === buf.length ? clean : clean.subarray(0, buf.length), ch);
+  }
+  denoised.set(key, out);
+  return out;
+}
 
 export const PRESETS = {
   "720p":  { w: 1280, h: 720,  bitrate: 5e6 },
@@ -68,7 +85,7 @@ async function mixAudio(project, sampleRate, totalDur, onProgress) {
     const buf = buffers.get(media?.id);
     if (!buf) continue;
     const src = ctx.createBufferSource();
-    src.buffer = buf;
+    src.buffer = clip.denoise ? denoiseBuffer(ctx, buf, media.id) : buf;
     src.playbackRate.value = clip.speed;
     const gain = ctx.createGain();
     // sample the same gain curve the preview uses, so fades and keyframes match
@@ -154,7 +171,10 @@ export async function exportVideo(project, opts, hooks = {}) {
     for (const clip of visualClipsAt(project, t)) {
       const media = mediaOf(project, clip);
       if (!media) continue;
-      if (media.kind === "image") { sources.set(clip.id, media.el); continue; }
+      if (media.kind === "image") {
+        sources.set(clip.id, media.gif ? gifFrameAt(media, sourceTime(clip, t)) : media.el);
+        continue;
+      }
       const el = els.get(clip.id) || media.el;
       if (!el) continue;
       await seekTo(el, sourceTime(clip, t));

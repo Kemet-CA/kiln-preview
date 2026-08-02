@@ -6,6 +6,7 @@
    file, so the export cannot drift away from the preview.
    ============================================================ */
 import { clipAt, clipEnd, mediaOf, valueAt, clamp } from "./model.js";
+import { stage, needsStage } from "./keyer.js";
 
 /* CSS filter string for a clip's colour correction */
 export function filterOf(c) {
@@ -56,7 +57,10 @@ function drawClip(ctx, project, clip, t, sources, alphaMul = 1, slide = { x: 0, 
   if (clip.kind === "text" || clip.kind === "sticker") {
     drawText(ctx, clip, W, H);
   } else {
-    const src = sources.get(clip.id);
+    const raw = sources.get(clip.id);
+    /* Chroma key and masks need the pixels, which a 2D context cannot reach.
+       They happen off to the side and come back as something drawable. */
+    const src = (raw && needsStage(clip) && stage(raw, clip)) || raw;
     if (src && (src.videoWidth || src.width)) {
       const sw = src.videoWidth || src.width, sh = src.videoHeight || src.height;
       const { sx, sy, sw: cw, sh: ch } = sourceRect(clip, sw, sh);

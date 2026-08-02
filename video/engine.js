@@ -9,9 +9,11 @@
    sample-accurate summing actually matters.
    ============================================================ */
 import * as M from "./src/model.js";
+import { stage as pixelStage, hasKeyer, MASKS } from "./src/keyer.js";
+import { analyse as analyseShake } from "./src/stabilise.js";
 import { renderFrame, visualClipsAt, audibleClipsAt, sourceTime, gainAt } from "./src/render.js";
 import { Timeline, fmtTime } from "./src/timeline.js";
-import { importFile, rehydrate, recordVoice } from "./src/media.js";
+import { importFile, rehydrate, recordVoice, gifFrameAt } from "./src/media.js";
 import { exportVideo, PRESETS, supported as canEncode } from "./src/export.js";
 
 const $ = id => document.getElementById(id);
@@ -41,6 +43,8 @@ const App = {
   project: M.newProject(),
   hist: M.makeHistory(),
   selection: [],
+  picking: false,
+  stabilising: false,
   poolSel: [],
   playhead: 0,
   playing: false,
@@ -104,7 +108,10 @@ function drawPreview() {
   for (const clip of visualClipsAt(p, t)) {
     const media = M.mediaOf(p, clip);
     if (!media?.el) continue;
-    sources.set(clip.id, media.el);
+    // a GIF supplies the frame that belongs at this moment, not whatever the
+    // browser is showing in the <img>
+    sources.set(clip.id, media.gif ? gifFrameAt(media, sourceTime(clip, t)) : media.el);
+    if (media.gif) invalidate();
     if (media.kind !== "image") {
       wanted.add(media.el);
       const want = sourceTime(clip, t);
@@ -251,6 +258,25 @@ function renderInspector() {
          <button class="chip" data-act="fitFrame">Fit to frame</button>
          <button class="chip" data-act="resetTransform">Reset</button>
        </div>
+       <div class="ihead">Layout</div>
+       <div class="chips">
+         <button class="chip" data-layout="pip-br">Picture in picture</button>
+         <button class="chip" data-layout="pip-tr">PiP top right</button>
+         <button class="chip" data-layout="split-lr">Split left / right</button>
+         <button class="chip" data-layout="split-tb">Split top / bottom</button>
+       </div>
+       <div class="note">Two clips on stacked video tracks make a layout: select
+         both and pick one. The upper track sits in front.</div>
+       <div class="ihead">Stabilise</div>
+       <div class="chips">
+         <button class="chip${App.stabilising ? " on" : ""}" data-act="stabilise"${App.stabilising ? " disabled" : ""}>
+           ${App.stabilising ? "Measuring…" : c.stabilised ? "Stabilise again" : "Stabilise this clip"}</button>
+         ${c.stabilised ? `<button class="chip" data-act="unstabilise">Remove</button>` : ""}
+       </div>
+       ${App.stabilising ? `<div class="stabtrack"><i id="stabBar"></i></div>` : ""}
+       <div class="note">It measures how the frame moves, keeps the movement that
+         looks deliberate and cancels the rest, then zooms in a little to cover the
+         edges. The result is keyframes on X and Y — look in Animate to see them.</div>
        <div class="ihead">Crop</div>
        ${row("Left", slider("crop.l", 0, .45, .01, c.crop.l))}
        ${row("Top", slider("crop.t", 0, .45, .01, c.crop.t))}
@@ -278,6 +304,28 @@ function renderInspector() {
          <button class="chip" data-look="sepia">Sepia</button>
          <button class="chip" data-look="punch">Punch</button>
          <button class="chip" data-look="fade">Faded</button>
+       </div>
+       <div class="ihead">Green screen</div>
+       <div class="chips">
+         <button class="chip${c.chroma ? " on" : ""}" data-toggle="chroma">Key out a colour</button>
+         <button class="chip${App.picking ? " on" : ""}" data-act="pickKey">Pick from the frame</button>
+       </div>
+       ${row("Colour", `<input type="color" data-prop="keyColor" value="${c.keyColor || "#00d000"}">`)}
+       ${row("Similarity", slider("keySimilarity", .01, .6, .005, c.keySimilarity ?? .18))}
+       ${row("Softness", slider("keySmooth", 0, .4, .005, c.keySmooth ?? .08))}
+       ${row("Spill removal", slider("keySpill", 0, 1, .01, c.keySpill ?? .4))}
+       <div class="note">${hasKeyer()
+         ? "Matched on colour, not brightness, so shadows on the screen key out with it. Raise similarity until the screen goes, then soften the edge."
+         : "This browser has no WebGL2, so keying is off here — the clip still plays and exports."}</div>
+       <div class="ihead">Mask</div>
+       ${row("Shape", `<select data-prop="mask">${MASKS.map(m =>
+         `<option value="${m}"${(c.mask || "none") === m ? " selected" : ""}>${m[0].toUpperCase() + m.slice(1)}</option>`).join("")}</select>`)}
+       ${row("Size", slider("maskSize", .05, 1, .01, c.maskSize ?? .6))}
+       ${row("Feather", slider("maskFeather", 0, 1, .01, c.maskFeather ?? .1))}
+       ${row("Offset X", slider("maskX", -.5, .5, .01, c.maskX ?? 0))}
+       ${row("Offset Y", slider("maskY", -.5, .5, .01, c.maskY ?? 0))}
+       <div class="chips">
+         <button class="chip${c.maskInvert ? " on" : ""}" data-toggle="maskInvert">Invert</button>
        </div>`;
 
     $("iAudio").innerHTML =
@@ -291,10 +339,11 @@ function renderInspector() {
        </div>
        <div class="ihead">Cleanup</div>
        <div class="chips">
-         <button class="chip${c.denoise ? " on" : ""}" data-toggle="denoise">Noise gate</button>
+         <button class="chip${c.denoise ? " on" : ""}" data-toggle="denoise">Remove background noise</button>
        </div>
-       <div class="note">The noise gate quietens the clip while it is below a low threshold — it removes hiss between
-       words, not noise underneath speech. Real spectral denoising needs the API.</div>`;
+       <div class="note">Spectral subtraction, the same denoiser the Voice workspace uses: it learns the
+       noise from the quietest part of the clip and takes it out of the whole thing, including underneath
+       speech. It runs on export, not in the live preview.</div>`;
 
     $("iText").innerHTML = (c.kind === "text" || c.kind === "sticker")
       ? `<div class="ihead">${c.kind === "text" ? "Text" : "Sticker"}</div>
@@ -432,6 +481,19 @@ const ACT = {
     App.selection.forEach(id => M.removeClip(App.project, id));
     setSelection([]); commit("Delete clip"); refresh();
   },
+  /* The magnet: no gaps anywhere. It is one action rather than a mode, so a
+     deliberate gap stays a deliberate gap until it is asked to close. */
+  closeGaps: () => {
+    let moved = 0;
+    const tracks = App.selection.length
+      ? [...new Set(App.selection.map(id => M.trackOf(App.project, id)).filter(Boolean))]
+      : App.project.tracks;
+    tracks.forEach(t => { if (!t.locked) moved += M.closeGaps(t); });
+    if (!moved) return toast("No gaps to close");
+    commit("Close gaps"); refresh();
+    toast(`Closed ${moved} gap${moved === 1 ? "" : "s"}`);
+  },
+
   ripple: () => {
     if (!App.selection.length) return toast("Select a clip first", "warn");
     App.selection.forEach(id => M.rippleDelete(App.project, id));
@@ -450,6 +512,96 @@ const ACT = {
     }
     if (out.length) { commit("Duplicate clip"); refresh(); setSelection(out); }
   },
+  /* Stabilisation writes ordinary keyframes, so what it decided is visible in
+     the Animate panel and can be edited or thrown away like anything else. */
+  stabilise: async () => {
+    const c = firstSelected();
+    if (!c) return toast("Select a clip first", "warn");
+    const media = M.mediaOf(App.project, c);
+    if (!media || media.kind !== "video") return toast("Only video clips can be stabilised", "warn");
+    if (App.stabilising) return;
+    App.stabilising = true;
+    renderInspector();
+    try {
+      const r = await analyseShake(media, c, {
+        onProgress: k => { const el = $("stabBar"); if (el) el.style.width = Math.round(k * 100) + "%"; },
+      });
+      c.keys.x = r.x; c.keys.y = r.y;
+      c.scale = Math.max(c.scale || 1, r.zoom);
+      c.stabilised = true;
+      commit("Stabilise"); refresh();
+      toast(`Stabilised — ${r.shake}px of shake taken out over ${r.samples} samples`);
+    } catch (e) {
+      toast(e.message || "Could not stabilise that clip", "warn");
+    } finally {
+      App.stabilising = false;
+      renderInspector();
+    }
+  },
+  unstabilise: () => {
+    const c = firstSelected();
+    if (!c) return;
+    delete c.keys.x; delete c.keys.y;
+    c.stabilised = false;
+    commit("Remove stabilisation"); refresh();
+  },
+
+  /* Eyedropper: the next click on the preview reads the pixel under it and
+     makes that the key colour. Reading the preview is enough — it is the same
+     picture the export will key, at a smaller size. */
+  pickKey: () => {
+    App.picking = !App.picking;
+    $("preview").classList.toggle("picking", App.picking);
+    if (App.picking) toast("Click the colour to key out");
+    renderInspector();
+  },
+
+  /* ---------------- layouts ----------------
+     Picture-in-picture and split screen are not new machinery: the compositor
+     already places every clip with its own position, scale and crop. These
+     write those numbers so nobody has to work them out with a slider. */
+  layout: kind => {
+    const sel = selectedClips();
+    if (!sel.length) return toast("Select the clips to arrange", "warn");
+    const W = App.project.w, H = App.project.h;
+    const set = (c, o) => Object.assign(c, o);
+    const clear = c => set(c, { x: 0, y: 0, scale: 1, rot: 0, crop: { l: 0, t: 0, r: 0, b: 0 } });
+
+    if (kind.startsWith("pip")) {
+      // the front clip shrinks into a corner; anything under it fills the frame
+      const front = sel[sel.length - 1];
+      const rest = sel.slice(0, -1);
+      rest.forEach(c => { clear(c); });
+      clear(front);
+      const s = 0.3, pad = 0.04;
+      set(front, {
+        scale: s,
+        x: (kind.endsWith("tr") || kind.endsWith("br") ? 1 : -1) * (W / 2 - (W * s) / 2 - W * pad),
+        y: (kind.endsWith("tr") ? -1 : 1) * (H / 2 - (H * s) / 2 - H * pad),
+      });
+      if (!rest.length) toast("Put another clip on the track below to sit behind it");
+    } else if (kind === "split-lr" || kind === "split-tb") {
+      const two = sel.slice(0, 2);
+      if (two.length < 2) return toast("Select two clips for a split screen", "warn");
+      const lr = kind === "split-lr";
+      two.forEach((c, i) => {
+        clear(c);
+        /* Keep the middle half of each shot. The compositor fits whatever is
+           left of the source into the frame, so cropping half the width makes
+           it draw at half the width — which is exactly the half to move into
+           place. Cropping one side instead would fill the frame again. */
+        set(c, {
+          crop: lr ? { l: .25, t: 0, r: .25, b: 0 } : { l: 0, t: .25, r: 0, b: .25 },
+          scale: 1,
+          x: lr ? (i === 0 ? -W / 4 : W / 4) : 0,
+          y: lr ? 0 : (i === 0 ? -H / 4 : H / 4),
+        });
+      });
+    }
+    commit("Layout"); refresh();
+    toast(kind.startsWith("pip") ? "Picture in picture" : "Split screen");
+  },
+
   addText: () => {
     const track = overlayTrack(App.playhead, 4);
     const clip = M.makeClip(null, App.playhead, {
@@ -591,6 +743,7 @@ function openClipMenu(id, x, y) {
     null,
     ["Delete", "delete"],
     ["Ripple delete (close the gap)", "ripple"],
+    ["Close all gaps (magnetic)", "closeGaps"],
   ];
   const menu = $("clipMenu");
   menu.innerHTML = items.map(it => it === null ? `<div class="msep"></div>`
@@ -804,6 +957,8 @@ function wire() {
   });
 
   document.addEventListener("click", e => {
+  const lay = e.target.closest("[data-layout]");
+  if (lay) { ACT.layout(lay.dataset.layout); return; }
   const tdel = e.target.closest("[data-track-del]");
   if (tdel) { ACT.deleteTrack(tdel.dataset.trackDel); return; }
   const ttog = e.target.closest("[data-track-toggle]");
@@ -830,6 +985,25 @@ function wire() {
   $("pool").addEventListener("dblclick", e => {
     const m = e.target.closest("[data-media]");
     if (m) addToTimeline(m.dataset.media);
+  });
+
+  // the eyedropper reads the preview where it was clicked
+  $("preview").addEventListener("click", e => {
+    if (!App.picking) return;
+    const c = firstSelected();
+    App.picking = false;
+    $("preview").classList.remove("picking");
+    if (!c) return renderInspector();
+    const cv = $("preview"), r = cv.getBoundingClientRect();
+    const x = Math.round((e.clientX - r.left) / r.width * cv.width);
+    const y = Math.round((e.clientY - r.top) / r.height * cv.height);
+    try {
+      const d = cv.getContext("2d").getImageData(x, y, 1, 1).data;
+      c.keyColor = "#" + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, "0")).join("");
+      c.chroma = true;
+      commit("Key colour"); refresh();
+      toast("Keying out " + c.keyColor);
+    } catch { toast("Could not read that pixel", "warn"); renderInspector(); }
   });
 
   // inspector bindings

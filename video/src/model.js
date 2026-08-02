@@ -22,6 +22,9 @@ export const DEFAULT_CLIP = {
   crop: { l: 0, t: 0, r: 0, b: 0 },
   // colour
   brightness: 1, contrast: 1, saturate: 1, hue: 0, blur: 0, sepia: 0, grayscale: 0,
+  // green screen and shape masks — see src/keyer.js
+  chroma: false, keyColor: "#00d000", keySimilarity: .18, keySmooth: .08, keySpill: .4,
+  mask: "none", maskSize: .6, maskFeather: .1, maskX: 0, maskY: 0, maskInvert: false,
   // audio
   volume: 1, fadeIn: 0, fadeOut: 0, muted: false,
   // transitions with the neighbour on the same track
@@ -162,6 +165,19 @@ export function rippleDelete(project, id) {
   track.clips.filter(c => c.start > clip.start).forEach(c => { c.start = Math.max(0, c.start - gap); });
   return true;
 }
+/* Magnetic: pull everything on a track up against its neighbour so there are
+   no gaps left. Order is kept — this only removes the empty space between. */
+export function closeGaps(track, from = 0) {
+  const clips = [...track.clips].sort((a, b) => a.start - b.start);
+  let at = from, moved = 0;
+  for (const c of clips) {
+    if (c.start < from) { at = Math.max(at, clipEnd(c)); continue; }
+    if (Math.abs(c.start - at) > .001) { c.start = at; moved++; }
+    at = clipEnd(c);
+  }
+  return moved;
+}
+
 export function moveClip(project, id, toTrackId, newStart) {
   const from = trackOf(project, id);
   const clip = findClip(project, id);

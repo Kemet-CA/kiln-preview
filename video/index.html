@@ -97,6 +97,9 @@ input,select{font:inherit;color:inherit}
 
 /* ---------- preview ---------- */
 .stage{grid-area:stage;position:relative;overflow:hidden;display:flex;flex-direction:column;}
+#preview.picking{cursor:crosshair}
+.stabtrack{height:4px;border-radius:99px;background:var(--s3);overflow:hidden;margin:2px 0 6px}
+.stabtrack i{display:block;height:100%;width:0;background:var(--ember);transition:width .15s linear}
 .vwrap{flex:1;min-height:0;display:grid;place-items:center;padding:16px}
 #preview{display:block;background:#000;border-radius:3px;
   box-shadow:0 20px 50px -24px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.07)}
@@ -176,6 +179,8 @@ input,select{font:inherit;color:inherit}
 .tl-track{position:relative;height:56px;border-bottom:1px solid var(--line);background:
   repeating-linear-gradient(90deg,transparent 0 59px,var(--gridln) 59px 60px)}
 .tl-track.audio{height:44px;background-color:color-mix(in srgb,var(--celadon) 5%,transparent)}
+.tl-marquee{position:absolute;z-index:8;pointer-events:none;border-radius:4px;
+  border:1px solid var(--ember);background:color-mix(in srgb,var(--ember) 16%,transparent)}
 .tl-clip{position:absolute;top:4px;bottom:4px;border-radius:6px;overflow:hidden;cursor:grab;
   background:color-mix(in srgb,var(--cobalt) 34%,var(--s3));border:1px solid color-mix(in srgb,var(--cobalt) 55%,transparent);
   display:flex;align-items:center;gap:5px;padding:0 8px;min-width:6px}
@@ -251,7 +256,7 @@ input,select{font:inherit;color:inherit}
 .prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="1a304eb-2119">
+<meta name="kiln-build" content="2250597-0537">
 </head>
 <body>
 <div id="app">
@@ -289,6 +294,7 @@ input,select{font:inherit;color:inherit}
     <button class="tb" data-act="undo" title="Undo (⌘Z)">↶</button>
     <button class="tb" data-act="redo" title="Redo (⇧⌘Z)">↷</button>
     <button class="tb on" data-act="snap" id="snapBtn" title="Snapping">⌁ Snap</button>
+    <button class="tb" data-act="closeGaps" title="Pull the clips together so there are no gaps">⇥ Close gaps</button>
     <button class="tb" data-act="zoomOut" title="Zoom out timeline">−</button>
     <button class="tb" data-act="zoomFit" title="Fit timeline">Fit</button>
     <button class="tb" data-act="zoomIn" title="Zoom in timeline">+</button>

@@ -47,6 +47,47 @@ const kindOf = file =>
   file.type.startsWith("image") ? "image" : null;
 
 /* load a file into something the compositor can draw, and measure it */
+/* ---------------- animated GIF ----------------
+   ImageDecoder is the only way to get at the individual frames; without it
+   the GIF still imports and behaves like a still, which is what an <img>
+   would have given anyway. */
+async function decodeGif(file) {
+  if (typeof ImageDecoder === "undefined") return null;
+  const dec = new ImageDecoder({ data: await file.arrayBuffer(), type: "image/gif" });
+  await dec.completed;
+  await dec.tracks.ready;                 // the frame count is not known before this
+  const track = dec.tracks.selectedTrack;
+  if (!track?.animated) return null;      // a still GIF is just an image
+  const count = track.frameCount || 600;
+  const frames = [], times = [];
+  let t = 0, w = 0, h = 0;
+  for (let i = 0; i < Math.min(count, 600); i++) {          // a sane ceiling
+    let image;
+    try { ({ image } = await dec.decode({ frameIndex: i })); } catch { break; }
+    w = image.displayWidth || image.codedWidth;
+    h = image.displayHeight || image.codedHeight;
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    cv.getContext("2d").drawImage(image, 0, 0);
+    frames.push(cv);
+    times.push(t);
+    t += (image.duration || 100000) / 1e6;                  // microseconds
+    image.close();
+  }
+  dec.close?.();
+  return { frames, times, dur: Math.max(.1, t), w, h };
+}
+
+/* the frame that belongs at this moment, looping the way a GIF does */
+export function gifFrameAt(media, t) {
+  const g = media.gif;
+  if (!g) return media.el;
+  const at = ((t % g.dur) + g.dur) % g.dur;
+  let i = 0;
+  while (i + 1 < g.times.length && g.times[i + 1] <= at) i++;
+  return g.frames[i];
+}
+
 export async function importFile(file, id = uid("m")) {
   const kind = kindOf(file);
   if (!kind) throw new Error(`${file.name} is not a video, audio or image file`);
@@ -61,6 +102,18 @@ export async function importFile(file, id = uid("m")) {
     media.w = img.naturalWidth; media.h = img.naturalHeight;
     media.dur = 5;                       // stills get a default length on the timeline
     media.poster = url;
+    /* An animated GIF drawn from an <img> gives whatever frame the browser
+       happens to be showing, which is fine on a page and wrong on a timeline.
+       Decoding it properly means the clip plays at its own rate, scrubs, and
+       exports the frame that belongs at that moment. */
+    if (/gif/i.test(file.type) || /\.gif$/i.test(file.name)) {
+      const gif = await decodeGif(file).catch(() => null);
+      if (gif && gif.frames.length > 1) {
+        media.gif = gif;
+        media.dur = gif.dur;
+        media.w = gif.w; media.h = gif.h;
+      }
+    }
   } else {
     const el = document.createElement(kind === "audio" ? "audio" : "video");
     el.src = url;
