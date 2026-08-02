@@ -18,8 +18,14 @@
 
      <input data-i18n-attr="placeholder:search.ph">
 
-   Arabic sets the document to RTL. That is not a translation problem, it is a
-   layout one, and it is why `dir` is set here rather than left to CSS.
+   The layout does not turn around for Arabic. Mirroring the whole page is the
+   textbook answer and it was what this did, but it moves every control a
+   person had already learned the position of, and the ask here was for the
+   site to be translated rather than rearranged. The document stays left to
+   right; Arabic text still runs right to left inside it, because that is the
+   browser's bidi algorithm doing its job and not a layout decision. Panes that
+   hold translated text — the translator's own two boxes — set their own `dir`,
+   which is the right place for it: that is content, not chrome.
    ============================================================ */
 (function () {
   "use strict";
@@ -28,13 +34,13 @@
      list expects — and each row also carries the name in its own script,
      because that is the one a speaker recognises fastest. */
   const LANGS = [
-    { code: "ar", name: "Arabic",   own: "العربية",  dir: "rtl" },
-    { code: "zh", name: "Chinese",  own: "中文",      dir: "ltr" },
-    { code: "en", name: "English",  own: "English",  dir: "ltr" },
-    { code: "fr", name: "French",   own: "Français", dir: "ltr" },
-    { code: "de", name: "German",   own: "Deutsch",  dir: "ltr" },
-    { code: "ja", name: "Japanese", own: "日本語",    dir: "ltr" },
-    { code: "ko", name: "Korean",   own: "한국어",    dir: "ltr" },
+    { code: "ar", name: "Arabic",   own: "العربية" },
+    { code: "zh", name: "Chinese",  own: "中文" },
+    { code: "en", name: "English",  own: "English" },
+    { code: "fr", name: "French",   own: "Français" },
+    { code: "de", name: "German",   own: "Deutsch" },
+    { code: "ja", name: "Japanese", own: "日本語" },
+    { code: "ko", name: "Korean",   own: "한국어" },
   ];
 
   const KEY = "kiln-lang";
@@ -70,8 +76,22 @@
     "feat.local": "Everything local", "feat.localD": "No cloud. No tracking. No account.",
     "feat.one": "One workspace", "feat.oneD": "Every tool, one place.",
     "feat.tab": "Open in a tab", "feat.tabD": "Nothing to install.",
-    "foot.by": "Kiln by Kemet Studio",
     "lang.label": "Language",
+    "proj.save": "Save",
+    "proj.saving": "Saving…",
+    "proj.new": "New project",
+    "proj.open": "Open project…",
+    "proj.saveas": "Save as…",
+    "proj.recent": "Recent projects",
+    "proj.auto": "Auto save",
+    "proj.off": "Off",
+    "proj.every": "Every",
+    "proj.min": "min",
+    "proj.download": "Save a copy to disk…",
+    "proj.fromdisk": "Open from disk…",
+    "proj.none": "Nothing saved yet.",
+    "proj.delq": "Delete this project?",
+    "proj.dropq": "There are unsaved changes. Start a new project anyway?",
     "ui.searchAll": "Search all tools",
     "ui.searchApp": "Search {app} tools",
     "ui.searchIn": "Search in {app} tools…",
@@ -108,8 +128,22 @@
     "feat.local": "كل شيء محلي", "feat.localD": "بلا سحابة. بلا تتبّع. بلا حساب.",
     "feat.one": "مساحة واحدة", "feat.oneD": "كل الأدوات في مكان واحد.",
     "feat.tab": "افتحه في تبويب", "feat.tabD": "لا شيء لتثبيته.",
-    "foot.by": "Kiln من Kemet Studio",
     "lang.label": "اللغة",
+    "proj.save": "حفظ",
+    "proj.saving": "جارٍ الحفظ…",
+    "proj.new": "مشروع جديد",
+    "proj.open": "فتح مشروع…",
+    "proj.saveas": "حفظ باسم…",
+    "proj.recent": "المشاريع الأخيرة",
+    "proj.auto": "حفظ تلقائي",
+    "proj.off": "إيقاف",
+    "proj.every": "كل",
+    "proj.min": "دقيقة",
+    "proj.download": "حفظ نسخة على الجهاز…",
+    "proj.fromdisk": "فتح من الجهاز…",
+    "proj.none": "لا يوجد شيء محفوظ بعد.",
+    "proj.delq": "حذف هذا المشروع؟",
+    "proj.dropq": "هناك تغييرات غير محفوظة. هل تبدأ مشروعًا جديدًا؟",
     "ui.searchAll": "ابحث في كل الأدوات",
     "ui.searchApp": "ابحث في أدوات {app}",
     "ui.searchIn": "ابحث في أدوات {app}…",
@@ -146,8 +180,22 @@
     "feat.local": "全部本地运行", "feat.localD": "无云端。无追踪。无需账号。",
     "feat.one": "一个工作区", "feat.oneD": "所有工具，一处齐全。",
     "feat.tab": "打开即用", "feat.tabD": "无需安装。",
-    "foot.by": "Kiln，由 Kemet Studio 出品",
     "lang.label": "语言",
+    "proj.save": "保存",
+    "proj.saving": "保存中…",
+    "proj.new": "新建项目",
+    "proj.open": "打开项目…",
+    "proj.saveas": "另存为…",
+    "proj.recent": "最近的项目",
+    "proj.auto": "自动保存",
+    "proj.off": "关闭",
+    "proj.every": "每",
+    "proj.min": "分钟",
+    "proj.download": "保存副本到磁盘…",
+    "proj.fromdisk": "从磁盘打开…",
+    "proj.none": "尚未保存任何内容。",
+    "proj.delq": "删除这个项目？",
+    "proj.dropq": "有未保存的更改。仍要新建项目吗？",
     "ui.searchAll": "搜索全部工具",
     "ui.searchApp": "搜索 {app} 工具",
     "ui.searchIn": "在 {app} 工具中搜索…",
@@ -184,8 +232,22 @@
     "feat.local": "Tout en local", "feat.localD": "Pas de cloud. Pas de suivi. Pas de compte.",
     "feat.one": "Un seul espace", "feat.oneD": "Tous les outils au même endroit.",
     "feat.tab": "Ouvrir dans un onglet", "feat.tabD": "Rien à installer.",
-    "foot.by": "Kiln par Kemet Studio",
     "lang.label": "Langue",
+    "proj.save": "Enregistrer",
+    "proj.saving": "Enregistrement…",
+    "proj.new": "Nouveau projet",
+    "proj.open": "Ouvrir un projet…",
+    "proj.saveas": "Enregistrer sous…",
+    "proj.recent": "Projets récents",
+    "proj.auto": "Enregistrement auto",
+    "proj.off": "Désactivé",
+    "proj.every": "Toutes les",
+    "proj.min": "min",
+    "proj.download": "Enregistrer une copie sur le disque…",
+    "proj.fromdisk": "Ouvrir depuis le disque…",
+    "proj.none": "Rien d’enregistré pour l’instant.",
+    "proj.delq": "Supprimer ce projet ?",
+    "proj.dropq": "Des modifications ne sont pas enregistrées. Créer un nouveau projet ?",
     "ui.searchAll": "Rechercher dans tous les outils",
     "ui.searchApp": "Rechercher les outils {app}",
     "ui.searchIn": "Rechercher dans {app}…",
@@ -222,8 +284,22 @@
     "feat.local": "Alles lokal", "feat.localD": "Keine Cloud. Kein Tracking. Kein Konto.",
     "feat.one": "Ein Arbeitsbereich", "feat.oneD": "Jedes Werkzeug an einem Ort.",
     "feat.tab": "Im Tab öffnen", "feat.tabD": "Nichts zu installieren.",
-    "foot.by": "Kiln von Kemet Studio",
     "lang.label": "Sprache",
+    "proj.save": "Speichern",
+    "proj.saving": "Wird gespeichert…",
+    "proj.new": "Neues Projekt",
+    "proj.open": "Projekt öffnen…",
+    "proj.saveas": "Speichern unter…",
+    "proj.recent": "Zuletzt verwendet",
+    "proj.auto": "Automatisch speichern",
+    "proj.off": "Aus",
+    "proj.every": "Alle",
+    "proj.min": "Min.",
+    "proj.download": "Kopie auf der Festplatte speichern…",
+    "proj.fromdisk": "Von der Festplatte öffnen…",
+    "proj.none": "Noch nichts gespeichert.",
+    "proj.delq": "Dieses Projekt löschen?",
+    "proj.dropq": "Es gibt ungespeicherte Änderungen. Trotzdem ein neues Projekt?",
     "ui.searchAll": "Alle Werkzeuge durchsuchen",
     "ui.searchApp": "{app}-Werkzeuge durchsuchen",
     "ui.searchIn": "In {app} suchen…",
@@ -260,8 +336,22 @@
     "feat.local": "すべてローカル", "feat.localD": "クラウドなし。追跡なし。アカウント不要。",
     "feat.one": "ひとつの作業場所", "feat.oneD": "すべての道具が一か所に。",
     "feat.tab": "タブで開くだけ", "feat.tabD": "インストール不要。",
-    "foot.by": "Kiln — Kemet Studio",
     "lang.label": "言語",
+    "proj.save": "保存",
+    "proj.saving": "保存中…",
+    "proj.new": "新規プロジェクト",
+    "proj.open": "プロジェクトを開く…",
+    "proj.saveas": "名前を付けて保存…",
+    "proj.recent": "最近のプロジェクト",
+    "proj.auto": "自動保存",
+    "proj.off": "オフ",
+    "proj.every": "毎",
+    "proj.min": "分",
+    "proj.download": "コピーをディスクに保存…",
+    "proj.fromdisk": "ディスクから開く…",
+    "proj.none": "まだ何も保存されていません。",
+    "proj.delq": "このプロジェクトを削除しますか？",
+    "proj.dropq": "保存されていない変更があります。新規プロジェクトを開始しますか？",
     "ui.searchAll": "すべてのツールを検索",
     "ui.searchApp": "{app} のツールを検索",
     "ui.searchIn": "{app} 内を検索…",
@@ -298,8 +388,22 @@
     "feat.local": "모두 로컬에서", "feat.localD": "클라우드 없음. 추적 없음. 계정 없음.",
     "feat.one": "하나의 작업 공간", "feat.oneD": "모든 도구가 한곳에.",
     "feat.tab": "탭에서 바로", "feat.tabD": "설치할 것이 없습니다.",
-    "foot.by": "Kiln — Kemet Studio",
     "lang.label": "언어",
+    "proj.save": "저장",
+    "proj.saving": "저장 중…",
+    "proj.new": "새 프로젝트",
+    "proj.open": "프로젝트 열기…",
+    "proj.saveas": "다른 이름으로 저장…",
+    "proj.recent": "최근 프로젝트",
+    "proj.auto": "자동 저장",
+    "proj.off": "끄기",
+    "proj.every": "매",
+    "proj.min": "분",
+    "proj.download": "사본을 디스크에 저장…",
+    "proj.fromdisk": "디스크에서 열기…",
+    "proj.none": "아직 저장된 항목이 없습니다.",
+    "proj.delq": "이 프로젝트를 삭제할까요?",
+    "proj.dropq": "저장하지 않은 변경 사항이 있습니다. 새 프로젝트를 시작할까요?",
     "ui.searchAll": "모든 도구 검색",
     "ui.searchApp": "{app} 도구 검색",
     "ui.searchIn": "{app} 도구에서 검색…",
@@ -336,7 +440,7 @@
     current = code;
     const lang = LANGS.find(l => l.code === code);
     root.setAttribute("lang", code);
-    root.setAttribute("dir", lang.dir);
+    root.setAttribute("dir", "ltr");            // deliberately not mirrored — see the note above
     /* Deliberately NOT data-kiln-lang: that attribute marks where the picker
        mounts, and setting it on <html> made the picker mount into the document
        element and replace the entire page with itself. The `lang` attribute is
@@ -356,7 +460,7 @@
       }
     }
     remember(code);
-    dispatchEvent(new CustomEvent("kiln-lang", { detail: { lang: code, dir: lang.dir } }));
+    dispatchEvent(new CustomEvent("kiln-lang", { detail: { lang: code } }));
   }
 
   /* ---------------- the picker ---------------- */

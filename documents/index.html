@@ -13,6 +13,7 @@
 <script src="search.js"></script>
 <script src="panels.js" defer></script>
 <script src="session.js"></script>
+<script src="project.js"></script>
 <script type="importmap">
 { "imports": { "jszip": "./vendor/jszip.mjs" } }
 </script>
@@ -278,7 +279,7 @@ body.foldL .split{display:none}
   .docx-wrapper>section.docx{box-shadow:none!important;margin:0!important}
 }
 </style>
-<meta name="kiln-build" content="7941b16-1454">
+<meta name="kiln-build" content="aac2b75-1558">
 </head>
 <body>
 <div id="app">
@@ -289,6 +290,7 @@ body.foldL .split{display:none}
     <div class="menu" data-menu><button class="menu-t">Edit</button><div class="menu-d" id="mEdit"></div></div>
     <div class="menu" data-menu><button class="menu-t">Format</button><div class="menu-d" id="mFormat"></div></div>
     <div class="menu" data-menu><button class="menu-t">View</button><div class="menu-d" id="mView"></div></div>
+    <span data-kiln-project></span>
     <div class="menubar-r">
       <span data-kiln-search></span>
       <span data-kiln-coffee></span>

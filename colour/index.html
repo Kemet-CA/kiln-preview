@@ -13,6 +13,7 @@
 <script src="search.js"></script>
 <script src="panels.js" defer></script>
 <script src="session.js"></script>
+<script src="project.js"></script>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -212,7 +213,7 @@ input,select{font:inherit;color:inherit}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="7941b16-1454">
+<meta name="kiln-build" content="aac2b75-1558">
 </head>
 <body>
 <div id="app">
@@ -222,6 +223,7 @@ input,select{font:inherit;color:inherit}
     <div class="menu" data-menu><button class="menu-t">File</button><div class="menu-d" id="mFile"></div></div>
     <div class="menu" data-menu><button class="menu-t">Colour</button><div class="menu-d" id="mColour"></div></div>
     <div class="menu" data-menu><button class="menu-t">Palette</button><div class="menu-d" id="mPalette"></div></div>
+    <span data-kiln-project></span>
     <div class="menubar-r">
       <span data-kiln-search></span>
       <span data-kiln-coffee></span>

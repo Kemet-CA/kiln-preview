@@ -275,6 +275,7 @@ function paintContrast() {
 }
 
 function paintAll() {
+  window.KilnProject?.touch();
   paintPicker();
   paintFormats();
   paintHarmonies();
@@ -284,6 +285,8 @@ function paintAll() {
 
 /* ---------------- actions ---------------- */
 const ACT = {
+  saveProject: () => window.KilnProject?.save(),
+  downloadProject: () => window.KilnProject?.download(),
   randomise,
   randomColor: () => setColor(C.randomPalette(1, App.scheme)[0]),
   copyHex: () => copy(C.toHex(rgb()), "Hex"),
@@ -351,7 +354,8 @@ const ACT = {
 
 /* ---------------- wiring ---------------- */
 const MENUS = {
-  mFile: [["Copy the hex", "copyHex", "⌘C"], ["Copy the palette", "copyAll"], null,
+  mFile: [["Save project", "saveProject", "⌘S"], ["Save a copy to disk…", "downloadProject"], null,
+          ["Copy the hex", "copyHex", "⌘C"], ["Copy the palette", "copyAll"], null,
           ["Export CSS variables", "exportCss"], ["Export JSON", "exportJson"], ["Export SVG…", "exportSvg"]],
   mColour: [["Random colour", "randomColor", "R"], ["Pick from the screen…", "eyedropper"],
     ["Back to the previous colour", "revert"], null,
@@ -486,3 +490,31 @@ paintRecent();
 paintPalettes();
 
 window.Kiln = { App, C, ACT, setColor, rgb, randomise, paintAll, paintSwatches, paintPalettes, paintRecent, copy };
+
+/* ---------------- the project system ----------------
+   A colour project is the palette and the rules that made it — the harmony,
+   the locked slots, the vision simulation — not just a list of hexes. Reopen
+   it and the generator picks up where it stopped rather than starting over. */
+window.KilnProject?.register({
+  kind: "colour", schema: 1, newName: "Untitled palette",
+  snapshot: () => ({
+    doc: {
+      hsv: { ...App.hsv }, alpha: App.alpha, scheme: App.scheme, count: App.count, cvd: App.cvd,
+      palette: App.palette.map(c => ({ ...c })), locks: [...App.locks],
+      swatches: App.swatches.map(c => ({ ...c })),
+    },
+    assets: [], history: null,
+  }),
+  restore(doc) {
+    App.hsv = doc.hsv || App.hsv;
+    App.alpha = doc.alpha ?? 1;
+    App.scheme = doc.scheme || App.scheme;
+    App.count = doc.count || App.count;
+    App.cvd = doc.cvd || "";
+    App.palette = doc.palette || [];
+    App.locks = doc.locks || [];
+    if (doc.swatches) App.swatches = doc.swatches;
+    paintAll();
+  },
+  reset() { App.palette = []; App.locks = []; App.cvd = ""; paintAll(); },
+});

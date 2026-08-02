@@ -423,6 +423,7 @@ function commit(label) {
   Hist.steps.push(snapState(label));
   if (Hist.steps.length > Hist.MAX) Hist.steps.shift();
   Hist.i = Hist.steps.length - 1;
+  window.KilnProject?.touch();
   renderHistory(); renderLayersPanel(); requestComposite(); renderInfo();
 }
 function restore(i) {
@@ -2044,9 +2045,10 @@ function buildMenus() {
     mi("Open image…", "⌘O", () => $("fileImg").click()),
     mi("New document", "", () => newDoc(1280, 800, "untitled")),
     mi("Load sample", "", () => newDoc(1600, 1067, "sample.jpg", makeSample())),
-    mi("Open .kiln project…", "", () => $("fileProj").click()),
+    mi("Open project…", "⌘O", () => window.KilnProject?.openFile ? $("fileProj").click() : null),
     "-",
-    mi("Save project (.kiln)", "⌘S", saveProject),
+    mi("Save project", "⌘S", () => window.KilnProject?.save()),
+    mi("Save a copy to disk…", "", () => window.KilnProject?.download()),
     { label: "Export as", sub: [
       mi("PNG", "", () => exportPNG("png")),
       mi("JPG", "", () => exportPNG("jpeg", .9)),
@@ -2218,8 +2220,7 @@ document.addEventListener("keydown", e => {
     else if (k === "t") { e.preventDefault(); startFT(); }
     else if (k === "n" && e.shiftKey) { e.preventDefault(); addRaster(); }
     else if (k === "e") { e.preventDefault(); exportPNG("webp", .9); }
-    else if (k === "s") { e.preventDefault(); saveProject(); }
-    else if (k === "o") { e.preventDefault(); $("fileImg").click(); }
+    else if (k === "o" && e.shiftKey) { e.preventDefault(); $("fileImg").click(); }
     else if (k === "0") { e.preventDefault(); fit(); }
     else if (k === "1") { e.preventDefault(); View.z = 1; applyView(); }
     else if (k === "=" || k === "+") { e.preventDefault(); zoomAt(1.25); }
@@ -2291,9 +2292,12 @@ $("splitR").addEventListener("pointerdown", e => {
 $("fileImg").addEventListener("change", e => openImageFile(e.target.files[0]));
 (() => {
   const inp = document.createElement("input");
-  inp.type = "file"; inp.accept = ".kiln,application/json"; inp.id = "fileProj"; inp.hidden = true;
+  inp.type = "file"; inp.accept = ".kiln,application/zip,application/json"; inp.id = "fileProj"; inp.hidden = true;
   document.body.appendChild(inp);
-  inp.addEventListener("change", e => e.target.files[0] && loadProject(e.target.files[0]));
+  inp.addEventListener("change", e => {
+    if (e.target.files[0]) window.KilnProject?.openFile(e.target.files[0]);
+    e.target.value = "";
+  });
 })();
 $("dzOpen").addEventListener("click", e => { e.stopPropagation(); $("fileImg").click(); });
 $("dzSample").addEventListener("click", e => { e.stopPropagation(); newDoc(1600, 1067, "sample.jpg", makeSample()); });
@@ -2707,3 +2711,82 @@ function loadProject(file) {
   };
   r.readAsText(file);
 }
+
+/* ---------------- the project system ----------------
+   Layers are pictures, and a picture belongs in a file rather than in a JSON
+   string. Each raster and each mask goes out as its own PNG asset and the
+   document keeps only the id, which is the difference between a project file
+   you can open and a 90 MB line of base64.
+
+   The undo stack is not kept. Its steps share canvas objects by reference —
+   that is what makes undo cheap here — so writing them down would mean writing
+   every intermediate picture, and thirty steps of a large document is more
+   than the document. The work is saved; the road to it is not. */
+window.KilnProject?.register({
+  kind: "photo", schema: 1, newName: "Untitled image",
+  async snapshot() {
+    const assets = [];
+    const put = async (cv, tag) => {
+      if (!cv) return null;
+      const blob = await new Promise(r => cv.toBlob(r, "image/png"));
+      if (!blob) return null;
+      /* A fresh id every save: unlike a video file, this picture is not the
+         same picture it was last time. The store sweeps what falls out of use. */
+      const id = "px_" + tag + "_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+      assets.push({ id, name: tag + ".png", type: "image/png", size: blob.size, blob });
+      return id;
+    };
+    const layers = [];
+    for (const l of Doc.layers) {
+      layers.push({ ...l, canvas: await put(l.canvas, "layer"), mask: await put(l.mask, "mask"), params: l.params || null });
+    }
+    return {
+      doc: { w: Doc.w, h: Doc.h, name: window.KilnProject.state.name || Doc.name, active: Doc.active, layers },
+      assets, history: null,
+    };
+  },
+  async restore(doc, assets, rec) {
+    newDoc(doc.w, doc.h, rec.name || doc.name || "Untitled image");
+    const draw = async id => (id && assets.has(id)) ? await createImageBitmap(assets.get(id)) : null;
+    Doc.layers = [];
+    for (const st of doc.layers) {
+      const l = { ...newLayer(st.type === "adjust" ? "adjust" : "raster"), ...st };
+      l.canvas = null; l.mask = null;
+      if (st.type !== "adjust") {
+        l.canvas = mkCanvas(doc.w, doc.h);
+        const bmp = await draw(st.canvas);
+        if (bmp) l.canvas.getContext("2d").drawImage(bmp, 0, 0);
+      }
+      const mbmp = await draw(st.mask);
+      if (mbmp) { l.mask = mkCanvas(doc.w, doc.h); l.mask.getContext("2d").drawImage(mbmp, 0, 0); }
+      if (l.type === "text") renderText(l);
+      if (l.type === "vector") renderVector(l);
+      Doc.layers.push(l);
+    }
+    Doc.active = Math.min(doc.active ?? Doc.layers.length - 1, Doc.layers.length - 1);
+    Hist.steps = []; Hist.i = -1;
+    commit("Open project");
+    fit();
+  },
+  reset() { newDoc(1280, 800, "Untitled image"); },
+  async legacy(d) {                       // the single-file .kiln from before
+    if (!d.kiln) throw new Error("not a Kiln project");
+    newDoc(d.w, d.h, d.name || "Untitled image");
+    const img = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.src = src; });
+    Doc.layers = [];
+    for (const st of d.layers) {
+      const l = { ...newLayer(st.type === "adjust" ? "adjust" : "raster"), ...st };
+      l.canvas = null; l.mask = null;
+      if (st.type !== "adjust") l.canvas = mkCanvas(d.w, d.h);
+      if (st.canvas) l.canvas.getContext("2d").drawImage(await img(st.canvas), 0, 0);
+      if (st.mask) { l.mask = mkCanvas(d.w, d.h); l.mask.getContext("2d").drawImage(await img(st.mask), 0, 0); }
+      if (l.type === "text") renderText(l);
+      if (l.type === "vector") renderVector(l);
+      Doc.layers.push(l);
+    }
+    Doc.active = Doc.layers.length - 1;
+    Hist.steps = []; Hist.i = -1;
+    commit("Open project");
+    fit();
+  },
+});

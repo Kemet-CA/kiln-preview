@@ -355,7 +355,7 @@ function applyPainter() {
 }
 
 function onEdited() {
-  Doc.dirty = true;
+  Doc.dirty = true; window.KilnProject?.touch();
   Doc.html = editor().innerHTML;
   syncStats();
   renderOutline();
@@ -546,7 +546,7 @@ function replaceOne() {
   m.replaceWith(document.createTextNode($("replIn").value));
   editor().normalize();
   Doc.html = editor().innerHTML;
-  Doc.dirty = true;
+  Doc.dirty = true; window.KilnProject?.touch();
   runFind(false);
   if (Find.hits.length) gotoHit(Math.max(0, Find.i));
   syncStats();
@@ -929,6 +929,7 @@ function renderExportPanel() {
 const MENUS = {
   mFile: [
     ["Open .docx…", "open", "⌘O"], ["Sample document", "sample"], ["Start writing", "blank"], null,
+    ["Save project", "saveProject", "⌘S"], ["Save a copy to disk…", "downloadProject"], null,
     ["Export .docx…", "exportDocx", "⌘E"], ["Export HTML…", "exportHtml"], ["Export plain text…", "exportText"],
     ["Download the original", "saveOriginal"], null,
     ["Print · Save as PDF", "print", "⌘P"], ["Close document", "close"],
@@ -958,6 +959,8 @@ function buildMenus() {
 }
 const ACT = {
   open: () => $("fileMain").click(),
+  saveProject: () => window.KilnProject?.save(),
+  downloadProject: () => window.KilnProject?.download(),
   sample: async () => { try { await openBytes(await sampleBytes(), "kiln-sample.docx"); } catch (e) { toast("Sample failed: " + e.message, "bad"); } },
   blank: blankDocument,
   close: () => {
@@ -1011,7 +1014,7 @@ const ACT = {
     const ed = editor();
     ed.style.outline = ed.style.outline ? "" : "2px solid #8a8378";
     ed.style.outlineOffset = ed.style.outline ? "-28px" : "";
-    Doc.dirty = true;
+    Doc.dirty = true; window.KilnProject?.touch();
     toast(ed.style.outline ? "Page border on" : "Page border off");
   },
 
@@ -1159,7 +1162,7 @@ function wire() {
   });
   // page layout
   const layout = () => { Page.size = $("pageSize").value; Page.orient = $("pageOrient").value;
-    Page.margin = $("pageMargin").value; Page.cols = +$("pageCols").value; applyPage(); Doc.dirty = true; };
+    Page.margin = $("pageMargin").value; Page.cols = +$("pageCols").value; applyPage(); Doc.dirty = true; window.KilnProject?.touch(); };
   ["pageSize", "pageOrient", "pageMargin", "pageCols"].forEach(id => $(id).addEventListener("change", layout));
   // find & replace
   $("findIn").addEventListener("input", () => runFind());
@@ -1234,3 +1237,47 @@ window.Kiln = {
   selectedBlocks, runFind, replaceOne, replaceAll, toggleFind, Find, applyPage,
   html: () => (Doc.mode === "edit" ? editor().innerHTML : Doc.html),
 };
+
+/* ---------------- the project system ----------------
+   Two things are worth keeping and they are not the same thing: the editable
+   content, which is HTML the editor owns, and the original .docx, which is
+   what Read mode goes back to and what an export rebuilds from. The first is
+   the document, the second is an asset, and losing either one loses something
+   the other cannot replace. */
+window.KilnProject?.register({
+  kind: "docs", schema: 1, newName: "Untitled document",
+  async snapshot() {
+    Doc.uid ||= "doc_" + Math.random().toString(36).slice(2, 10);
+    const assets = Doc.bytes
+      ? [{ id: Doc.uid, name: Doc.name || "original.docx", size: Doc.bytes.byteLength,
+           type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+           blob: new Blob([Doc.bytes.slice()]) }]
+      : [];
+    return {
+      doc: {
+        name: Doc.name, mode: Doc.mode, zoom: Doc.zoom,
+        html: Doc.mode === "edit" ? editor().innerHTML : Doc.html,
+        original: assets.length ? Doc.uid : null,
+        page: { ...Page },
+      },
+      assets, history: null,
+    };
+  },
+  async restore(doc, assets) {
+    const blob = doc.original ? assets.get(doc.original) : null;
+    Doc.bytes = blob ? new Uint8Array(await blob.arrayBuffer()) : null;
+    Doc.uid = doc.original || null;
+    Doc.name = doc.name || "Untitled.docx";
+    Doc.size = Doc.bytes ? Doc.bytes.byteLength : 0;
+    Doc.html = doc.html || "";
+    Doc.open = true;
+    Doc.dirty = false;
+    Doc.messages = [];
+    Object.assign(Page, doc.page || {});
+    $("dz").hidden = true;
+    await setMode(doc.mode === "view" && Doc.bytes ? "view" : "edit");
+    applyPage();
+    renderAll();
+  },
+  reset() { blankDocument(); },
+});

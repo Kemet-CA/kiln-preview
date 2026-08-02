@@ -239,6 +239,8 @@ function speak(text, lang) {
 
 /* ---------------- actions ---------------- */
 const ACT = {
+  saveProject: () => window.KilnProject?.save(),
+  downloadProject: () => window.KilnProject?.download(),
   translate: () => translate(),
   live: () => {
     App.live = !App.live;
@@ -299,7 +301,8 @@ function syncPair() {
 
 /* ---------------- wiring ---------------- */
 const MENUS = {
-  mFile: [["Open a text file…", "openFile", "⌘O"], ["Save the translation…", "saveOut", "⌘S"], null,
+  mFile: [["Save project", "saveProject", "⌘S"], ["Save a copy to disk…", "downloadProject"], null,
+          ["Open a text file…", "openFile", "⌘O"], ["Save the translation…", "saveOut"], null,
           ["Clear", "clear"]],
   mEdit: [["Copy the translation", "copy", "⌘C"], ["Paste into the source", "paste"], null,
           ["Read the source aloud", "speakSrc"], ["Read the translation aloud", "speakOut"]],
@@ -391,3 +394,22 @@ if (supported()) {
 }
 
 window.Kiln = { App, ACT, translate, detect, LANGS, NAME, setOut, renderHistory, supported };
+
+/* ---------------- the project system ----------------
+   Both sides of the page and the pair of languages between them, so a long
+   translation is something you can come back to rather than redo. */
+window.KilnProject?.register({
+  kind: "translate", schema: 1, newName: "Untitled translation",
+  snapshot: () => ({
+    doc: { src: $("src").value, out: $("out").value, from: $("from").value, to: $("to").value },
+    assets: [], history: null,
+  }),
+  restore(doc) {
+    $("src").value = doc.src || "";
+    $("out").value = doc.out || "";
+    if (doc.from) { $("from").value = doc.from; App.from = doc.from; }
+    if (doc.to) { $("to").value = doc.to; App.to = doc.to; }
+    syncPair(); onInput();
+  },
+  reset() { $("src").value = ""; $("out").value = ""; onInput(); },
+});

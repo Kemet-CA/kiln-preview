@@ -80,6 +80,7 @@ function commit(label) {
   Hist.steps.push({ label, state: snapshot() });
   if (Hist.steps.length > 60) Hist.steps.shift();
   Hist.i = Hist.steps.length - 1;
+  window.KilnProject?.touch();
   renderHistory();
 }
 function restore(i) {
@@ -110,7 +111,9 @@ async function addSource(bytes, name) {
     if (pw === null) task.destroy(); else cb(pw);
   };
   const doc = await task.promise;
-  const src = { id: nextSid++, name, bytes: u8, doc, task };
+  /* `id` numbers the source inside this session; `uid` names the file itself,
+     which is what a saved project needs to find its bytes again. */
+  const src = { id: nextSid++, uid: "pdf_" + Math.random().toString(36).slice(2, 10), name, bytes: u8, doc, task };
   Doc.sources.push(src);
   return src;
 }
@@ -1224,6 +1227,7 @@ const zoomStep = dir => {
 const MENUS = {
   mFile: [
     ["Open PDF…", "open", "⌘O"], ["Load sample document", "sample"], null,
+    ["Save project", "saveProject", "⌘S"], ["Save a copy to disk…", "downloadProject"], null,
     ["Insert pages from PDF…", "insert"], ["Insert blank page", "blank"], null,
     ["Export PDF…", "export", "⌘E"], ["Export selected pages…", "exportSel"],
     ["Split into single pages…", "split"], ["Extract all text…", "exportTxt"], null,
@@ -1258,6 +1262,8 @@ function buildMenus() {
 /* ---------------- actions ---------------- */
 const ACT = {
   open: () => $("fileMain").click(),
+  saveProject: () => window.KilnProject?.save(),
+  downloadProject: () => window.KilnProject?.download(),
   sample: async () => { try { await openBytes(await sampleBytes(), "kiln-sample.pdf"); } catch (e) { toast("Sample failed: " + e.message, "bad"); } },
   insert: () => $("fileAdd").click(),
   blank: () => Doc.open && insertBlank(),
@@ -1635,3 +1641,63 @@ window.Kiln = {
   addBookmark, deleteBookmark, printDoc,
   ready: () => !pending.size && !draining,
 };
+
+/* ---------------- the project system ----------------
+   A PDF project is an edit list over files that never change: the pages, the
+   rotations, the annotations, the bookmarks and the effects, plus the original
+   bytes of every PDF that has been opened into it. Nothing is rewritten until
+   an export, so the source files are exactly what came in and are stored once
+   under an id that outlives the session. */
+window.KilnProject?.register({
+  kind: "pdf", schema: 1, newName: "Untitled document",
+  async snapshot() {
+    const assets = Doc.sources.map(s => ({
+      id: s.uid, name: s.name, type: "application/pdf", size: s.bytes.byteLength,
+      blob: new Blob([s.bytes.slice()], { type: "application/pdf" }),
+    }));
+    return {
+      doc: {
+        name: Doc.name, ver: Doc.ver, cur: Doc.cur, zoom: Doc.zoom, fit: Doc.fit,
+        meta: { ...Doc.meta }, effects: JSON.parse(JSON.stringify(Doc.effects)),
+        bookmarks: Doc.bookmarks.map(b => ({ ...b })),
+        sources: Doc.sources.map(s => ({ sid: s.id, uid: s.uid, name: s.name })),
+        pages: Doc.pages.map(p => JSON.parse(JSON.stringify(p))),
+      },
+      assets, history: null,
+    };
+  },
+  async restore(doc, assets) {
+    resetDoc();
+    /* Sources come back in their old order but with new session numbers, so
+       every page's `sid` is remapped through the file's own id. */
+    const sid = new Map();
+    for (const s of doc.sources || []) {
+      const blob = assets.get(s.uid);
+      if (!blob) continue;
+      const src = await addSource(new Uint8Array(await blob.arrayBuffer()), s.name);
+      src.uid = s.uid;
+      sid.set(s.sid, src.id);
+    }
+    Doc.pages = (doc.pages || []).filter(p => sid.has(p.sid)).map(p => ({ ...p, sid: sid.get(p.sid) }));
+    Doc.bookmarks = doc.bookmarks || [];
+    Doc.meta = doc.meta || Doc.meta;
+    Doc.effects = doc.effects || Doc.effects;
+    Doc.name = doc.name || "document.pdf";
+    Doc.ver = doc.ver || "1.7";
+    Doc.zoom = doc.zoom || 1; Doc.fit = doc.fit;
+    Doc.open = Doc.pages.length > 0;
+    Doc.cur = Math.min(doc.cur || 1, Math.max(1, Doc.pages.length));
+    $("dz").hidden = Doc.open;
+    Hist.steps = []; Hist.i = -1;
+    commit("Open project");
+    renderAll();
+    if (Doc.fit) await applyFit();
+  },
+  reset() {
+    resetDoc();
+    Doc.open = false; Doc.name = ""; Doc.bookmarks = []; Doc.cur = 1;
+    Hist.steps = []; Hist.i = -1;
+    $("dz").hidden = false;
+    renderAll();
+  },
+});

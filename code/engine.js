@@ -442,6 +442,8 @@ function setFont(px) {
 
 /* ---------------- actions ---------------- */
 const ACT = {
+  saveProject: () => window.KilnProject?.save(),
+  downloadProject: () => window.KilnProject?.download(),
   run: () => {
     const code = src().value;
     if (App.lang === "javascript" || App.lang === "typescript") {
@@ -500,7 +502,8 @@ const ACT = {
 
 /* ---------------- menus ---------------- */
 const MENUS = () => ({
-  mFile: [["Open a file…", "open", "⌘O"], ["Download", "save", "⌘S"], null,
+  mFile: [["Open a file…", "open", "⌘O"], ["Download", "save"], null,
+    ["Save project", "saveProject", "⌘S"], ["Save a copy to disk…", "downloadProject"], null,
     ["Insert the starter", "starter"], ["Clear", "clear"]],
   mEdit: [["Select all", "selectAll", "⌘A"], ["Copy all", "copyAll"], null,
     ["Comment / uncomment", "comment", "⌘/"], ["Format", "format", "⇧⌥F"], ["Find…", "find", "⌘F"]],
@@ -571,6 +574,7 @@ document.addEventListener("keydown", e => {
    The text, the language, the look. Written on a debounce while you type and
    flushed when the tab goes away, so coming back finds the same screen. */
 function remember() {
+  window.KilnProject?.touch();
   KilnSession?.save({
     text: src().value, lang: App.lang, name: App.name,
     codeTheme: document.body.dataset.codeTheme, font: App.font, wrap: App.wrap,
@@ -608,3 +612,30 @@ buildMenus();
 paintSnippets();
 status("Ready");
 window.Code = { App, ACT, setLang, paint, tokenize, format, highlight, STARTERS };
+
+/* ---------------- the project system ----------------
+   A file's worth of text and the settings that make it readable. Small enough
+   that the whole thing is the document and there are no assets at all — which
+   is the point of letting each workspace describe its own. */
+window.KilnProject?.register({
+  kind: "code", schema: 1, newName: "Untitled snippet",
+  snapshot: () => ({
+    doc: {
+      text: src().value, lang: App.lang, name: App.name, font: App.font, wrap: App.wrap,
+      codeTheme: document.body.dataset.codeTheme || "",
+    },
+    assets: [], history: null,
+  }),
+  restore(doc) {
+    setLang(doc.lang || "javascript");
+    src().value = doc.text || "";
+    App.name = doc.name || "untitled";
+    if (doc.font) setFont(doc.font);
+    if (doc.codeTheme) { document.body.dataset.codeTheme = doc.codeTheme; $("themeSel").value = doc.codeTheme; }
+    App.wrap = !!doc.wrap;
+    document.body.classList.toggle("wrap", App.wrap);
+    $("wrapBtn").classList.toggle("on", App.wrap);
+    paint();
+  },
+  reset() { src().value = ""; App.name = "untitled"; paint(); },
+});

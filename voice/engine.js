@@ -103,6 +103,7 @@ function stats() {
 const snap = () => App.clips.map(c => ({ ...c, fx: { ...c.fx } }));
 function push(label) {
   setTimeout(() => { try { rememberSession(); } catch {} }, 0);
+  window.KilnProject?.touch();
   App.hist = App.hist.slice(0, App.hi + 1);
   App.hist.push({ label, clips: snap(), sel: App.sel });
   if (App.hist.length > 60) App.hist.shift();
@@ -983,6 +984,7 @@ function zoomFit() {
 const MENUS = () => ({
   mFile: [
     ["Record", "record", "R"], ["Import audio…", "import", "⌘O"], null,
+    ["Save project", "saveProject", "⌘S"], ["Save a copy to disk…", "downloadProject"], null,
     ["Export WAV…", "export", "⌘E"], ["Export the selected clip…", "exportSel"], null,
     ["Clear everything", "clearAll"],
   ],
@@ -1043,6 +1045,8 @@ const ACT = {
     const n = prompt("Rename this clip", c.name);
     if (n) { c.name = n; push("Rename"); drawAll(); }
   },
+  saveProject: () => window.KilnProject?.save(),
+  downloadProject: () => window.KilnProject?.download(),
   clearAll: () => {
     if (!App.clips.length) return;
     App.clips = []; App.sel = null; App.pos = 0;
@@ -1200,3 +1204,63 @@ if (!navigator.mediaDevices?.getUserMedia) {
   status("No microphone API in this browser", "warn");
   toast("This browser will not give a page the microphone — import a file instead", "warn");
 }
+
+/* ---------------- the project system ----------------
+   The samples are the assets and the clip list is the document. Undo comes
+   with it: a history step here is a list of clip descriptions that share their
+   sample data by reference, so the steps cost nothing to write down as long as
+   every buffer they mention is in the asset list. That is why the assets are
+   gathered from the kept history as well as from the current clips — an undo
+   that reaches back to a take you deleted needs that take to still exist. */
+window.KilnProject?.register({
+  kind: "voice", schema: 1, newName: "Untitled recording",
+  async snapshot() {
+    const keep = App.hist.slice(Math.max(0, App.hi - 19), App.hi + 1);
+    const from = Math.max(0, App.hi - 19);
+    const bare = c => { const { buf, rendered, peaksCache, noiseProfile, ...rest } = c; return rest; };
+
+    const bufs = new Map();                       // clip id → samples, wherever they were found
+    for (const c of App.clips) if (c.buf) bufs.set(c.id, c.buf);
+    for (const h of keep) for (const c of h.clips) if (c.buf && !bufs.has(c.id)) bufs.set(c.id, c.buf);
+
+    const assets = [];
+    for (const [id, buf] of bufs) {
+      const blob = new Blob([buf.buffer.slice(0)], { type: "audio/x-f32" });
+      assets.push({ id: "au_" + id, name: id + ".f32", type: "audio/x-f32", size: blob.size, blob });
+    }
+    return {
+      doc: {
+        sr: App.sr, tracks: laneCount(), zoom: App.zoom, sel: App.sel,
+        clips: App.clips.map(bare),
+      },
+      assets,
+      history: { i: App.hi - from, steps: keep.map(h => ({ label: h.label, sel: h.sel, clips: h.clips.map(bare) })) },
+    };
+  },
+  async restore(doc, assets, rec) {
+    const samples = new Map();
+    for (const [id, blob] of assets) samples.set(id.replace(/^au_/, ""), new Float32Array(await blob.arrayBuffer()));
+    const hydrate = c => ({
+      ...c, fx: { ...FX0, ...c.fx }, buf: samples.get(c.id) || new Float32Array(0),
+      rendered: null, peaksCache: null, noiseProfile: null, saved: false,
+    });
+    App.clips = (doc.clips || []).map(hydrate).filter(c => c.buf.length);
+    App.sr = doc.sr || App.sr;
+    App.tracks = Math.max(2, doc.tracks || 2);
+    App.zoom = doc.zoom || App.zoom;
+    App.sel = App.clips.some(c => c.id === doc.sel) ? doc.sel : (App.clips.at(-1)?.id ?? null);
+    const steps = rec.history?.steps || [];
+    App.hist = steps.map(h => ({ ...h, clips: h.clips.map(hydrate) }));
+    App.hi = Math.max(0, Math.min(rec.history?.i ?? App.hist.length - 1, App.hist.length - 1));
+    if (!App.hist.length) { App.hist = []; App.hi = -1; push("Open project"); }
+    drawAll();
+    for (const c of App.clips) await renderClip(c);
+    drawAll(); buildMenus();
+  },
+  reset() {
+    App.clips = []; App.sel = null; App.pos = 0;
+    App.hist = []; App.hi = -1;
+    push("New project");
+    drawAll();
+  },
+});

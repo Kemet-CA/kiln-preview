@@ -13,7 +13,7 @@ import { stage as pixelStage, hasKeyer, MASKS } from "./src/keyer.js";
 import { analyse as analyseShake } from "./src/stabilise.js";
 import { renderFrame, visualClipsAt, audibleClipsAt, sourceTime, gainAt } from "./src/render.js";
 import { Timeline, fmtTime } from "./src/timeline.js";
-import { importFile, rehydrate, recordVoice, gifFrameAt } from "./src/media.js";
+import { importFile, rehydrate, recordVoice, gifFrameAt, putBlob, getBlob } from "./src/media.js";
 import { exportVideo, PRESETS, outputSize, supported as canEncode } from "./src/export.js";
 
 const $ = id => document.getElementById(id);
@@ -248,7 +248,6 @@ function syncStatus() {
   $("tlInfo").textContent = `${clips} clips · ${p.tracks.length} tracks`;
   $("poolN").textContent = p.media.length;
   $("dz").hidden = p.media.length > 0;
-  $("projName").value = p.name;
 }
 function renderPool() {
   const host = $("pool");
@@ -800,6 +799,7 @@ function renderInspector() {
 /* ---------------- edits ---------------- */
 function commit(label) {
   M.commit(App.hist, App.project, label);
+  window.KilnProject?.touch();
   syncStatus();
 }
 function refresh({ silent, noTimeline } = {}) {
@@ -1301,11 +1301,8 @@ const ACT = {
     toast("Audio moved to its own track");
   },
   clearBg: () => { const c = firstSelected(); if (c) { c.bg = ""; commit("Text background"); refresh(); } },
-  saveProject: () => {
-    const blob = new Blob([M.serialize(App.project)], { type: "application/json" });
-    download(blob, `${App.project.name || "project"}.kilnvid`);
-    toast("Project saved");
-  },
+  saveProject: () => window.KilnProject?.save(),
+  downloadProject: () => window.KilnProject?.download(),
   exportOpen: () => {
     if (App.exporting) return toast("An export is already running", "warn");
     if (!M.duration(App.project)) return toast("The timeline is empty", "warn");
@@ -1588,7 +1585,8 @@ function setExportBusy(p) {
 /* ---------------- menus ---------------- */
 const MENUS = {
   mFile: [["Import media…", "import", "⌘I"], ["Generate a test clip", "sample"], null,
-          ["Save project", "saveProject", "⌘S"], ["Open project…", "openProject", "⌘O"], null,
+          ["Save project", "saveProject", "⌘S"], ["Open project…", "openProject", "⌘O"],
+          ["Save a copy to disk…", "downloadProject"], null,
           ["Export video…", "exportOpen", "⌘E"]],
   mEdit: [["Undo", "undo", "⌘Z"], ["Redo", "redo", "⇧⌘Z"], null,
           ["Split at playhead", "split", "S"], ["Delete", "delete", "⌫"], ["Ripple delete", "ripple", "⇧⌫"],
@@ -1794,9 +1792,9 @@ function wire() {
       applyTrackSpeed(+t.value, false);
     }
     if (t.id === "pVol") { App.masterVol = +t.value; t.nextElementSibling.textContent = Math.round(App.masterVol * 100) + "%"; }
-    if (t.id === "pName") { App.project.name = t.value; syncStatus(); }
+    // the Project panel and the toolbar are two views of one name
+    if (t.id === "pName") { App.project.name = t.value; window.KilnProject?.rename(t.value); syncStatus(); }
     if (t.id === "expQ") $("expQV").textContent = t.value + "%";
-    if (t.id === "projName") { App.project.name = t.value; }
   });
   $("app").addEventListener("change", e => {
     const t = e.target, c = firstSelected();
@@ -1887,18 +1885,9 @@ function wire() {
     const f = e.target.files[0];
     e.target.value = "";
     if (!f) return;
-    try {
-      const loaded = M.deserialize(await f.text());
-      App.project = loaded;
-      status("Reattaching media…");
-      const missing = await rehydrate(App.project);
-      App.hist = M.makeHistory();
-      commit("Open project");
-      renderAll();
-      status("Ready");
-      toast(missing.length ? `Opened — ${missing.length} media file(s) missing` : "Project opened",
-        missing.length ? "warn" : "ok");
-    } catch (err) { toast("Could not open project: " + err.message, "bad"); }
+    status("Opening…");
+    await window.KilnProject?.openFile(f);
+    status("Ready");
   });
   const stage = $("stage");
   ["dragenter", "dragover"].forEach(ev => stage.addEventListener(ev, e => { e.preventDefault(); $("dz").classList.add("over"); }));
@@ -2017,6 +2006,67 @@ fitPreview();
 timeline.zoomToFit();
 requestAnimationFrame(loop);
 status("Ready");
+
+/* ---------------- the project system ----------------
+   The edit is the document; the footage is the assets. Keeping them apart is
+   what lets a project be saved without copying gigabytes of video into JSON,
+   and what lets the same media serve three projects from one copy. */
+window.KilnProject?.register({
+  kind: "video", schema: 1, newName: "Untitled video",
+  async snapshot() {
+    const doc = JSON.parse(M.serialize(App.project));
+    doc.name = window.KilnProject.state.name || doc.name;
+    App.project.name = doc.name;
+    const assets = [];
+    for (const m of App.project.media) {
+      const blob = m.file || await getBlob(m.id).catch(() => null);
+      if (blob) assets.push({ id: m.id, name: m.name, type: blob.type || "", size: blob.size || 0, blob });
+    }
+    /* The whole undo stack is every state the project has ever been in — for a
+       long session that is bigger than the project. The recent end is the part
+       anyone reaches for. */
+    const from = Math.max(0, App.hist.steps.length - 30);
+    return { doc, assets, history: { steps: App.hist.steps.slice(from), i: App.hist.i - from } };
+  },
+  async restore(doc, assets, rec) {
+    /* Put the files back where the importer looks for them, then let the
+       normal reattach path do the rest. */
+    for (const [id, blob] of assets) await putBlob(id, blob);
+    App.project = M.deserialize(doc);
+    App.project.name = rec.name || App.project.name;
+    status("Reattaching media…");
+    const missing = await rehydrate(App.project);
+    App.hist = rec.history?.steps?.length
+      ? { steps: rec.history.steps, i: Math.max(0, Math.min(rec.history.i, rec.history.steps.length - 1)), limit: 80 }
+      : M.makeHistory();
+    if (!App.hist.steps.length) M.commit(App.hist, App.project, "Open project");
+    setSelection([]);
+    renderAll(); fitPreview(); timeline.zoomToFit();
+    if (missing.length) toast(`${missing.length} media file(s) missing`, "warn");
+  },
+  reset() {
+    App.project = M.newProject("Untitled video");
+    App.hist = M.makeHistory();
+    M.commit(App.hist, App.project, "New project");
+    setSelection([]);
+    renderAll(); fitPreview();
+  },
+  legacy(json) {                      // .kilnvid, from before projects had a home
+    App.project = M.deserialize(json);
+    App.hist = M.makeHistory();
+    M.commit(App.hist, App.project, "Open project");
+    return rehydrate(App.project).then(() => { renderAll(); fitPreview(); });
+  },
+});
+
+/* the Project panel shows the same name the toolbar does */
+addEventListener("kiln-project", e => {
+  if (!e.detail.name || e.detail.name === App.project.name) return;
+  App.project.name = e.detail.name;
+  const field = document.getElementById("pName");
+  if (field && document.activeElement !== field) field.value = e.detail.name;
+  syncStatus();
+});
 
 /* test + console handle */
 /* a filmstrip arriving late repaints the timeline that is waiting for it */

@@ -13,6 +13,7 @@
 <script src="search.js"></script>
 <script src="panels.js" defer></script>
 <script src="session.js"></script>
+<script src="project.js"></script>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -275,7 +276,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="7941b16-1454">
+<meta name="kiln-build" content="aac2b75-1558">
 </head>
 <body>
 <div id="app">
@@ -289,6 +290,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
     <div class="menu" data-menu><button class="menu-t">Select</button><div class="menu-d" id="mSelect"></div></div>
     <div class="menu" data-menu><button class="menu-t">Filter</button><div class="menu-d" id="mFilter"></div></div>
     <div class="menu" data-menu><button class="menu-t">View</button><div class="menu-d" id="mView"></div></div>
+    <span data-kiln-project></span>
     <div class="menubar-r">
       <span data-kiln-search></span>
       <span data-kiln-coffee></span>
