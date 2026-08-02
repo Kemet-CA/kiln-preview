@@ -47,6 +47,43 @@
   setInterval(() => { if (!mode && root.dataset.mode !== autoMode()) { apply(); refresh(); } }, 60_000);
 
   /* ------------------------------------------------------------
+     The mark and the coffee button, mounted wherever a page asks for them.
+     The mark is one drawing shared by every page; the coffee link is in the
+     chrome on purpose, where it is always in view without being in the way.
+     ------------------------------------------------------------ */
+  const MARK = size => `<svg class="kmark" viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true">
+      <path class="body" d="M7 3.6h18a3.4 3.4 0 0 1 3.4 3.4v18A3.4 3.4 0 0 1 25 28.4H7A3.4 3.4 0 0 1 3.6 25V7A3.4 3.4 0 0 1 7 3.6z"/>
+      <path class="arch" d="M16 8.4a6.6 6.6 0 0 1 6.6 6.6v9.4H9.4V15A6.6 6.6 0 0 1 16 8.4z"/>
+      <path class="fire" d="M16 12.6c1.7 1.5 2.6 3 2.6 4.5A2.6 2.6 0 0 1 16 19.7a2.6 2.6 0 0 1-2.6-2.6c0-1.5.9-3 2.6-4.5z"/>
+    </svg>`;
+  function mountMarks() {
+    for (const el of document.querySelectorAll(".mark")) {
+      if (el.dataset.kilnMark) continue;
+      el.dataset.kilnMark = "1";
+      const size = Math.round(el.getBoundingClientRect().width) || 18;
+      el.innerHTML = MARK(size);
+      el.style.background = "none";
+      el.style.borderRadius = "0";
+    }
+  }
+  const COFFEE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/>
+      <path d="M17 10h1.6a2.4 2.4 0 0 1 0 4.8H17"/><path d="M7 3v2.5M11 3v2.5"/></svg>`;
+  function mountCoffee() {
+    for (const slot of document.querySelectorAll("[data-kiln-coffee]")) {
+      if (slot.querySelector(".kcoffee")) continue;
+      const a = document.createElement("a");
+      a.className = "kcoffee";
+      a.href = "https://buymeacoffee.com/kemetca";
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.title = "Buy us a coffee — it keeps this free";
+      a.innerHTML = COFFEE + `<span class="lbl">Buy us a coffee</span>`;
+      slot.appendChild(a);
+    }
+  }
+
+  /* ------------------------------------------------------------
      Home button. Mounted into any [data-kiln-home] element, on every page
      that has one, so a workspace always has a way back to the homepage.
      The href is worked out from where the page sits: a workspace in its own
@@ -207,12 +244,12 @@
   }
 
   const mountAll = () => document.querySelectorAll("[data-kiln-themebar]").forEach(mount);
-  const boot = () => { mountHome(); mountAll(); mountClock(); measureBar(); };
+  const boot = () => { mountHome(); mountCoffee(); mountAll(); mountClock(); mountMarks(); measureBar(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
   window.KilnTheme = {
-    THEMES, mountAll, mountClock, modeForHour, autoMode, zoneLabel, DAY_START, DAY_END,
+    THEMES, mountAll, mountClock, mountCoffee, mountMarks, modeForHour, autoMode, zoneLabel, DAY_START, DAY_END,
     get theme() { return theme; },
     get mode() { return root.dataset.mode; },        // what is showing
     get choice() { return mode; },                   // "light" | "dark" | null when following the clock

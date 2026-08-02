@@ -6,7 +6,7 @@
 <script src="theme.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="eda46f0-1805">
+<meta name="kiln-build" content="3ffa0e8-1835">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -427,11 +427,37 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
    hero. A blurred box clipped by its parent shows its cut edges the moment you
    scroll; a fixed pair of radial gradients that fade to nothing has no edges
    to show. */
-#app::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+#app::before{content:"";position:fixed;inset:-10%;z-index:0;pointer-events:none;
   background:
     radial-gradient(58vw 46vw at 8% -6%,var(--bloom-a),transparent 70%),
     radial-gradient(52vw 40vw at 94% -2%,var(--bloom-b),transparent 70%);
-  opacity:var(--bloom,.55)}
+  opacity:var(--bloom,.55);
+  /* a very slow drift: two transforms, nothing repainted, so it costs nothing */
+  animation:drift 46s ease-in-out infinite alternate;will-change:transform}
+@keyframes drift{from{transform:translate3d(0,0,0) scale(1)}
+  to{transform:translate3d(2.5%,1.5%,0) scale(1.06)}}
+
+/* ---- the shapes that float behind the hero ----
+   Decorative only: no pointer events, no tab stop, and they are given the same
+   icons the cards below use, so the page introduces itself twice over. */
+.floaters{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.flo{position:absolute;display:grid;place-items:center;border-radius:20px;
+  border:1px solid color-mix(in srgb,var(--tint) 22%,var(--line));
+  background:color-mix(in srgb,var(--tint) 9%,var(--card1));
+  color:var(--tint);opacity:.5;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  animation:bob var(--dur,26s) ease-in-out infinite alternate;animation-delay:var(--delay,0s);
+  will-change:transform}
+.flo svg{width:46%;height:46%;opacity:.85}
+@keyframes bob{
+  from{transform:translate3d(0,0,0) rotate(var(--rot,0deg))}
+  to{transform:translate3d(var(--dx,10px),var(--dy,-22px),0) rotate(calc(var(--rot,0deg) + var(--spin,3deg)))}}
+/* scrolling takes them away, and scrolling back brings them home */
+.floaters{transform:translate3d(0,calc(var(--away,0) * -34px),0);
+  opacity:calc(1 - var(--away,0) * .85);transition:transform .18s linear,opacity .18s linear}
+@media(prefers-reduced-motion:reduce){
+  #app::before,.flo{animation:none}
+  .floaters{display:none}
+}
 /* the screens sit above the light; the chrome keeps its own sticky */
 .screen{position:relative;z-index:1}
 .hero{position:relative;border-bottom:1px solid var(--line)}
@@ -577,6 +603,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   <nav class="wsnav" id="wsnav" aria-label="Workspaces"></nav>
   <div class="chrome-r">
     <span data-kiln-search></span>
+    <span data-kiln-coffee></span>
     <span data-kiln-clock></span>
     <span data-kiln-themebar></span>
   </div>
@@ -585,6 +612,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 <!-- ===================== HOME ===================== -->
 <section class="screen" id="screen-home">
   <header class="hero">
+    <div class="floaters" id="floaters" aria-hidden="true"></div>
     <div class="hero-in">
       <h1 class="wordmark">Kiln</h1>
       <p class="slogan">Shape &amp; Ship <b>Anything.</b></p>
@@ -594,11 +622,10 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
-        <a class="btn quiet" href="https://buymeacoffee.com/kemetca" target="_blank" rel="noopener">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-            stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/>
-            <path d="M17 10h1.6a2.4 2.4 0 0 1 0 4.8H17"/><path d="M7 3v2.5M11 3v2.5"/></svg>
-          Buy us a coffee</a>
+        <button class="btn quiet" id="openCmdk3">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+            stroke-linecap="round"><circle cx="11" cy="11" r="6.4"/><path d="m20 20-4.4-4.4"/></svg>
+          Browse all tools</button>
       </div>
       <ul class="hstats" id="hstats"></ul>
     </div>
@@ -1093,9 +1120,13 @@ const IC_ARROW = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
   stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
 
 /* Three words per workspace, because a card is scanned, not read. */
-const TAGLINE={image:"Edit. Enhance. Create.",code:"Write. Run. Learn.",video:"Cut. Arrange. Export.",voice:"Record. Clean. Transform.",
-  color:"Pick. Harmonise. Copy.",documents:"Write. Format. Export.",pdf:"Read. Edit. Convert.",
-  translate:"Any language, on device.",file:"Hash. Inspect. Organise."};
+const TAGLINE={image:"Edit. Enhance. Create.",code:"Write. Run. Learn.",video:"Cut. Arrange. Export.",
+  voice:"Record. Clean. Transform.",color:"Pick. Harmonise. Copy.",documents:"Write. Format. Export.",
+  pdf:"Read. Edit. Convert.",translate:"Any language, on device.",file:"Hash. Inspect. Organise."};
+/* The card says what the thing is, not what it is called internally */
+const CARDNAME={image:"Photo Editor",video:"Video Editor",voice:"Voice Recorder and Editor",
+  color:"Colour Palette",documents:"Writer and Editor",pdf:"PDF Viewer and Editor",
+  translate:"Translator",code:"Code Editor",file:"File Tools"};
 
 /* Two more the design asks for that do not exist yet. They are shown as what
    they are — clicking one says so rather than opening nothing. */
@@ -1107,7 +1138,7 @@ const SOON=[
 $("cards").innerHTML=WS.map(w=>`
   <button class="wcard" data-go="${w.id}" style="--tint:${w.tint}" aria-label="Open ${w.name}">
     <span class="wi" style="color:${w.tint}">${SVG(w.icon)}</span>
-    <h3>${w.name}</h3>
+    <h3>${CARDNAME[w.id]||w.name}</h3>
     <span class="wd">${TAGLINE[w.id]||""}</span>
     <span class="wfoot"><span class="wn">${w.n} tools</span><span class="wgo">${IC_ARROW}</span></span>
   </button>`).join("")
@@ -1115,7 +1146,7 @@ $("cards").innerHTML=WS.map(w=>`
   <div class="wcard soon" data-soon="${w.name}" style="--tint:${w.tint}" role="button" tabindex="0"
        aria-label="${w.name} — not built yet">
     <span class="wi" style="color:${w.tint}">${SVG(w.icon)}</span>
-    <h3>${w.name}</h3>
+    <h3>${CARDNAME[w.id]||w.name}</h3>
     <span class="wd">${w.tag}</span>
     <span class="wfoot"><span class="wn">Soon</span><span class="wgo">${IC_ARROW}</span></span>
   </div>`).join("");
@@ -1151,6 +1182,42 @@ $("hfeat").innerHTML=FEATS.map(([ic,t,d,tint])=>`
     <span><b>${t}</b><span>${d}</span></span></li>`).join("");
 
 $("openCmdk2").addEventListener("click",()=>KilnSearch.open(""));
+$("openCmdk3").addEventListener("click",()=>KilnSearch.open(""));
+
+/* ---- the floating shapes ----
+   Positions are fixed rather than random, so the page looks the same every
+   time it is opened; only the drift is animated, and only with transforms. */
+const FLOATS=[
+  {id:"image", x:"6%",  y:"14%", s:96,  dx:"14px", dy:"-26px", rot:"-8deg",  dur:"30s", delay:"0s"},
+  {id:"video", x:"16%", y:"64%", s:74,  dx:"-12px",dy:"-18px", rot:"6deg",   dur:"26s", delay:"-6s"},
+  {id:"voice", x:"85%", y:"20%", s:88,  dx:"-16px",dy:"22px",  rot:"9deg",   dur:"34s", delay:"-12s"},
+  {id:"color", x:"78%", y:"70%", s:68,  dx:"12px", dy:"18px",  rot:"-5deg",  dur:"28s", delay:"-3s"},
+  {id:"pdf",   x:"46%", y:"88%", s:60,  dx:"10px", dy:"-14px", rot:"4deg",   dur:"32s", delay:"-18s"},
+  {id:"code",  x:"92%", y:"48%", s:56,  dx:"-10px",dy:"-16px", rot:"-7deg",  dur:"24s", delay:"-9s"},
+];
+$("floaters").innerHTML=FLOATS.map(f=>{
+  const w=WORKSPACES.find(w=>w.id===f.id);
+  if(!w)return "";
+  return `<div class="flo" style="--tint:${w.tint};left:${f.x};top:${f.y};width:${f.s}px;height:${f.s}px;
+    --dx:${f.dx};--dy:${f.dy};--rot:${f.rot};--dur:${f.dur};--delay:${f.delay}">${SVG(w.icon)}</div>`;
+}).join("");
+/* Scrolling moves them off and back. One custom property, read by a transform,
+   so the browser never lays anything out again. */
+(function floatOnScroll(){
+  const home=$("screen-home"), box=$("floaters");
+  let ticking=false;
+  const update=()=>{
+    const away=Math.min(1, home.scrollTop / 420);
+    box.style.setProperty("--away", away.toFixed(3));
+    ticking=false;
+  };
+  home.addEventListener("scroll",()=>{
+    if(ticking)return;
+    ticking=true;
+    requestAnimationFrame(update);
+  },{passive:true});
+  update();
+})();
 document.addEventListener("click",e=>{
   if(e.target.closest('[data-act="explore"]'))
     document.getElementById("workspaces").scrollIntoView({behavior:"smooth",block:"start"});

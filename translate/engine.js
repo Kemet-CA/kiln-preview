@@ -106,6 +106,19 @@ async function translatorFor(from, to) {
   App.pair = pair;
   $("sbModel").textContent = "ready";
   status("Ready");
+
+/* what you were translating, and between which languages */
+(function keepSession() {
+  const s = KilnSession?.state || {};
+  if (s.from) $("from").value = s.from;
+  if (s.to) $("to").value = s.to;
+  if (s.src) { $("src").value = s.src; $("src").dispatchEvent(new Event("input", { bubbles: true })); }
+  const save = () => KilnSession?.save({ src: $("src").value, from: $("from").value, to: $("to").value });
+  $("src").addEventListener("input", save);
+  $("from").addEventListener("change", save);
+  $("to").addEventListener("change", save);
+  addEventListener("pagehide", save);
+})();
   return t;
 }
 function showProgress(p) {

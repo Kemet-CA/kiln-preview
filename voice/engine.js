@@ -102,6 +102,7 @@ function stats() {
    costs a few hundred bytes however long the recording is. */
 const snap = () => App.clips.map(c => ({ ...c, fx: { ...c.fx } }));
 function push(label) {
+  setTimeout(() => { try { rememberSession(); } catch {} }, 0);
   App.hist = App.hist.slice(0, App.hi + 1);
   App.hist.push({ label, clips: snap(), sel: App.sel });
   if (App.hist.length > 60) App.hist.shift();
@@ -220,48 +221,79 @@ function addClip(data, sr, name) {
 function drawLive() {
   const an = App.analyser;
   if (!an || !App.recording) return;
-  const c = $("wave"), ctx2 = c.getContext("2d");
-  const w = c.width = c.clientWidth * devicePixelRatio;
-  const h = c.height = c.clientHeight * devicePixelRatio;
+  // while the meter is live there is nothing to read but the waveform
+  if (!$("scopeEmpty").hidden) $("scopeEmpty").hidden = true;
+  const c = $("wave"), x = c.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.width = Math.round(c.clientWidth * dpr);
+  const h = c.height = Math.round(c.clientHeight * dpr);
   const time = new Float32Array(an.fftSize);
   an.getFloatTimeDomainData(time);
-  let p = 0, sum = 0;
-  for (let i = 0; i < time.length; i++) { const a = Math.abs(time[i]); if (a > p) p = a; sum += time[i] * time[i]; }
+
+  // Both numbers matter: the peak is the shape of the sound, the average is
+  // its body. A bar chart of one of them is what looked wrong.
+  let peak = 0, sum = 0;
+  for (let i = 0; i < time.length; i++) {
+    const v = time[i], a = v < 0 ? -v : v;
+    if (a > peak) peak = a;
+    sum += v * v;
+  }
   const level = Math.sqrt(sum / time.length);
-  App.live.push(p);
-  const maxBars = Math.floor(w / (3 * devicePixelRatio));
-  if (App.live.length > maxBars) App.live.shift();
+  App.live.push({ p: peak, r: level });
+  const cols = Math.max(60, Math.floor(w / (2 * dpr)));      // one column per two CSS pixels
+  while (App.live.length > cols) App.live.shift();
 
   const css = getComputedStyle(document.querySelector(".scope"));
   const accent = css.getPropertyValue("--wave").trim();
-  const hot = "#FFFFFF";
-  ctx2.clearRect(0, 0, w, h);
-  const mid = h / 2, bw = 3 * devicePixelRatio;
-  ctx2.fillStyle = accent;
-  for (let i = 0; i < App.live.length; i++) {
-    const v = Math.max(App.live[i], 0.004) * (h * 0.44);
-    ctx2.fillRect(w - (App.live.length - i) * bw, mid - v, bw - devicePixelRatio, v * 2);
+  x.clearRect(0, 0, w, h);
+  const mid = h / 2, colw = w / cols, scale = h * 0.46;
+
+  // the outer envelope, as one filled shape rather than a row of sticks
+  const band = (key, alpha) => {
+    x.globalAlpha = alpha;
+    x.fillStyle = accent;
+    x.beginPath();
+    x.moveTo(w - App.live.length * colw, mid);
+    for (let i = 0; i < App.live.length; i++) {
+      const v = Math.max(App.live[i][key], 0.002) * scale;
+      x.lineTo(w - (App.live.length - i) * colw, mid - v);
+    }
+    for (let i = App.live.length - 1; i >= 0; i--) {
+      const v = Math.max(App.live[i][key], 0.002) * scale;
+      x.lineTo(w - (App.live.length - i) * colw, mid + v);
+    }
+    x.closePath();
+    x.fill();
+  };
+  band("p", 0.38);           // reach
+  band("r", 0.95);           // body
+  x.globalAlpha = 1;
+
+  // a hairline down the middle, and the moment itself at the leading edge
+  x.fillStyle = accent;
+  x.globalAlpha = 0.25;
+  x.fillRect(0, mid - dpr / 2, w, dpr);
+  x.globalAlpha = 1;
+  x.strokeStyle = "#FFFFFF";
+  x.lineWidth = dpr;
+  x.beginPath();
+  const span = Math.min(w * 0.3, 360 * dpr);
+  const step = time.length / span;
+  for (let i = 0; i < span; i++) {
+    const v = time[Math.floor(i * step)] || 0;
+    const px = w - span + i, py = mid - v * scale;
+    i ? x.lineTo(px, py) : x.moveTo(px, py);
   }
-  // the moment itself, over the history
-  ctx2.strokeStyle = hot;
-  ctx2.lineWidth = devicePixelRatio;
-  ctx2.beginPath();
-  const step = time.length / (w * 0.32);
-  for (let x = 0; x < w * 0.32; x++) {
-    const v = time[Math.floor(x * step)] || 0;
-    const y = mid - v * h * 0.42;
-    x ? ctx2.lineTo(w - w * 0.32 + x, y) : ctx2.moveTo(w - w * 0.32 + x, y);
-  }
-  ctx2.stroke();
+  x.globalAlpha = 0.55;
+  x.stroke();
+  x.globalAlpha = 1;
 
   const secs = (performance.now() - App.liveStart) / 1000;
   $("timer").textContent = fmt(secs);
   $("timerMs").textContent = "." + Math.floor((secs % 1) * 10);
-  meter(level, p);
-  $("pitchHz").textContent = (() => {
-    const f = D.detectPitch(time, App.ctx ? App.ctx.sampleRate : 48000);
-    return f ? Math.round(f) + " Hz" : "—";
-  })();
+  meter(level, peak);
+  const f = D.detectPitch(time, App.ctx ? App.ctx.sampleRate : 48000);
+  $("pitchHz").textContent = f ? Math.round(f) + " Hz" : "—";
   App.raf = requestAnimationFrame(drawLive);
 }
 function meter(level, peakV) {
@@ -1109,6 +1141,47 @@ async function listDevices() {
   }
 }
 
+/* ---------------- keeping the session ----------------
+   Clip descriptions are small and go in the session; the samples are not, and
+   go in IndexedDB. Coming back finds the same takes on the same tracks with
+   the same voices on them. */
+function rememberSession() {
+  KilnSession?.save({
+    tracks: laneCount(),
+    zoom: App.zoom,
+    clips: App.clips.map(c => ({ id: c.id, name: c.name, sr: c.sr, track: c.track || 0,
+      offset: c.offset, dur: c.dur, start: c.start, fx: c.fx, voice: c.voice })),
+  });
+  for (const c of App.clips) {
+    if (c.saved) continue;
+    c.saved = true;
+    KilnSession?.put("clip:" + c.id, c.buf.buffer.slice(0)).catch(() => { c.saved = false; });
+  }
+}
+async function restoreSession() {
+  const s = KilnSession?.state || {};
+  if (!s.clips?.length) return false;
+  status("Reopening the last session…");
+  const clips = [];
+  for (const meta of s.clips) {
+    const raw = await KilnSession.get("clip:" + meta.id).catch(() => null);
+    if (!raw) continue;
+    clips.push({ ...meta, buf: new Float32Array(raw), fx: { ...FX0, ...meta.fx },
+      rendered: null, peaksCache: null, noiseProfile: null, saved: true });
+  }
+  if (!clips.length) return false;
+  App.clips = clips;
+  App.tracks = Math.max(2, s.tracks || 2);
+  App.sr = clips[0].sr;
+  App.sel = clips[clips.length - 1].id;
+  if (s.zoom) App.zoom = s.zoom;
+  drawAll();
+  for (const c of clips) await renderClip(c);
+  drawAll();
+  status(`Reopened ${clips.length} clip${clips.length > 1 ? "s" : ""}`);
+  return true;
+}
+
 /* ---------------- boot ---------------- */
 new ResizeObserver(() => { if (!App.recording) paintRecorderIdle(); drawRuler(); })
   .observe(document.querySelector(".scope"));
@@ -1121,6 +1194,8 @@ drawAll();
 push("Start");
 listDevices();
 status("Ready");
+restoreSession().catch(e => console.warn("Kiln Voice: could not reopen —", e));
+addEventListener("pagehide", rememberSession);
 if (!navigator.mediaDevices?.getUserMedia) {
   status("No microphone API in this browser", "warn");
   toast("This browser will not give a page the microphone — import a file instead", "warn");

@@ -567,13 +567,43 @@ document.addEventListener("keydown", e => {
   if (ev === "drop" && e.dataTransfer.files[0]) openFile(e.dataTransfer.files[0]);
 }));
 
+/* ---------------- keeping the session ----------------
+   The text, the language, the look. Written on a debounce while you type and
+   flushed when the tab goes away, so coming back finds the same screen. */
+function remember() {
+  KilnSession?.save({
+    text: src().value, lang: App.lang, name: App.name,
+    codeTheme: document.body.dataset.codeTheme, font: App.font, wrap: App.wrap,
+  });
+}
+function restoreSession() {
+  const s = KilnSession?.state || {};
+  if (s.codeTheme) { document.body.dataset.codeTheme = s.codeTheme; $("themeSel").value = s.codeTheme; }
+  if (s.font) setFont(s.font);
+  if (s.wrap) { App.wrap = true; document.body.classList.add("wrap"); $("wrapBtn").classList.add("on"); }
+  if (s.name) App.name = s.name;
+  if (typeof s.text === "string") {
+    setLang(s.lang || "javascript");
+    src().value = s.text;
+    paint();
+    return true;
+  }
+  return false;
+}
+
 /* ---------------- boot ---------------- */
 $("langSel").innerHTML = languageList().map(l =>
   `<option value="${l.id}">${l.name}</option>`).join("");
 setFont(App.font);
 setLang("javascript");
-src().value = STARTERS.javascript[2];
-paint();
+if (!restoreSession()) {
+  src().value = STARTERS.javascript[2];
+  paint();
+}
+src().addEventListener("input", remember);
+$("langSel").addEventListener("change", remember);
+$("themeSel").addEventListener("change", remember);
+addEventListener("pagehide", remember);
 buildMenus();
 paintSnippets();
 status("Ready");

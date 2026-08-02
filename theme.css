@@ -550,3 +550,26 @@
     color-mix(in srgb,var(--ember) 7%,transparent),transparent 65%);
   background-attachment:fixed;
 }
+
+
+/* ============================================================
+   The mark. A kiln: a chamber with a fire in it. Drawn rather than
+   approximated with a border-radius and a pseudo-element, so it holds its
+   shape at 18px in a menu bar and at 26px in a header.
+   ============================================================ */
+.kmark{display:block;flex:none}
+.kmark .body{fill:var(--ember)}
+.kmark .arch{fill:color-mix(in srgb,var(--ground) 82%,transparent)}
+.kmark .fire{fill:var(--hot)}
+
+/* ---------- buy us a coffee, in the chrome ---------- */
+.kcoffee{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;border-radius:8px;
+  font-size:12px;font-weight:560;text-decoration:none;white-space:nowrap;flex:none;
+  color:#3B2412;background:linear-gradient(180deg,#FFD37A,#F5B23C);
+  border:1px solid #E0A02A;box-shadow:0 1px 0 rgba(255,255,255,.4) inset;
+  transition:transform .14s var(--ez),filter .14s var(--ez)}
+.kcoffee:hover{transform:translateY(-1px);filter:brightness(1.05)}
+.kcoffee:active{transform:none}
+.kcoffee svg{width:14px;height:14px}
+.kcoffee .lbl{display:inline}
+@media(max-width:900px){.kcoffee .lbl{display:none}.kcoffee{padding:0 8px}}

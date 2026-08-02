@@ -1,0 +1,49 @@
+/* ============================================================
+   Kiln panels — the grips, and how a workspace behaves on a phone.
+   ============================================================ */
+
+/* ---------- grips ---------- */
+.krz{position:absolute;z-index:30;touch-action:none;background:transparent;
+  transition:background .15s var(--ez)}
+.krz-x{top:0;bottom:0;width:9px;cursor:col-resize}
+.krz-y{left:0;right:0;height:9px;cursor:row-resize}
+.krz[data-edge="start"].krz-x{left:-5px}
+.krz[data-edge="end"].krz-x{right:-5px}
+.krz[data-edge="start"].krz-y{top:-5px}
+.krz[data-edge="end"].krz-y{bottom:-5px}
+.krz:hover,.krz:focus-visible{background:color-mix(in srgb,var(--cat,var(--ember)) 45%,transparent)}
+.krz:focus-visible{outline:none}
+/* while dragging, nothing else should take the pointer or select text */
+body.krz-dragging{user-select:none}
+body.krz-dragging iframe,body.krz-dragging canvas{pointer-events:none}
+
+/* the panels that hold grips have to be a positioning context */
+#panels,.pane-l,.pick,.tl,.rec,.pool,.insp{position:relative}
+
+/* ============================================================
+   Phones. A workspace is three columns on a desktop and cannot be three
+   columns at 390px, so the side panels come off the grid and slide over the
+   work instead — the way every editor does it on a small screen. The bar
+   gets a button for each one.
+   ============================================================ */
+@media(max-width:760px){
+  #app{--lw:0px !important;--rw:0px !important;--pool:0px !important;--insp:0px !important}
+  #app>.pane-l,#app>#panels,#app>.pick,#app>.pool,#app>.insp{
+    position:fixed;top:var(--menubar-b,70px);bottom:24px;width:min(86vw,340px);z-index:70;
+    box-shadow:0 20px 60px -20px rgba(0,0,0,.6);transition:transform .22s var(--ez);
+    display:flex}
+  #app>.pane-l,#app>.pick,#app>.pool{left:0;transform:translateX(-102%);border-right:1px solid var(--line2)}
+  #app>#panels,#app>.insp{right:0;transform:translateX(102%);border-left:1px solid var(--line2)}
+  body.show-left #app>.pane-l,body.show-left #app>.pick,body.show-left #app>.pool{transform:none}
+  body.show-right #app>#panels,body.show-right #app>.insp{transform:none}
+  /* the splitters make no sense once the panels are sheets */
+  .krz,.split,.split-l,.split-r{display:none}
+  /* and the sheets need a way back */
+  .kmob{position:fixed;bottom:30px;right:10px;z-index:75;display:flex;gap:6px}
+  .kmob button{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;
+    border:1px solid var(--line2);background:var(--popbg);color:var(--t2);
+    box-shadow:0 10px 24px -14px rgba(0,0,0,.7);backdrop-filter:blur(14px)}
+  .kmob button.on{color:var(--cat,var(--ember));border-color:var(--cat,var(--ember))}
+  .kmob svg{width:17px;height:17px}
+}
+@media(min-width:761px){.kmob{display:none}}
