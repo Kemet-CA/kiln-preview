@@ -398,6 +398,55 @@ function zoomAt(f, cx, cy) {
   View.z = z2;
   applyView(); drawAnts();
 }
+/* ---------------- two fingers ----------------
+   A tablet has no scroll wheel and no space bar, so without this there is no
+   way to move around a drawing that is larger than the screen. Pinch is the
+   gesture everyone already knows; the second finger arriving also cancels
+   whatever the first one had started, because a stroke that turns into a zoom
+   should not leave half a stroke behind.
+
+   Deliberately only for touch. A pen is for drawing and a mouse has a wheel. */
+const gesture = { pts: new Map(), on: false, dist: 0, cx: 0, cy: 0 };
+function startGesture(e) {
+  gesture.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (gesture.pts.size < 2 || gesture.on) return;
+  if (painting || drag) cancelStroke();
+  const [a, b] = [...gesture.pts.values()];
+  gesture.on = true;
+  gesture.dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+  gesture.cx = (a.x + b.x) / 2;
+  gesture.cy = (a.y + b.y) / 2;
+}
+function moveGesture(e) {
+  if (!gesture.pts.has(e.pointerId)) return false;
+  gesture.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (!gesture.on || gesture.pts.size < 2) return gesture.on;
+  const [a, b] = [...gesture.pts.values()];
+  const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+  const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+  // the pan comes first: zooming about a centre that has already moved drifts
+  View.vx += cx - gesture.cx;
+  View.vy += cy - gesture.cy;
+  gesture.cx = cx; gesture.cy = cy;
+  applyView();
+  zoomAt(dist / gesture.dist, cx, cy);
+  gesture.dist = dist;
+  return true;
+}
+function endGesture(e) {
+  gesture.pts.delete(e.pointerId);
+  if (gesture.pts.size < 2) gesture.on = false;
+}
+/* Throw away a stroke that a second finger interrupted: the pixels were
+   copied for undo on the way down, so putting them back is the whole fix. */
+function cancelStroke() {
+  painting = false;
+  strokeBuf = null;
+  drag = null;
+  if (Hist.i >= 0) restore(Hist.i);
+  requestComposite();
+}
+
 function docPt(e) {
   const r = vp.getBoundingClientRect();
   return {
@@ -1016,8 +1065,16 @@ function floodMask(refData, w, h, sx, sy, tol, contiguous) {
 }
 const effSelMode = e => e.shiftKey ? "add" : e.altKey ? "sub" : T.selMode;
 
+vp.addEventListener("pointercancel", e => endGesture(e));
 vp.addEventListener("pointerdown", e => {
   if (!Doc.open || e.button === 2) return;
+  window.KilnPen?.seen(e);
+  /* A hand resting on the glass is a touch, and it arrives while the pen is
+     drawing. Ignoring it is the difference between a stroke and a stroke with
+     a smear across it. */
+  if (window.KilnPen?.isPalm(e)) return;
+  if (gesture.pts.size >= 1 && e.pointerType === "touch") { startGesture(e); return; }
+  if (e.pointerType === "touch") gesture.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
   $("flyout").classList.remove("on");
   const p = docPt(e);
   const l = active();
@@ -1147,7 +1204,7 @@ vp.addEventListener("pointerdown", e => {
       paintEraser = TOOL === "eraser" && target === "canvas";
       paintOpacity = (TOOL === "brush" ? T.brushOp : TOOL === "eraser" ? T.eraserOp : 100) / 100;
       drag = { kind: "paint", target, last: p, carry: { d: 0 }, sm: { ...p } };
-      paintDab(p, p, e.pressure, drag.carry);
+      paintDab(p, p, window.KilnPen ? window.KilnPen.pressure(e) : e.pressure, drag.carry);
     } else {
       if (TOOL === "clone") cloneOff = { x: p.x - cloneSrc.x, y: p.y - cloneSrc.y };
       drag = { kind: "fbrush", target, last: p };
@@ -1179,6 +1236,9 @@ function paintDab(from, to, pressure, carry) {
 }
 
 vp.addEventListener("pointermove", e => {
+  if (moveGesture(e)) return;                      // two fingers are driving
+  if (window.KilnPen?.isPalm(e)) return;
+  window.KilnPen?.seen(e);
   const p = Doc.open ? docPt(e) : { x: 0, y: 0 };
   if (Doc.open) {
     $("sbPos").textContent = `${Math.round(p.x)}, ${Math.round(p.y)}`;
@@ -1221,7 +1281,8 @@ vp.addEventListener("pointermove", e => {
         const q = docPt(ev);
         drag.sm.x += (q.x - drag.sm.x) * k;
         drag.sm.y += (q.y - drag.sm.y) * k;
-        paintDab(drag.last, { x: drag.sm.x, y: drag.sm.y }, ev.pressure, drag.carry);
+        paintDab(drag.last, { x: drag.sm.x, y: drag.sm.y },
+          window.KilnPen ? window.KilnPen.pressure(ev) : ev.pressure, drag.carry);
         drag.last = { x: drag.sm.x, y: drag.sm.y };
       }
       requestComposite();
@@ -1291,6 +1352,7 @@ vp.addEventListener("pointermove", e => {
 });
 
 vp.addEventListener("pointerup", e => {
+  endGesture(e);
   if (FT && FT.drag) { ftPointer("up", null, e); return; }
   if (!drag) return;
   const l = active();
@@ -1657,11 +1719,38 @@ function maskThumb(l) {
 function renderLayersPanel() {
   const box = $("layers");
   box.innerHTML = "";
+  /* Reordering by dragging, once, on the panel rather than per row — the rows
+     are rebuilt on every repaint and the old handlers went with them. Touch
+     included: what was here before was HTML5 drag-and-drop, which a finger
+     never triggers. See packages/touch/touch.js. */
+  window.KilnDrag?.wire({
+    from: box, item: ".lyr", ignore: ".eye,[data-th],[data-mth]",
+    data: el => (Doc.layers[+el.dataset.i]?.locked ? null : +el.dataset.i),
+    label: el => el.querySelector(".nm")?.textContent || "Layer",
+    over: (x, y) => {
+      box.querySelectorAll(".lyr").forEach(r => r.classList.remove("drop-b", "drop-a"));
+      const row = document.elementFromPoint(x, y)?.closest?.(".lyr");
+      if (!row || !box.contains(row)) return;
+      const r = row.getBoundingClientRect();
+      row.classList.add(y < r.top + r.height / 2 ? "drop-b" : "drop-a");
+    },
+    drop: (x, y, from) => {
+      box.querySelectorAll(".lyr").forEach(r => r.classList.remove("drop-b", "drop-a"));
+      const row = document.elementFromPoint(x, y)?.closest?.(".lyr");
+      if (!row || !box.contains(row)) return;
+      const to = +row.dataset.i;
+      if (isNaN(from) || from === to) return;
+      const [mv] = Doc.layers.splice(from, 1);
+      Doc.layers.splice(to, 0, mv);
+      Doc.active = Doc.layers.indexOf(mv);
+      commit("Reorder layers");
+    },
+    end: () => box.querySelectorAll(".lyr").forEach(r => r.classList.remove("drop-b", "drop-a")),
+  });
   [...Doc.layers].reverse().forEach((l, ri) => {
     const i = Doc.layers.length - 1 - ri;
     const row = document.createElement("div");
     row.className = "lyr" + (i === Doc.active ? " sel" : "") + (l.visible ? "" : " off");
-    row.draggable = !l.locked;
     row.dataset.i = i;
     row.innerHTML = `
       <button class="eye" title="Visibility">${SVG(l.visible
@@ -1706,17 +1795,7 @@ function renderLayersPanel() {
       const nm = prompt("Layer name", l.name);
       if (nm) { l.name = nm; commit("Rename layer"); }
     });
-    row.addEventListener("dragstart", e => e.dataTransfer.setData("text/plain", i));
-    row.addEventListener("dragover", e => e.preventDefault());
-    row.addEventListener("drop", e => {
-      e.preventDefault();
-      const from = +e.dataTransfer.getData("text/plain");
-      if (isNaN(from) || from === i) return;
-      const [mv] = Doc.layers.splice(from, 1);
-      Doc.layers.splice(i, 0, mv);
-      Doc.active = Doc.layers.indexOf(mv);
-      commit("Reorder layers");
-    });
+
     row.addEventListener("contextmenu", e => {
       e.preventDefault();
       Doc.active = i; renderLayersPanel();

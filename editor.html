@@ -12,6 +12,7 @@
 <script src="i18n.js"></script>
 <script src="search.js"></script>
 <script src="panels.js" defer></script>
+<script src="touch.js"></script>
 <script src="session.js"></script>
 <script src="project.js"></script>
 <script src="tabs.js"></script>
@@ -133,7 +134,11 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 4.5px;border:var(--bw) 
 
 /* ---------- stage ---------- */
 .stage{grid-area:stage;position:relative;overflow:hidden;}
-#vp{position:absolute;inset:0;overflow:hidden}
+#vp{position:absolute;inset:0;overflow:hidden;touch-action:none}
+/* Drag targets show where a row will land — the same marks the mouse used to
+   get from the browser's own drag machinery, now drawn by us. */
+.lyr.drop-b{box-shadow:inset 0 2px 0 var(--ember)}
+.lyr.drop-a{box-shadow:inset 0 -2px 0 var(--ember)}
 #docWrap{position:absolute;left:50%;top:50%;transform-origin:0 0;
   box-shadow:0 26px 60px -26px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.08)}
 #docCanvas,#uiCanvas{position:absolute;left:0;top:0;display:block}
@@ -277,7 +282,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="0d3d167-2225">
+<meta name="kiln-build" content="07a949c-1327">
 </head>
 <body>
 <div id="app">

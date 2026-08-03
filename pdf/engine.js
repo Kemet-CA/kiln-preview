@@ -424,7 +424,7 @@ function buildThumbs() {
   if (!Doc.pages.length) { host.innerHTML = `<div class="empty">No document open.</div>`; return; }
   host.innerHTML = Doc.pages.map((p, i) => {
     const cached = thumbCache.get(pageKey(p));
-    return `<div class="th${Doc.sel.has(i) ? " sel" : ""}${Doc.cur === i + 1 ? " cur" : ""}" data-i="${i}" draggable="true">
+    return `<div class="th${Doc.sel.has(i) ? " sel" : ""}${Doc.cur === i + 1 ? " cur" : ""}" data-i="${i}">
       <div class="th-c">${cached ? `<img src="${cached}" alt="">` : ""}</div>
       <div class="th-n num">${i + 1}</div></div>`;
   }).join("");
@@ -1363,32 +1363,32 @@ function wire() {
     const th = e.target.closest(".th");
     if (th) setCurrent(+th.dataset.i + 1, true);
   });
-  let dragFrom = null;
-  thumbs.addEventListener("dragstart", e => {
-    const th = e.target.closest(".th");
-    if (!th) return;
-    dragFrom = +th.dataset.i;
-    if (!Doc.sel.has(dragFrom)) { Doc.sel.clear(); Doc.sel.add(dragFrom); renderSelection(); }
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", String(dragFrom));
-  });
-  thumbs.addEventListener("dragover", e => {
-    e.preventDefault();
-    const th = e.target.closest(".th");
-    thumbs.querySelectorAll(".th").forEach(x => x.classList.remove("drop-b", "drop-a"));
-    if (!th) return;
+  /* Reordering pages by dragging, on a tablet as well as a desktop: the HTML5
+     drag API this used never fires for a touch. See packages/touch/touch.js. */
+  const marks = () => thumbs.querySelectorAll(".th").forEach(x => x.classList.remove("drop-b", "drop-a"));
+  const slotAt = (x, y) => {
+    const th = document.elementFromPoint(x, y)?.closest?.(".th");
+    if (!th || !thumbs.contains(th)) return null;
     const r = th.getBoundingClientRect();
-    th.classList.add(e.clientY < r.top + r.height / 2 ? "drop-b" : "drop-a");
-  });
-  thumbs.addEventListener("drop", e => {
-    e.preventDefault();
-    const th = e.target.closest(".th");
-    thumbs.querySelectorAll(".th").forEach(x => x.classList.remove("drop-b", "drop-a"));
-    if (!th || dragFrom === null) return;
-    const r = th.getBoundingClientRect();
-    const to = +th.dataset.i + (e.clientY < r.top + r.height / 2 ? 0 : 1);
-    movePages(selected().length ? selected() : [dragFrom], to);
-    dragFrom = null;
+    return { th, before: y < r.top + r.height / 2, to: +th.dataset.i + (y < r.top + r.height / 2 ? 0 : 1) };
+  };
+  window.KilnDrag?.wire({
+    from: thumbs, item: ".th",
+    data: el => +el.dataset.i,
+    label: el => "Page " + (+el.dataset.i + 1),
+    over: (x, y) => {
+      marks();
+      const slot = slotAt(x, y);
+      if (slot) slot.th.classList.add(slot.before ? "drop-b" : "drop-a");
+    },
+    drop: (x, y, from) => {
+      marks();
+      const slot = slotAt(x, y);
+      if (!slot) return;
+      if (!Doc.sel.has(from)) { Doc.sel.clear(); Doc.sel.add(from); renderSelection(); }
+      movePages(selected().length ? selected() : [from], slot.to);
+    },
+    end: marks,
   });
 
   // viewer page click selects that page (not while an annotation tool is armed)

@@ -12,6 +12,7 @@
 <script src="i18n.js"></script>
 <script src="search.js"></script>
 <script src="panels.js" defer></script>
+<script src="touch.js"></script>
 <script src="session.js"></script>
 <script src="project.js"></script>
 <script src="tabs.js"></script>
@@ -332,7 +333,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .tlnames{width:96px;flex:none}
 .tlmain{flex:1;min-height:0;display:flex}
 .tlscroll{flex:1;min-width:0;min-height:0;overflow:auto;position:relative}
-.tl-ruler{position:sticky;top:0;z-index:4;height:22px;background:var(--s2);border-bottom:1px solid var(--line)}
+.tl-ruler{position:sticky;top:0;z-index:4;height:22px;touch-action:none;background:var(--s2);border-bottom:1px solid var(--line)}
 .tl-ruler .tk{position:absolute;top:4px;font-family:var(--mono);font-size:9px;color:var(--t4);
   padding-left:4px;border-left:1px solid var(--line2);height:14px}
 .tl-body{position:relative}
@@ -354,12 +355,15 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .thead .tbtn.del:hover{color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,transparent)}
 .thead svg{width:13px;height:13px}
 .tl-main>.tlscroll{flex:1;min-width:0}
+/* Where a dragged clip would land, drawn by us: the browser's own drag
+   feedback went away with HTML5 drag-and-drop, which touch never fired. */
+.tl-track.droplane{outline:2px dashed var(--cat,var(--ember));outline-offset:-2px}
 .tl-track{position:relative;height:56px;border-bottom:1px solid var(--line);background:
   repeating-linear-gradient(90deg,transparent 0 59px,var(--gridln) 59px 60px)}
 .tl-track.audio{height:44px;background-color:color-mix(in srgb,var(--celadon) 5%,transparent)}
 .tl-marquee{position:absolute;z-index:8;pointer-events:none;border-radius:4px;
   border:1px solid var(--ember);background:color-mix(in srgb,var(--ember) 16%,transparent)}
-.tl-clip{position:absolute;top:4px;bottom:4px;border-radius:6px;overflow:hidden;cursor:grab;
+.tl-clip{position:absolute;top:4px;bottom:4px;border-radius:6px;overflow:hidden;cursor:grab;touch-action:none;
   background:color-mix(in srgb,var(--cobalt) 34%,var(--s3));border:1px solid color-mix(in srgb,var(--cobalt) 55%,transparent);
   display:flex;align-items:center;gap:5px;padding:0 8px;min-width:6px}
 .tl-clip.k-audio{background:color-mix(in srgb,var(--celadon) 30%,var(--s3));border-color:color-mix(in srgb,var(--celadon) 55%,transparent)}
@@ -429,7 +433,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="0d3d167-2225">
+<meta name="kiln-build" content="07a949c-1327">
 </head>
 <body>
 <div id="app">

@@ -254,7 +254,7 @@ function renderPool() {
   const p = App.project;
   if (!p.media.length) { host.innerHTML = `<div class="empty">No media yet.<br>Import or drop files here.</div>`; return; }
   host.innerHTML = p.media.map(m => `
-    <div class="mitem${App.poolSel.includes(m.id) ? " sel" : ""}" data-media="${m.id}" draggable="true">
+    <div class="mitem${App.poolSel.includes(m.id) ? " sel" : ""}" data-media="${m.id}">
       <div class="mth" style="${m.poster ? `background-image:url(${m.poster})` : ""}">${m.poster ? "" : m.kind === "audio" ? "♪" : "▦"}</div>
       <div class="mmeta">
         <div class="mname">${esc(m.name)}</div>
@@ -1981,19 +1981,35 @@ function wire() {
   stage.addEventListener("drop", e => { e.preventDefault(); addMediaFiles(e.dataTransfer.files); });
 
   // drag from the pool onto the timeline
-  $("pool").addEventListener("dragstart", e => {
-    const m = e.target.closest("[data-media]");
-    if (m) e.dataTransfer.setData("text/kiln-media", m.dataset.media);
-  });
-  $("tlScroll").addEventListener("dragover", e => e.preventDefault());
-  $("tlScroll").addEventListener("drop", e => {
-    e.preventDefault();
-    const id = e.dataTransfer.getData("text/kiln-media");
-    if (!id) return;
-    const trackEl = e.target.closest(".tl-track");
-    const r = $("tlScroll").getBoundingClientRect();
-    const at = timeline.pxToTime(e.clientX - r.left + $("tlScroll").scrollLeft);
-    addToTimeline(id, Math.max(0, at), trackEl?.dataset.track);
+  /* Media onto the timeline, with a finger as readily as with a mouse. This
+     was HTML5 drag-and-drop, which never fires a single event for a touch —
+     see packages/touch/touch.js. */
+  const dropAt = (x, y, under) => {
+    const trackEl = under?.closest?.(".tl-track");
+    const scroll = $("tlScroll");
+    const r = scroll.getBoundingClientRect();
+    if (x < r.left || x > r.right || y < r.top || y > r.bottom) return null;
+    return { at: Math.max(0, timeline.pxToTime(x - r.left + scroll.scrollLeft)),
+             track: trackEl?.dataset.track };
+  };
+  window.KilnDrag?.wire({
+    from: "#pool", item: "[data-media]",
+    data: el => el.dataset.media,
+    label: el => el.querySelector(".mname")?.textContent || "Clip",
+    over: (x, y, id, under) => {
+      const hit = dropAt(x, y, under);
+      $("tlScroll").classList.toggle("droptarget", !!hit);
+      document.querySelectorAll(".tl-track.droplane").forEach(t => t.classList.remove("droplane"));
+      if (hit?.track) document.querySelector(`.tl-track[data-track="${hit.track}"]`)?.classList.add("droplane");
+    },
+    drop: (x, y, id, under) => {
+      const hit = dropAt(x, y, under);
+      if (hit) addToTimeline(id, hit.at, hit.track);
+    },
+    end: () => {
+      $("tlScroll").classList.remove("droptarget");
+      document.querySelectorAll(".tl-track.droplane").forEach(t => t.classList.remove("droplane"));
+    },
   });
 
   for (const id of ["expPreset", "expRes", "expFmt", "expFps", "expAud", "expCodec"])
