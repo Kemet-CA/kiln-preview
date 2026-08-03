@@ -1685,15 +1685,20 @@ function setExportBusy(p) {
   btn.textContent = `Exporting ${Math.round(p * 100)}%`;
 }
 
-/* The button says what pressing it will do, which is the opposite of the
-   state it is in. */
+/* The button says what pressing it will do, which is the opposite of the state
+   it is in. With no label on it that has to be the tooltip and the icon: arrows
+   pointing outwards to go in, inwards to come back. */
+const FS_IN = "M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3";
+const FS_OUT = "M3 8h3a2 2 0 0 0 2-2V3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M21 16h-3a2 2 0 0 0-2 2v3";
 function syncFullscreen() {
   const on = !!document.fullscreenElement;
   const btn = document.getElementById("fsBtn");
   if (!btn) return;
   btn.classList.toggle("on", on);
-  document.getElementById("fsLabel").textContent = on ? "Exit full screen" : "Full screen";
+  const label = on ? "Exit full screen" : "Full screen";
   btn.title = on ? "Leave full screen (F or Escape)" : "Full screen (F)";
+  btn.setAttribute("aria-label", label);
+  document.getElementById("fsIcon").firstElementChild.setAttribute("d", on ? FS_OUT : FS_IN);
   fitPreview();
 }
 addEventListener("fullscreenchange", syncFullscreen);
