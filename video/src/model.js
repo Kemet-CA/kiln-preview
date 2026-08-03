@@ -46,7 +46,9 @@ export const DEFAULT_CLIP = {
   /* Effects start off. A clip should look like what was imported until
      someone asks for something else, and a panel of controls that are doing
      nothing is worse than a switch that says so. */
-  fxColor: false, fxKey: false, fxMask: false, fxTransform: false,
+  fxColor: false, fxKey: false, fxMask: false, fxTransform: false, fxEffects: false,
+  // effects — the passes that are not colour and not a key; see src/keyer.js
+  fxVignette: 0, fxVignetteSoft: .5, fxGrain: 0, fxGlow: 0, fxPixelate: 0,
   // green screen and shape masks — see src/keyer.js
   chroma: false, keyColor: "#00d000", keySimilarity: .18, keySmooth: .08, keySpill: .4,
   mask: "none", maskSize: .6, maskFeather: .1, maskX: 0, maskY: 0, maskInvert: false,

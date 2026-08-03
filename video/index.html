@@ -259,6 +259,12 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .stabtrack{height:4px;border-radius:99px;background:var(--s3);overflow:hidden;margin:2px 0 6px}
 .stabtrack i{display:block;height:100%;width:0;background:var(--ember);transition:width .15s linear}
 .vwrap{flex:1;min-height:0;display:grid;place-items:center;padding:16px}
+/* In full screen the stage is the whole window rather than a grid cell, so it
+   has to bring its own background — a fullscreen element gets black from the
+   browser otherwise, whatever the theme is. */
+#stage:fullscreen{background:var(--stagebg);width:100vw;height:100vh}
+#stage:fullscreen .vwrap{padding:28px}
+#stage:fullscreen .transport{padding-bottom:20px}
 #preview{display:block;background:#000;border-radius:3px;
   box-shadow:0 20px 50px -24px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.07)}
 .transport{flex:none;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 0 12px}
@@ -423,7 +429,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="4e00b09-1928">
+<meta name="kiln-build" content="0d3d167-2225">
 </head>
 <body>
 <div id="app">
@@ -512,6 +518,10 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
             <path d="M7 2v15h15"/><path d="M2 7h15v15"/></svg><span>Crop</span><b class="caret">▾</b></button>
         <div class="cropmenu" id="cropMenu" hidden></div>
       </div>
+      <button class="fbtn" data-act="fullscreen" id="fsBtn" title="Full screen (F)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+          stroke-linejoin="round" id="fsIcon"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        <span id="fsLabel">Full screen</span></button>
     </div>
     <div class="dz" id="dz">
       <div class="dzi">
@@ -532,7 +542,8 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
     <div class="krz krz-x" data-kiln-grip data-var="--insp" data-edge="start" data-min="200" data-max="560" title="Drag to resize · double-click to reset"></div>
     <div class="itabs">
       <button class="itab on" data-it="iTransform">Transform</button>
-      <button class="itab" data-it="iColor">Colour</button>
+      <button class="itab" data-it="iColor">Adjustment</button>
+      <button class="itab" data-it="iEffects">Effects</button>
       <button class="itab" data-it="iAudio">Audio</button>
       <button class="itab" data-it="iText">Text</button>
       <button class="itab" data-it="iKeys">Animate</button>
@@ -541,6 +552,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
     </div>
     <div class="ibody on" id="iTransform"></div>
     <div class="ibody" id="iColor"></div>
+    <div class="ibody" id="iEffects"></div>
     <div class="ibody" id="iAudio"></div>
     <div class="ibody" id="iText"></div>
     <div class="ibody" id="iKeys"></div>

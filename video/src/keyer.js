@@ -268,9 +268,122 @@ function masked(src, w, h, opts) {
   return maskOut;
 }
 
+
+/* ============================================================
+   Effects — the passes that are not colour and not a key.
+
+   These live here rather than in the filter chain because none of them can be
+   written as a CSS filter: a vignette needs a gradient over the picture, grain
+   needs noise that changes every frame, glow needs the picture composited with
+   a blurred copy of itself, and pixelation needs the picture resampled. All of
+   them are 2D canvas work on the way past, in the same staging pipeline the
+   keyer and the mask already use — so the preview and the export get them from
+   the same code, as everything else here does.
+   ============================================================ */
+let fxOut = null, fxCtx = null, tmp = null, tmpCtx = null;
+let grainTile = null;
+
+/* One tile of noise, made once and tiled at a different offset each frame.
+   Generating a full frame of random pixels per frame costs more than the rest
+   of the compositor put together; a 128px tile shifted around is
+   indistinguishable in motion and effectively free. */
+function noiseTile() {
+  if (grainTile) return grainTile;
+  const n = 128;
+  grainTile = document.createElement("canvas");
+  grainTile.width = grainTile.height = n;
+  const g = grainTile.getContext("2d");
+  const img = g.createImageData(n, n);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = (Math.random() * 255) | 0;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return grainTile;
+}
+
+const num = (v, d) => (typeof v === "number" && isFinite(v) ? v : d);
+
+function effects(src, w, h, c) {
+  if (!fxOut) {
+    fxOut = document.createElement("canvas"); fxCtx = fxOut.getContext("2d");
+    tmp = document.createElement("canvas"); tmpCtx = tmp.getContext("2d");
+  }
+  if (fxOut.width !== w || fxOut.height !== h) { fxOut.width = w; fxOut.height = h; }
+  fxCtx.setTransform(1, 0, 0, 1, 0, 0);
+  fxCtx.filter = "none";
+  fxCtx.globalAlpha = 1;
+  fxCtx.globalCompositeOperation = "source-over";
+  fxCtx.clearRect(0, 0, w, h);
+
+  const pixel = num(c.fxPixelate, 0);
+  if (pixel > 0) {
+    /* Down to a small copy and back up with smoothing off: the cheap,
+       correct way to pixelate, and the only one that gives square blocks. */
+    const k = Math.max(1, Math.round(1 + pixel * 60));
+    const pw = Math.max(1, Math.round(w / k)), ph = Math.max(1, Math.round(h / k));
+    if (tmp.width !== pw || tmp.height !== ph) { tmp.width = pw; tmp.height = ph; }
+    tmpCtx.imageSmoothingEnabled = true;
+    tmpCtx.clearRect(0, 0, pw, ph);
+    tmpCtx.drawImage(src, 0, 0, pw, ph);
+    fxCtx.imageSmoothingEnabled = false;
+    fxCtx.drawImage(tmp, 0, 0, pw, ph, 0, 0, w, h);
+    fxCtx.imageSmoothingEnabled = true;
+  } else {
+    fxCtx.drawImage(src, 0, 0, w, h);
+  }
+
+  const glow = num(c.fxGlow, 0);
+  if (glow > 0) {
+    /* A blurred copy laid over the picture with `lighter`, which is addition:
+       the bright parts of the copy lift the bright parts of the original and
+       leave the dark ones roughly alone. That is what bloom is. */
+    fxCtx.save();
+    fxCtx.globalCompositeOperation = "lighter";
+    fxCtx.globalAlpha = Math.min(1, glow);
+    fxCtx.filter = `blur(${Math.max(1, glow * Math.min(w, h) * .03)}px) brightness(1.25)`;
+    fxCtx.drawImage(fxOut, 0, 0, w, h);
+    fxCtx.restore();
+  }
+
+  const grain = num(c.fxGrain, 0);
+  if (grain > 0) {
+    const tile = noiseTile();
+    fxCtx.save();
+    fxCtx.globalCompositeOperation = "overlay";
+    fxCtx.globalAlpha = Math.min(.85, grain * .55);
+    const ox = -((Math.random() * tile.width) | 0), oy = -((Math.random() * tile.height) | 0);
+    const pat = fxCtx.createPattern(tile, "repeat");
+    fxCtx.translate(ox, oy);
+    fxCtx.fillStyle = pat;
+    fxCtx.fillRect(0, 0, w - ox, h - oy);
+    fxCtx.restore();
+  }
+
+  const vig = num(c.fxVignette, 0);
+  if (vig > 0) {
+    const soft = Math.max(.05, num(c.fxVignetteSoft, .5));
+    const r = Math.hypot(w, h) / 2;
+    const g = fxCtx.createRadialGradient(w / 2, h / 2, r * (1 - soft) * .55, w / 2, h / 2, r);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, `rgba(0,0,0,${Math.min(1, vig)})`);
+    fxCtx.save();
+    fxCtx.fillStyle = g;
+    fxCtx.fillRect(0, 0, w, h);
+    fxCtx.restore();
+  }
+  return fxOut;
+}
+
+/* Whether any of the above would actually do something. A group switched on
+   with every slider at zero is not a reason to copy the frame. */
+export const hasEffects = c => !!c && !!c.fxEffects &&
+  (num(c.fxVignette, 0) > 0 || num(c.fxGrain, 0) > 0 || num(c.fxGlow, 0) > 0 || num(c.fxPixelate, 0) > 0);
+
 export const needsStage = c =>
   !!c && ((c.chroma && c.fxKey && c.kind !== "text" && c.kind !== "sticker") ||
-          (c.fxMask && c.mask && c.mask !== "none"));
+          (c.fxMask && c.mask && c.mask !== "none") || hasEffects(c));
 
 /* Run whichever passes the clip asks for. Returns something drawImage takes,
    or null if nothing could be done — the caller then draws the source as it
@@ -283,6 +396,11 @@ export function stage(src, clip) {
     const k = keyed(out, w, h, clip);
     if (k) out = k;
   }
+  /* Effects come after the key and before the mask: keying is about the
+     picture as it was shot, and the mask is about what is finally shown. A
+     vignette applied before the key would be part of what the key had to
+     match, which is not what anyone means by a vignette. */
+  if (hasEffects(clip)) out = effects(out, w, h, clip);
   if (clip.fxMask && clip.mask && clip.mask !== "none") out = masked(out, w, h, clip);
   return out === src ? null : out;
 }

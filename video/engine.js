@@ -691,7 +691,28 @@ function renderInspector() {
          <button class="chip" data-look="fade">Faded</button>
        </div>`,
       `Switch this on for brightness, contrast, saturation, hue, blur and the
-       ready-made looks.`) +
+       ready-made looks.`);
+
+    /* Effects are the passes that are not colour and not a key — see
+       src/keyer.js for why none of them can be a filter. */
+    $("iEffects").innerHTML =
+      fxGroup("Effects", "fxEffects", !!c.fxEffects,
+      `${row("Vignette", slider("fxVignette", 0, 1, .01, c.fxVignette ?? 0))}
+       ${row("Vignette softness", slider("fxVignetteSoft", .05, 1, .01, c.fxVignetteSoft ?? .5))}
+       ${row("Film grain", slider("fxGrain", 0, 1, .01, c.fxGrain ?? 0))}
+       ${row("Glow", slider("fxGlow", 0, 1, .01, c.fxGlow ?? 0))}
+       ${row("Pixelate", slider("fxPixelate", 0, 1, .01, c.fxPixelate ?? 0))}
+       <div class="ihead">Ready-made</div>
+       <div class="chips">
+         <button class="chip" data-fxpreset="none">None</button>
+         <button class="chip" data-fxpreset="film">Film</button>
+         <button class="chip" data-fxpreset="dream">Dream</button>
+         <button class="chip" data-fxpreset="oldtv">Old TV</button>
+         <button class="chip" data-fxpreset="censor">Censor</button>
+       </div>
+       <div class="note">These are drawn onto the picture rather than applied as a filter, so they
+         cost a pass over the frame. Every slider at zero costs nothing at all, switch on or not.</div>`,
+      `Switch this on for vignette, grain, glow and pixelation.`) +
       fxGroup("Green screen", "fxKey", !!c.fxKey,
       `<div class="chips">
          <button class="chip${c.chroma ? " on" : ""}" data-toggle="chroma">Key out a colour</button>
@@ -727,7 +748,6 @@ function renderInspector() {
             <div class="note">Strength is how much of the outside is taken away — at 0 the mask
               does nothing, at 1 the outside is gone.</div>`}`,
       `Switch this on for a shape mask or cinematic black bars.`);
-
     $("iAudio").innerHTML =
       `<div class="ihead">Clip audio</div>
        ${row("Volume", slider("volume", 0, 2, .01, c.volume, "", true))}
@@ -856,6 +876,33 @@ async function addMediaFiles(files) {
     toast(`${added} file${added === 1 ? "" : "s"} imported`);
   }
 }
+/* The audio track that belongs to a video track.
+
+   Video 1's sound goes on Audio 1, Video 2's on Audio 2, and so on — matched
+   by position rather than by whichever audio track happened to be free. Two
+   videos stacked for a cutaway then have their sound on two separate tracks,
+   which is what makes it possible to mute one of them without hunting for
+   which clip belongs to which picture.
+
+   Tracks are stored front to back, so the video track nearest the bottom of
+   the timeline is the last one in the list; counting from that end is what
+   makes "Video 1" the first one. The matching audio track is created if it is
+   not there yet, because the alternative is silently putting the sound
+   somewhere it does not belong. */
+function audioTrackFor(videoTrack) {
+  const p = App.project;
+  const vids = p.tracks.filter(t => t.kind === "video");
+  const n = vids.length - vids.indexOf(videoTrack);        // 1 = the bottom one
+  if (n < 1) return p.tracks.find(t => t.kind === "audio") || null;
+  const auds = () => p.tracks.filter(t => t.kind === "audio");
+  while (auds().length < n) {
+    const k = auds().length + 1;
+    p.tracks.push({ id: M.uid("t"), kind: "audio", name: `Audio ${k}`,
+      hidden: false, locked: false, muted: false, clips: [] });
+  }
+  return auds()[n - 1];
+}
+
 /* drop a media item onto the first track that can take it, after what is there */
 function addToTimeline(mediaId, atTime = null, trackId = null) {
   const p = App.project;
@@ -876,9 +923,7 @@ function addToTimeline(mediaId, atTime = null, trackId = null) {
      edit, and hiding it inside the video clip meant every volume or fade
      decision had to be made through a panel. */
   if (media.kind === "video" && media.hasAudio) {
-    const aTrack = p.tracks.filter(t => t.kind === "audio")
-      .find(t => !t.clips.some(c => at < M.clipEnd(c) && c.start < at + media.dur))
-      || p.tracks.find(t => t.kind === "audio");
+    const aTrack = audioTrackFor(track);
     if (aTrack) {
       const sound = M.makeClip(media, at, {
         kind: "audio", dur: media.dur, name: (media.name || "Clip") + " audio",
@@ -1292,7 +1337,10 @@ const ACT = {
   detachAudio: () => {
     const c = firstSelected();
     if (!c?.mediaId) return toast("Select a video clip first", "warn");
-    const audioTrack = App.project.tracks.find(t => t.kind === "audio");
+    // the same rule as an import: this picture's sound goes on its own lane
+    const owner = App.project.tracks.find(t => t.clips.includes(c));
+    const audioTrack = (owner && owner.kind === "video" && audioTrackFor(owner))
+      || App.project.tracks.find(t => t.kind === "audio");
     const copy = structuredClone(c);
     copy.id = M.uid("c"); copy.kind = "audio"; copy.name = (c.name || "Clip") + " audio";
     M.addClip(audioTrack, copy);
@@ -1303,6 +1351,15 @@ const ACT = {
   clearBg: () => { const c = firstSelected(); if (c) { c.bg = ""; commit("Text background"); refresh(); } },
   saveProject: () => window.KilnProject?.save(),
   downloadProject: () => window.KilnProject?.download(),
+  /* Full screen puts the stage itself into the browser's fullscreen, not the
+     whole page: the transport goes with it, so play, scrub and the timecode
+     are still there, and leaving is Escape like everywhere else. */
+  fullscreen: () => {
+    const el = document.getElementById("stage");
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else (el.requestFullscreen?.() || Promise.reject()).catch(() =>
+      toast("This browser would not give the player the screen", "warn"));
+  },
   exportOpen: () => {
     if (App.exporting) return toast("An export is already running", "warn");
     if (!M.duration(App.project)) return toast("The timeline is empty", "warn");
@@ -1381,6 +1438,16 @@ function restore() {
 }
 
 /* ---------------- looks ---------------- */
+/* Effect presets. Each one is a whole state rather than a nudge, so pressing
+   the same chip twice lands in the same place — and "None" is the way back. */
+const FX_PRESETS = {
+  none:   { fxVignette: 0, fxGrain: 0, fxGlow: 0, fxPixelate: 0, fxVignetteSoft: .5 },
+  film:   { fxVignette: .45, fxVignetteSoft: .6, fxGrain: .35, fxGlow: 0, fxPixelate: 0 },
+  dream:  { fxVignette: .2, fxVignetteSoft: .8, fxGrain: 0, fxGlow: .55, fxPixelate: 0 },
+  oldtv:  { fxVignette: .55, fxVignetteSoft: .35, fxGrain: .6, fxGlow: .15, fxPixelate: .12 },
+  censor: { fxVignette: 0, fxGrain: 0, fxGlow: 0, fxPixelate: .5, fxVignetteSoft: .5 },
+};
+
 const LOOKS = {
   none:  { brightness: 1, contrast: 1, saturate: 1, hue: 0, sepia: 0, grayscale: 0 },
   warm:  { brightness: 1.05, contrast: 1.05, saturate: 1.15, hue: -8, sepia: .12, grayscale: 0 },
@@ -1581,6 +1648,19 @@ function setExportBusy(p) {
   btn.style.setProperty("--done", Math.round(p * 100) + "%");
   btn.textContent = `Exporting ${Math.round(p * 100)}%`;
 }
+
+/* The button says what pressing it will do, which is the opposite of the
+   state it is in. */
+function syncFullscreen() {
+  const on = !!document.fullscreenElement;
+  const btn = document.getElementById("fsBtn");
+  if (!btn) return;
+  btn.classList.toggle("on", on);
+  document.getElementById("fsLabel").textContent = on ? "Exit full screen" : "Full screen";
+  btn.title = on ? "Leave full screen (F or Escape)" : "Full screen (F)";
+  fitPreview();
+}
+addEventListener("fullscreenchange", syncFullscreen);
 
 /* ---------------- menus ---------------- */
 const MENUS = {
@@ -1838,6 +1918,12 @@ function wire() {
     if (tog && c) { c[tog.dataset.toggle] = !c[tog.dataset.toggle]; commit("Toggle"); refresh(); }
     const look = e.target.closest("[data-look]");
     if (look && c) { Object.assign(c, LOOKS[look.dataset.look]); commit("Look"); refresh(); }
+    const fxp = e.target.closest("[data-fxpreset]");
+    if (fxp && c) {
+      Object.assign(c, FX_PRESETS[fxp.dataset.fxpreset] || FX_PRESETS.none);
+      c.fxEffects = fxp.dataset.fxpreset !== "none";
+      commit("Effect preset"); refresh();
+    }
     const sp = e.target.closest("[data-speed]");
     if (sp && c) {
       const srcLen = c.dur * c.speed;
@@ -1927,6 +2013,7 @@ function wire() {
     if (M_ && k === "e") { e.preventDefault(); ACT.exportOpen(); return; }
     if (M_ && k === "d") { e.preventDefault(); ACT.duplicate(); return; }
     if (k === "s") { e.preventDefault(); ACT.split(); return; }
+    if (k === "f") { e.preventDefault(); ACT.fullscreen(); return; }
     if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); e.shiftKey ? ACT.ripple() : ACT.delete(); return; }
     if (e.key === "ArrowLeft") { e.preventDefault(); seek(App.playhead - (e.shiftKey ? 1 : 1 / App.project.fps)); return; }
     if (e.key === "ArrowRight") { e.preventDefault(); seek(App.playhead + (e.shiftKey ? 1 : 1 / App.project.fps)); return; }
