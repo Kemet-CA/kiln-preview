@@ -433,7 +433,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
 .prog i{display:block;height:100%;width:0;background:var(--btnp-bg);transition:width .2s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="07a949c-1327">
+<meta name="kiln-build" content="825296e-1501">
 </head>
 <body>
 <div id="app">
@@ -522,6 +522,14 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
             <path d="M7 2v15h15"/><path d="M2 7h15v15"/></svg><span>Crop</span><b class="caret">▾</b></button>
         <div class="cropmenu" id="cropMenu" hidden></div>
       </div>
+      <div class="menuwrap">
+        <button class="fbtn" data-act="rotateRight" title="Rotate the clip 90° (click the arrow for more)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+            stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg><span>Rotate</span></button>
+        <button class="fbtn car" data-drop="turnMenu" title="Rotate and flip" aria-label="Rotate and flip"
+          style="padding:5px 7px"><b class="caret">▾</b></button>
+        <div class="cropmenu" id="turnMenu" hidden></div>
+      </div>
       <button class="fbtn" data-act="fullscreen" id="fsBtn" title="Full screen (F)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
           stroke-linejoin="round" id="fsIcon"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
@@ -547,7 +555,6 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
     <div class="itabs">
       <button class="itab on" data-it="iTransform">Transform</button>
       <button class="itab" data-it="iColor">Adjustment</button>
-      <button class="itab" data-it="iEffects">Effects</button>
       <button class="itab" data-it="iAudio">Audio</button>
       <button class="itab" data-it="iText">Text</button>
       <button class="itab" data-it="iKeys">Animate</button>
@@ -556,7 +563,6 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none}
     </div>
     <div class="ibody on" id="iTransform"></div>
     <div class="ibody" id="iColor"></div>
-    <div class="ibody" id="iEffects"></div>
     <div class="ibody" id="iAudio"></div>
     <div class="ibody" id="iText"></div>
     <div class="ibody" id="iKeys"></div>

@@ -691,11 +691,12 @@ function renderInspector() {
          <button class="chip" data-look="fade">Faded</button>
        </div>`,
       `Switch this on for brightness, contrast, saturation, hue, blur and the
-       ready-made looks.`);
-
-    /* Effects are the passes that are not colour and not a key — see
-       src/keyer.js for why none of them can be a filter. */
-    $("iEffects").innerHTML =
+       ready-made looks.`) +
+    /* Effects sit under colour correction rather than in a tab of their own:
+       they are the other half of the same question — what this shot should
+       look like — and reaching them was a tab away from the sliders people
+       compare them against. See src/keyer.js for why none of them can be
+       written as a filter. */
       fxGroup("Effects", "fxEffects", !!c.fxEffects,
       `${row("Vignette", slider("fxVignette", 0, 1, .01, c.fxVignette ?? 0))}
        ${row("Vignette softness", slider("fxVignetteSoft", .05, 1, .01, c.fxVignetteSoft ?? .5))}
@@ -1099,6 +1100,41 @@ const ACT = {
     btn.classList.toggle("on", !menu.hidden || Crop.on);
   },
   cropClose: () => { $("cropMenu").hidden = true; $("cropBtn").classList.toggle("on", Crop.on); },
+
+  /* ---- turning the picture ----
+     Rotation and flipping were only in the Transform panel, behind its switch,
+     as a slider you had to drag to 90. Footage shot the wrong way up is common
+     enough that it belongs on the playback bar next to the picture it fixes.
+
+     Each of these switches the transform group on first: the compositor
+     ignores rotation while that switch is off, so a Rotate button that left it
+     off would do nothing and say nothing. */
+  rotateRight: () => turn(90),
+  rotateLeft: () => turn(-90),
+  flipH: () => flip("flipH"),
+  flipV: () => flip("flipV"),
+  turnReset: () => {
+    const cs = selectedClips();
+    if (!cs.length) return toast("Select a clip first", "warn");
+    for (const c of cs) { c.rot = 0; c.flipH = false; c.flipV = false; }
+    commit("Reset rotation"); refresh();
+    toast("Rotation and flips cleared");
+  },
+  turnOpen: () => {
+    const menu = $("turnMenu"), btn = document.querySelector('[data-drop="turnMenu"]');
+    const open = menu.hidden;
+    closeDropMenus();
+    $("cropMenu").hidden = true;
+    menu.hidden = !open;
+    renderTurnMenu();
+    if (!menu.hidden) {
+      const r = btn.getBoundingClientRect();
+      const h = Math.min(menu.scrollHeight + 12, innerHeight * .7);
+      const above = r.top - h - 8 > 8;
+      menu.style.left = Math.max(8, Math.min(innerWidth - 244, r.left + r.width / 2 - 118)) + "px";
+      menu.style.top = (above ? r.top - h - 8 : Math.min(innerHeight - h - 8, r.bottom + 8)) + "px";
+    }
+  },
   cropApply: applyCrop,
   cropCancel: cancelCrop,
 
@@ -1662,6 +1698,40 @@ function syncFullscreen() {
 }
 addEventListener("fullscreenchange", syncFullscreen);
 
+/* Rotation is kept in -180..180 so the slider in the panel always shows the
+   same number the button just produced. */
+function turn(by) {
+  const cs = selectedClips();
+  if (!cs.length) return toast("Select a clip first", "warn");
+  for (const c of cs) {
+    needTransform(c);
+    const r = ((((c.rot || 0) + by + 180) % 360) + 360) % 360 - 180;
+    c.rot = r === -180 ? 180 : r;          // 0 → 90 → 180 → -90 → 0
+  }
+  commit("Rotate"); refresh();
+  toast(`Rotated ${by > 0 ? "right" : "left"} — ${Math.round(cs[0].rot)}°`);
+}
+function flip(prop) {
+  const cs = selectedClips();
+  if (!cs.length) return toast("Select a clip first", "warn");
+  for (const c of cs) { needTransform(c); c[prop] = !c[prop]; }
+  commit("Flip"); refresh();
+  toast(prop === "flipH" ? "Flipped left to right" : "Flipped top to bottom");
+}
+function renderTurnMenu() {
+  const menu = $("turnMenu");
+  if (!menu || menu.hidden) return;
+  const c = firstSelected();
+  menu.innerHTML =
+    `<button class="ci" data-turn="rotateRight">Rotate right<u>90° clockwise</u></button>
+     <button class="ci" data-turn="rotateLeft">Rotate left<u>90° anticlockwise</u></button>
+     <div class="csep"></div>
+     <button class="ci${c?.flipH ? " on" : ""}" data-turn="flipH">Flip horizontal<u>mirror left to right</u></button>
+     <button class="ci${c?.flipV ? " on" : ""}" data-turn="flipV">Flip vertical<u>mirror top to bottom</u></button>
+     <div class="csep"></div>
+     <button class="ci" data-turn="turnReset">Reset<u>${c ? Math.round(c.rot || 0) : 0}° now</u></button>`;
+}
+
 /* ---------------- menus ---------------- */
 const MENUS = {
   mFile: [["Import media…", "import", "⌘I"], ["Generate a test clip", "sample"], null,
@@ -1672,6 +1742,8 @@ const MENUS = {
           ["Split at playhead", "split", "S"], ["Delete", "delete", "⌫"], ["Ripple delete", "ripple", "⇧⌫"],
           ["Duplicate", "duplicate", "⌘D"]],
   mClip: [["Add text", "addText"], ["Add sticker", "addSticker"], ["Record voiceover", "recordVoice"], null,
+          ["Rotate right 90°", "rotateRight"], ["Rotate left 90°", "rotateLeft"],
+          ["Flip horizontal", "flipH"], ["Flip vertical", "flipV"], null,
           ["Detach audio", "detachAudio"], ["Unlink audio", "unlinkAudio"],
           ["Reset transform", "resetTransform"], ["Fit to frame", "fitFrame"]],
   mView: [["Zoom in", "zoomIn"], ["Zoom out", "zoomOut"], ["Fit timeline", "zoomFit"], null,
@@ -1735,7 +1807,9 @@ function wire() {
   const lay = e.target.closest("[data-layout]");
   if (lay) { ACT.layout(lay.dataset.layout); return; }
   const dm = e.target.closest("[data-drop]");
-  if (dm) { openDropMenu(dm.dataset.drop); return; }
+  if (dm) { dm.dataset.drop === "turnMenu" ? ACT.turnOpen() : openDropMenu(dm.dataset.drop); return; }
+  const turn = e.target.closest("[data-turn]");
+  if (turn) { ACT[turn.dataset.turn]?.(); $("turnMenu").hidden = true; return; }
   const at = e.target.closest("[data-add-title]");
   if (at) { closeDropMenus(); ACT.addText(at.dataset.addTitle); return; }
   const as = e.target.closest("[data-add-sticker]");
@@ -1773,6 +1847,8 @@ function wire() {
     if (!e.target.closest(".menuwrap")) closeDropMenus();
     if (!$("speedPop").hidden && !e.target.closest("#speedPop,[data-track-speed]")) closeSpeedPop();
     if (!$("cropMenu").hidden && !e.target.closest("#cropMenu,#cropBtn")) ACT.cropClose();
+    if (!$("turnMenu").hidden && !e.target.closest('#turnMenu,[data-drop="turnMenu"],[data-act="rotateRight"]'))
+      $("turnMenu").hidden = true;
   }, true);
   addEventListener("keydown", e => {
     if (Crop.on && (e.key === "Enter" || e.key === "Escape")) {
