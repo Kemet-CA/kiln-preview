@@ -265,6 +265,8 @@ function openFile(file) {
   if (!file) return;
   const r = new FileReader();
   r.onload = () => {
+    // every file opened gets its own tab, the way an editor should behave
+    if (!window.KilnTabs?.busy) window.KilnTabs?.spawn({ name: file.name });
     src().value = String(r.result);
     setLang(detectLanguage(file.name));
     App.name = file.name.replace(/\.[^.]+$/, "");
@@ -618,7 +620,25 @@ window.Code = { App, ACT, setLang, paint, tokenize, format, highlight, STARTERS 
    that the whole thing is the document and there are no assets at all — which
    is the point of letting each workspace describe its own. */
 window.KilnProject?.register({
-  kind: "code", schema: 1, newName: "Untitled snippet",
+  kind: "code", schema: 1, newName: "Untitled snippet", tabName: "File",
+
+  /* ---- tabs ---- */
+  capture: () => ({
+    text: src().value, lang: App.lang, name: App.name, wrap: App.wrap, font: App.font,
+    sel: [src().selectionStart, src().selectionEnd], scroll: src().scrollTop,
+  }),
+  adopt(st) {
+    setLang(st.lang || "javascript");
+    src().value = st.text || "";
+    App.name = st.name || "untitled";
+    App.wrap = !!st.wrap;
+    document.body.classList.toggle("wrap", App.wrap);
+    $("wrapBtn").classList.toggle("on", App.wrap);
+    if (st.font) setFont(st.font);
+    paint();
+    src().setSelectionRange(st.sel?.[0] ?? 0, st.sel?.[1] ?? 0);
+    src().scrollTop = st.scroll || 0;
+  },
   snapshot: () => ({
     doc: {
       text: src().value, lang: App.lang, name: App.name, font: App.font, wrap: App.wrap,

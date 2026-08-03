@@ -264,6 +264,9 @@
     armAuto();
     render();
     boot();
+    /* Tabs, if this page loaded them. They drive the same state this file
+       owns — see _state/_adopt — so that Save in one tab saves that tab. */
+    window.KilnTabs?.attach(A_, API);
     return API;
   }
 
@@ -377,7 +380,11 @@
   }
 
   async function neu() {
-    if (dirty() && !(await confirmDrop())) return;
+    /* With tabs, a new project is a new tab: nothing is being discarded, so
+       there is nothing to ask about. Without them it replaces what is open,
+       which is worth a question first. */
+    if (window.KilnTabs) window.KilnTabs.spawn({});
+    else if (dirty() && !(await confirmDrop())) return;
     await A_.reset();
     S.id = null; S.created = 0; S.savedAt = 0; S.dirtyAt = 0;
     S.name = A_.newName;
@@ -803,6 +810,11 @@
 
   const API = {
     register, touch, save, saveAs, open, openFile, download, neu, remove,
+    /* The tab system parks one of these per tab and hands the right one back
+       on a switch. It is the whole of what "which project is open" means. */
+    _state: () => ({ id: S.id, name: S.name, created: S.created, savedAt: S.savedAt, dirtyAt: S.dirtyAt }),
+    _adopt(st) { Object.assign(S, st); paint(); renderList(); },
+    _confirm: confirmBox,
     setAuto, useStore, list: () => store.list(),
     get state() {
       return { id: S.id, name: S.name, dirty: dirty(), auto: S.auto, savedAt: S.savedAt, busy: S.busy };

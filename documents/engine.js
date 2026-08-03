@@ -61,6 +61,8 @@ const paper = () => $("paper");
 /* ---------------- opening ---------------- */
 async function openBytes(bytes, name) {
   status("Opening…");
+  // a second document opens beside the first
+  if (Doc.open && !window.KilnTabs?.busy) window.KilnTabs.spawn({ name });
   Doc.bytes = bytes;
   Doc.name = name;
   Doc.size = bytes.byteLength;
@@ -137,6 +139,7 @@ async function sampleBytes() {
   return blob.arrayBuffer();
 }
 async function blankDocument() {
+  if (Doc.open && !window.KilnTabs?.busy) window.KilnTabs.spawn({ name: "Untitled.docx" });
   Doc.bytes = null;
   Doc.name = "Untitled.docx";
   Doc.size = 0;
@@ -1245,7 +1248,25 @@ window.Kiln = {
    the document, the second is an asset, and losing either one loses something
    the other cannot replace. */
 window.KilnProject?.register({
-  kind: "docs", schema: 1, newName: "Untitled document",
+  kind: "docs", schema: 1, newName: "Untitled document", tabName: "Document",
+
+  /* ---- tabs ----
+     In edit mode the live copy is the editor's own HTML, so it is read out on
+     the way out and written back on the way in. */
+  capture() {
+    if (Doc.mode === "edit") Doc.html = editor().innerHTML;
+    return { doc: { ...Doc }, page: { ...Page }, html: Doc.html };
+  },
+  adopt(st) {
+    Object.assign(Doc, st.doc);
+    Object.assign(Page, st.page);
+    Doc.html = st.html;
+    $("dz").hidden = Doc.open;
+    paper().hidden = Doc.mode !== "view";
+    editor().hidden = Doc.mode !== "edit";
+    if (Doc.mode === "edit") editor().innerHTML = Doc.html;
+    applyPage(); applyZoom(); renderAll();
+  },
   async snapshot() {
     Doc.uid ||= "doc_" + Math.random().toString(36).slice(2, 10);
     const assets = Doc.bytes

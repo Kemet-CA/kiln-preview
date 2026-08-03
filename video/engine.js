@@ -2012,7 +2012,24 @@ status("Ready");
    what lets a project be saved without copying gigabytes of video into JSON,
    and what lets the same media serve three projects from one copy. */
 window.KilnProject?.register({
-  kind: "video", schema: 1, newName: "Untitled video",
+  kind: "video", schema: 1, newName: "Untitled video", tabName: "Project",
+
+  /* ---- tabs ----
+     The decoded media elements travel with the project, so switching back to a
+     timeline finds its footage already attached rather than re-importing it. */
+  capture: () => ({
+    project: App.project, hist: App.hist,
+    selection: App.selection.slice(), playhead: App.playhead, bin: App.mediaBin,
+  }),
+  adopt(st) {
+    setPlaying(false);
+    App.project = st.project;
+    App.hist = st.hist;
+    App.mediaBin = st.bin;
+    App.selection = st.selection;
+    App.playhead = st.playhead;
+    renderAll(); fitPreview(); timeline.zoomToFit();
+  },
   async snapshot() {
     const doc = JSON.parse(M.serialize(App.project));
     doc.name = window.KilnProject.state.name || doc.name;

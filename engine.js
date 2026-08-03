@@ -460,6 +460,9 @@ function sizeCanvases() {
    Document lifecycle
    ============================================================ */
 function newDoc(w, h, name, imageCanvas) {
+  /* A second image is a second tab, not a replacement for the first. Silent
+     while the tab system itself is switching, which also calls through here. */
+  if (Doc.open && !window.KilnTabs?.busy) window.KilnTabs?.spawn({ name });
   Doc.open = true; Doc.w = w; Doc.h = h; Doc.name = name;
   Doc.layers = []; Doc.active = 0; Doc.editingMask = false;
   sizeCanvases();
@@ -2723,7 +2726,32 @@ function loadProject(file) {
    every intermediate picture, and thirty steps of a large document is more
    than the document. The work is saved; the road to it is not. */
 window.KilnProject?.register({
-  kind: "photo", schema: 1, newName: "Untitled image",
+  kind: "photo", schema: 1, newName: "Untitled image", tabName: "Image",
+
+  /* ---- tabs ----
+     Handing over the live objects, not copies of them. The canvases in these
+     layers are the same canvases that were on screen a moment ago, which is
+     why switching an image is instant however large it is. */
+  capture: () => ({
+    doc: { ...Doc, layers: Doc.layers.slice() },
+    hist: { steps: Hist.steps.slice(), i: Hist.i },
+    view: { ...View },
+  }),
+  adopt(st) {
+    Object.assign(Doc, st.doc);
+    Doc.layers = st.doc.layers;
+    Hist.steps = st.hist.steps; Hist.i = st.hist.i;
+    Object.assign(View, st.view);
+    if (Doc.open) {
+      sizeCanvases();
+      $("dz").hidden = true; wrap.hidden = false;
+      $("sbDoc").textContent = `${Doc.w} × ${Doc.h}`;
+    } else {
+      $("dz").hidden = false; wrap.hidden = true;
+    }
+    applyView();
+    renderHistory(); renderLayersPanel(); requestComposite(); renderInfo();
+  },
   async snapshot() {
     const assets = [];
     const put = async (cv, tag) => {

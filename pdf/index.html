@@ -14,6 +14,7 @@
 <script src="panels.js" defer></script>
 <script src="session.js"></script>
 <script src="project.js"></script>
+<script src="tabs.js"></script>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -29,9 +30,9 @@ input,select{font:inherit;color:inherit}
 
 /* ================= app grid ================= */
 #app{display:grid;height:100vh;height:100dvh;
-  grid-template-rows:34px 34px minmax(0,1fr) 24px;
+  grid-template-rows:34px 26px 34px minmax(0,1fr) 24px;
   grid-template-columns:var(--lw) 5px minmax(0,1fr) var(--rw);
-  grid-template-areas:"menu menu menu menu" "opt opt opt opt" "left split stage panels" "status status status status"}
+  grid-template-areas:"menu menu menu menu" "tabs tabs tabs tabs" "opt opt opt opt" "left split stage panels" "status status status status"}
 body.nopanels{--rw:0px}
 body.nopanels #panels{display:none}
 
@@ -255,7 +256,7 @@ body.drawing .pg{cursor:crosshair}
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="aac2b75-1558">
+<meta name="kiln-build" content="4e00b09-1928">
 </head>
 <body>
 <div id="app">
@@ -275,6 +276,8 @@ body.drawing .pg{cursor:crosshair}
     <span data-kiln-themebar></span>
     </div>
   </div>
+
+  <div data-kiln-tabs></div>
 
   <div class="optbar">
     <button class="tb" data-act="undo" title="Undo (⌘Z)">

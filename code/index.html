@@ -14,6 +14,7 @@
 <script src="panels.js" defer></script>
 <script src="session.js"></script>
 <script src="project.js"></script>
+<script src="tabs.js"></script>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -27,9 +28,9 @@ input,select,textarea{font:inherit;color:inherit}
 ::-webkit-scrollbar-track{background:transparent}
 
 #app{display:grid;height:100vh;height:100dvh;
-  grid-template-rows:34px 36px minmax(0,1fr) 24px;
+  grid-template-rows:34px 26px 36px minmax(0,1fr) 24px;
   grid-template-columns:minmax(0,1fr) var(--rw);
-  grid-template-areas:"menu menu" "opt opt" "stage panels" "status status"}
+  grid-template-areas:"menu menu" "tabs tabs" "opt opt" "stage panels" "status status"}
 body.nopanels{--rw:0px}
 body.nopanels #panels{display:none}
 
@@ -202,6 +203,8 @@ mark.find{background:color-mix(in srgb,var(--warn) 55%,transparent);color:inheri
     <span data-kiln-themebar></span>
     </div>
   </div>
+
+  <div data-kiln-tabs></div>
 
   <div class="optbar">
     <select class="sel" id="langSel" title="Language" aria-label="Language"></select>

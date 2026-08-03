@@ -14,6 +14,7 @@
 <script src="panels.js" defer></script>
 <script src="session.js"></script>
 <script src="project.js"></script>
+<script src="tabs.js"></script>
 <style>
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -31,9 +32,9 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 4.5px;border:var(--bw) 
 
 /* ================= app grid ================= */
 #app{display:grid;height:100vh;height:100dvh;
-  grid-template-rows:34px 34px minmax(0,1fr) 24px;
+  grid-template-rows:34px 26px 34px minmax(0,1fr) 24px;
   grid-template-columns:44px minmax(0,1fr) 5px var(--rw,296px);
-  grid-template-areas:"menu menu menu menu" "opt opt opt opt" "tools stage split panels" "status status status status"}
+  grid-template-areas:"menu menu menu menu" "tabs tabs tabs tabs" "opt opt opt opt" "tools stage split panels" "status status status status"}
 #app.nopanels{grid-template-columns:44px minmax(0,1fr) 0 0}
 #app.nopanels .split,#app.nopanels #panels{display:none}
 
@@ -276,7 +277,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
 @keyframes sin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-<meta name="kiln-build" content="aac2b75-1558">
+<meta name="kiln-build" content="4e00b09-1928">
 </head>
 <body>
 <div id="app">
@@ -299,6 +300,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
     <span data-kiln-themebar></span>
     </div>
     </div>
+
+  <div data-kiln-tabs></div>
 
   <div class="optbar" id="optbar"></div>
   <aside class="toolbar" id="toolbar"></aside>

@@ -7,7 +7,7 @@
 <script src="i18n.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="aac2b75-1558">
+<meta name="kiln-build" content="4e00b09-1928">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -675,6 +675,8 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 .foot{border-top:1px solid var(--line);padding:26px 0;color:var(--t4);font-size:12px}
 .foot .fsep{color:var(--t4)}
 .foot .fdim{color:var(--t4)}
+.foot .kemet{display:flex;align-items:center;gap:8px;color:var(--t2)}
+.foot .kemet b{font-weight:640;letter-spacing:-.01em}
 .foot-in{max-width:1180px;margin:0 auto;padding:0 26px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .footclock{margin-inline-start:auto;display:inline-flex}
 .footclock .ktb-now{gap:7px}
@@ -786,6 +788,8 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   <ul class="hfeat" id="hfeat"></ul>
 
   <div class="foot"><div class="foot-in">
+    <span class="kemet"><span class="mark" style="width:18px;height:18px;border-radius:6px"></span>
+      <b data-i18n="foot.by">Kiln by Kemet Studio</b></span>
     <!-- the time and where you are: useful, but not worth a slot in the top bar
          next to the things you actually press -->
     <span class="footclock" data-kiln-clock></span>

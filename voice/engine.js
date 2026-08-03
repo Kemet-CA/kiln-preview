@@ -1213,7 +1213,21 @@ if (!navigator.mediaDevices?.getUserMedia) {
    gathered from the kept history as well as from the current clips — an undo
    that reaches back to a take you deleted needs that take to still exist. */
 window.KilnProject?.register({
-  kind: "voice", schema: 1, newName: "Untitled recording",
+  kind: "voice", schema: 1, newName: "Untitled recording", tabName: "Recording",
+
+  /* ---- tabs ----
+     Sample buffers move by reference; a switch never copies audio. */
+  capture: () => ({
+    clips: App.clips, hist: App.hist, hi: App.hi,
+    sel: App.sel, sr: App.sr, tracks: App.tracks, zoom: App.zoom, pos: App.pos,
+  }),
+  adopt(st) {
+    if (App.playing) ACT.stop?.();
+    App.clips = st.clips; App.hist = st.hist; App.hi = st.hi;
+    App.sel = st.sel; App.sr = st.sr; App.tracks = st.tracks;
+    App.zoom = st.zoom; App.pos = st.pos;
+    drawAll(); buildMenus();
+  },
   async snapshot() {
     const keep = App.hist.slice(Math.max(0, App.hi - 19), App.hi + 1);
     const from = Math.max(0, App.hi - 19);

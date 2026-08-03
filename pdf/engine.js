@@ -137,6 +137,8 @@ async function baseRotations(src) {
 
 async function openBytes(bytes, name) {
   status("Opening…");
+  // a second PDF opens beside the first, not over it
+  if (Doc.open && !window.KilnTabs?.busy) window.KilnTabs.spawn({ name });
   resetDoc();
   const src = await addSource(bytes, name);
   Doc.pages = pagesOf(src, await baseRotations(src));
@@ -1649,7 +1651,26 @@ window.Kiln = {
    an export, so the source files are exactly what came in and are stored once
    under an id that outlives the session. */
 window.KilnProject?.register({
-  kind: "pdf", schema: 1, newName: "Untitled document",
+  kind: "pdf", schema: 1, newName: "Untitled document", tabName: "PDF",
+
+  /* ---- tabs ----
+     pdf.js keeps a worker-side copy of every open file behind these proxies.
+     Parking them rather than destroying them is what makes coming back to a
+     tab instant instead of a re-parse of the whole document. */
+  capture: () => ({
+    doc: { ...Doc, sel: new Set(Doc.sel) },
+    hist: { steps: Hist.steps.slice(), i: Hist.i },
+    thumbs: new Map(thumbCache),
+  }),
+  adopt(st) {
+    Object.assign(Doc, st.doc);
+    Hist.steps = st.hist.steps; Hist.i = st.hist.i;
+    thumbCache.clear();
+    for (const [k, v] of st.thumbs) thumbCache.set(k, v);
+    $("dz").hidden = Doc.open;
+    renderAll();
+    if (Doc.fit) applyFit();
+  },
   async snapshot() {
     const assets = Doc.sources.map(s => ({
       id: s.uid, name: s.name, type: "application/pdf", size: s.bytes.byteLength,

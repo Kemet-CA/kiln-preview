@@ -14,6 +14,7 @@
 <script src="panels.js" defer></script>
 <script src="session.js"></script>
 <script src="project.js"></script>
+<script src="tabs.js"></script>
 <script type="importmap">
 { "imports": { "jszip": "./vendor/jszip.mjs" } }
 </script>
@@ -31,9 +32,9 @@ input,select{font:inherit;color:inherit}
 .num{font-variant-numeric:tabular-nums}
 
 #app{display:grid;height:100vh;height:100dvh;
-  grid-template-rows:34px auto minmax(0,1fr) 24px;
+  grid-template-rows:34px 26px auto minmax(0,1fr) 24px;
   grid-template-columns:var(--lw) 5px minmax(0,1fr) var(--rw);
-  grid-template-areas:"menu menu menu menu" "opt opt opt opt" "left split stage panels" "status status status status"}
+  grid-template-areas:"menu menu menu menu" "tabs tabs tabs tabs" "opt opt opt opt" "left split stage panels" "status status status status"}
 
 /* ---------- menu bar ---------- */
 .menubar{grid-area:menu;display:flex;align-items:center;gap:2px;padding:0 8px;
@@ -279,7 +280,7 @@ body.foldL .split{display:none}
   .docx-wrapper>section.docx{box-shadow:none!important;margin:0!important}
 }
 </style>
-<meta name="kiln-build" content="aac2b75-1558">
+<meta name="kiln-build" content="4e00b09-1928">
 </head>
 <body>
 <div id="app">
@@ -299,6 +300,8 @@ body.foldL .split{display:none}
     <span data-kiln-themebar></span>
     </div>
   </div>
+
+  <div data-kiln-tabs></div>
 
   <div class="ribbon" id="ribbon">
     <div class="rtabs">
