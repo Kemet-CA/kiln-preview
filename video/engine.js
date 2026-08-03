@@ -627,12 +627,16 @@ function renderInspector() {
       fxGroup("Position &amp; scale", "fxTransform", !!c.fxTransform,
       `${row("X", slider("x", -1920, 1920, 1, kv(c, "x"), "px", true))}
        ${row("Y", slider("y", -1080, 1080, 1, kv(c, "y"), "px", true))}
-       ${row("Scale", slider("scale", .05, 4, .01, kv(c, "scale"), "×", true))}
+       ${c.scaleLocked
+         ? row("Scale", `<div class="lockrow"><b>${(c.scale ?? 1).toFixed(2)}×</b>
+             <button class="chip" data-act="unlockScale" title="Let the scale move again">🔒 Locked to the frame</button></div>`)
+         : row("Scale", slider("scale", .05, 4, .01, kv(c, "scale"), "×", true))}
        ${row("Rotation", slider("rot", -180, 180, 1, kv(c, "rot"), "°", true))}
        ${row("Opacity", slider("opacity", 0, 1, .01, kv(c, "opacity"), "", true))}
        <div class="chips">
          <button class="chip${c.flipH ? " on" : ""}" data-toggle="flipH">Flip horizontal</button>
          <button class="chip${c.flipV ? " on" : ""}" data-toggle="flipV">Flip vertical</button>
+         <button class="chip${c.scaleLocked ? " on" : ""}" data-act="fitComp">Fit to composition</button>
          <button class="chip" data-act="fitFrame">Fit to frame</button>
          <button class="chip" data-act="resetTransform">Reset</button>
        </div>
@@ -1159,6 +1163,7 @@ const ACT = {
       clips.forEach(c => { c.crop = { l: 0, t: 0, r: 0, b: 0 }; c.cropRatio = null; });
       const m = M.mediaOf(App.project, clips[0]);
       if (m?.w && m?.h) { App.project.w = m.w; App.project.h = m.h; }
+      refitLocked();
       commit("Original aspect"); renderAll(); fitPreview();
       return toast(`Back to the source's own ${App.project.w}×${App.project.h}`);
     }
@@ -1170,10 +1175,13 @@ const ACT = {
       c.cropRatio = spec.r;
       c.x = 0; c.y = 0; c.scale = 1;
     });
+    // a clip locked to the frame follows the frame to its new shape
+    const refit = refitLocked();
     commit("Aspect " + spec.label);
     renderAll(); fitPreview();
     toast(`${spec.label} — ${spec.sub} · ${spec.w}×${spec.h}` +
-      (wholeProject ? ` · ${clips.length} clip${clips.length === 1 ? "" : "s"}` : ""));
+      (wholeProject ? ` · ${clips.length} clip${clips.length === 1 ? "" : "s"}` : "") +
+      (refit ? ` · ${refit} re-fitted` : ""));
   },
 
   /* Eyedropper: the next click on the preview reads the pixel under it and
@@ -1347,7 +1355,35 @@ const ACT = {
   zoomIn: () => timeline.zoom(1.3),
   zoomOut: () => timeline.zoom(1 / 1.3),
   zoomFit: () => timeline.zoomToFit(),
-  fitFrame: () => { const c = firstSelected(); if (c) { c.scale = 1; c.x = c.y = 0; commit("Fit"); refresh(); } },
+  fitFrame: () => { const c = firstSelected(); if (c) { c.scale = 1; c.x = c.y = 0; c.scaleLocked = false; commit("Fit"); refresh(); } },
+
+  /* Fill the frame and hold it there. The lock is the point: a fitted clip
+     that anyone can nudge off by half a percent is not fitted, it is
+     coincidentally aligned. */
+  fitComp: () => {
+    const cs = selectedClips().filter(c => c.kind !== "text" && c.kind !== "sticker");
+    if (!cs.length) return toast("Select a video or image clip first", "warn");
+    let done = 0;
+    for (const c of cs) {
+      const s = fitScale(c);
+      if (!s) continue;
+      needTransform(c);
+      c.scale = s; c.x = 0; c.y = 0;
+      c.scaleLocked = true;
+      M.clearKeys(c, "scale");          // a locked scale cannot also be animated
+      done++;
+    }
+    if (!done) return toast("That clip has no picture to fit", "warn");
+    commit("Fit to composition"); refresh();
+    toast(`Filled the frame — scale locked at ${Math.round(cs[0].scale * 100)}%`);
+  },
+  unlockScale: () => {
+    const cs = selectedClips();
+    if (!cs.some(c => c.scaleLocked)) return;
+    for (const c of cs) c.scaleLocked = false;
+    commit("Unlock scale"); refresh();
+    toast("Scale unlocked");
+  },
   resetTransform: () => {
     const c = firstSelected();
     if (!c) return;
@@ -1438,6 +1474,9 @@ function openClipMenu(id, x, y) {
   const items = [
     ["Split at playhead", "split"],
     ["Duplicate", "duplicate"],
+    null,
+    ["Fit to composition", "fitComp"],
+    ...(clip.scaleLocked ? [["Unlock scale", "unlockScale"]] : []),
     M.linkedOf(App.project, clip) ? ["Unlink audio", "unlinkAudio"] : ["Detach audio", "detachAudio"],
     null,
     ["Delete", "delete"],
@@ -1702,6 +1741,40 @@ function syncFullscreen() {
   fitPreview();
 }
 addEventListener("fullscreenchange", syncFullscreen);
+
+/* ---------------- fit to composition ----------------
+   The compositor already fits a source inside the frame at scale 1, which
+   letterboxes anything whose shape does not match — a phone clip in a 16:9
+   project sits between two black bars. Fitting to the composition means the
+   other choice: scale until the picture covers the frame and let the overflow
+   fall outside it.
+
+   The scale that does it is the ratio between the frame and the contained
+   size, on whichever axis is short. Computed from the source and the crop
+   rather than remembered, so it stays right when either changes. */
+function fitScale(clip) {
+  const p = App.project;
+  const m = M.mediaOf(p, clip);
+  if (!m || !m.w || !m.h) return null;
+  const cr = clip.crop || { l: 0, t: 0, r: 0, b: 0 };
+  const cw = m.w * Math.max(.01, 1 - cr.l - cr.r);
+  const ch = m.h * Math.max(.01, 1 - cr.t - cr.b);
+  const k = Math.min(p.w / cw, p.h / ch);          // what the compositor does at scale 1
+  return Math.max(p.w / (cw * k), p.h / (ch * k)); // and what covering it needs
+}
+/* Locked clips are re-fitted whenever the composition changes shape. Without
+   this, fitting to a 16:9 frame and then switching the project to 9:16 leaves
+   a clip that covered the old frame and does not cover the new one — which is
+   the moment the lock is supposed to be earning its keep. */
+function refitLocked() {
+  let n = 0;
+  for (const t of App.project.tracks) for (const c of t.clips) {
+    if (!c.scaleLocked) continue;
+    const s = fitScale(c);
+    if (s && Math.abs(s - c.scale) > .001) { c.scale = s; n++; }
+  }
+  return n;
+}
 
 /* Rotation is kept in -180..180 so the slider in the panel always shows the
    same number the button just produced. */
