@@ -76,6 +76,56 @@ let dirty = true;
 const invalidate = () => { dirty = true; };
 window.__kilnInvalidate = invalidate;
 
+/* ============================================================
+   Playback diagnostics.
+
+   Preview plays real <video> elements and composites them onto a canvas every
+   frame. Chrome has a zero-copy path for video-into-canvas; other engines can
+   read the frame back out of the decoder and push it again, at full
+   resolution, sixty times a second. When playback is smooth in one browser and
+   not another, the difference is usually in there — but "usually" is a guess,
+   and these are the numbers that turn it into an answer.
+
+   Everything here is counted whether or not the overlay is showing: the cost
+   is a few additions per frame, and a counter you have to switch on before it
+   starts counting misses the thing you were trying to catch.
+   ============================================================ */
+const Perf = {
+  frames: 0, composite: 0, worst: 0, since: performance.now(),
+  resyncs: 0, playFails: 0, lastError: "",
+  shown: false,
+  /* Does this browser's canvas do filters at all? Where it does not, colour
+     correction is silently skipped; where it does, it may be a software path
+     and cost more than everything else put together. */
+  filters: (() => {
+    try {
+      const c = document.createElement("canvas").getContext("2d");
+      c.filter = "blur(1px)";
+      return c.filter === "blur(1px)";
+    } catch { return false; }
+  })(),
+  reset() {
+    this.frames = 0; this.composite = 0; this.worst = 0;
+    this.resyncs = 0; this.playFails = 0; this.lastError = "";
+    this.since = performance.now();
+  },
+  report() {
+    const secs = Math.max(.001, (performance.now() - this.since) / 1000);
+    const playing = App.project.media.filter(m => m.el && m.kind !== "image" && !m.el.paused).length;
+    return {
+      fps: +(this.frames / secs).toFixed(1),
+      compositeAvg: +(this.composite / Math.max(1, this.frames)).toFixed(2),
+      compositeWorst: +this.worst.toFixed(2),
+      resyncsPerSec: +(this.resyncs / secs).toFixed(2),
+      playFails: this.playFails,
+      lastError: this.lastError,
+      decoders: playing,
+      canvasFilters: this.filters,
+      seconds: +secs.toFixed(1),
+    };
+  },
+};
+
 function loop(now) {
   const dt = lastTick ? (now - lastTick) / 1000 : 0;
   lastTick = now;
@@ -95,7 +145,15 @@ function loop(now) {
     syncPlayheadUi();
     dirty = true;                 // the playhead moved, so the frame differs
   }
-  if (dirty && !App.exporting) { dirty = false; drawPreview(); }
+  if (dirty && !App.exporting) {
+    dirty = false;
+    const t0 = performance.now();
+    drawPreview();
+    const ms = performance.now() - t0;
+    Perf.frames++; Perf.composite += ms;
+    if (ms > Perf.worst) Perf.worst = ms;
+  }
+  if (Perf.shown) paintPerf();
   requestAnimationFrame(loop);
 }
 function drawPreview() {
@@ -129,9 +187,18 @@ function drawPreview() {
     if (media.kind !== "image") {
       wanted.add(media.el);
       const want = sourceTime(clip, t);
-      media.el.playbackRate = clamp(clip.speed, .0625, 16);
+      /* Written only when it differs. Assigning these every frame is free in
+         some engines and not in others, and there is never a reason to. */
+      const rate = clamp(clip.speed, .0625, 16);
+      if (media.el.playbackRate !== rate) media.el.playbackRate = rate;
       if (App.playing) {
-        if (media.el.paused) media.el.play().catch(() => {});
+        if (media.el.paused) media.el.play().catch(e => {
+          /* Swallowing this was hiding the worst failure there is: a blocked
+             play() leaves the element parked, the drift below grows past its
+             threshold, and every frame becomes a seek. */
+          Perf.playFails++;
+          Perf.lastError = `${e.name}: ${e.message}`.slice(0, 90);
+        });
         // draw when the decoder actually has a new frame, not on a guess
         if (media.el.requestVideoFrameCallback && !media.el.__kilnRvfc) {
           media.el.__kilnRvfc = true;
@@ -143,7 +210,10 @@ function drawPreview() {
           media.el.requestVideoFrameCallback(tick);
         }
         // nudge back into sync only when it has drifted noticeably
-        if (Math.abs(media.el.currentTime - want) > .25) media.el.currentTime = want;
+        if (Math.abs(media.el.currentTime - want) > .25) {
+          media.el.currentTime = want;
+          Perf.resyncs++;      // a seek on a playing element; cheap here, costly elsewhere
+        }
       } else if (Math.abs(media.el.currentTime - want) > .02) {
         media.el.currentTime = want;
       }
@@ -164,15 +234,20 @@ function drawPreview() {
     wanted.add(media.el);
     const want = sourceTime(clip, t);
     gains.set(media.el, Math.max(gains.get(media.el) || 0, gainAt(clip, t) * App.masterVol));
-    media.el.playbackRate = clamp(clip.speed, .0625, 16);
-    if (App.playing && media.el.paused) media.el.play().catch(() => {});
+    const arate = clamp(clip.speed, .0625, 16);
+    if (media.el.playbackRate !== arate) media.el.playbackRate = arate;
+    if (App.playing && media.el.paused) media.el.play().catch(e => {
+      Perf.playFails++;
+      Perf.lastError = `${e.name}: ${e.message}`.slice(0, 90);
+    });
     if (!App.playing && Math.abs(media.el.currentTime - want) > .02) media.el.currentTime = want;
   }
   for (const el of wanted) {
     const g = clamp(gains.get(el) || 0, 0, 1);
     // silent while scrubbing: a burst of sound on every seek is not useful
-    el.muted = g <= 0.001 || !App.playing;
-    el.volume = g;
+    const mute = g <= 0.001 || !App.playing;
+    if (el.muted !== mute) el.muted = mute;
+    if (Math.abs(el.volume - g) > .001) el.volume = g;
   }
   for (const m of p.media) {
     if (m.el && m.kind !== "image" && !wanted.has(m.el) && !m.el.paused) m.el.pause();
@@ -1426,6 +1501,13 @@ const ACT = {
   /* Full screen puts the stage itself into the browser's fullscreen, not the
      whole page: the transport goes with it, so play, scrub and the timecode
      are still there, and leaving is Escape like everywhere else. */
+  diagnostics: () => {
+    Perf.shown = !Perf.shown;
+    Perf.reset();
+    $("perfBox").hidden = !Perf.shown;
+    if (Perf.shown) paintPerf();
+    toast(Perf.shown ? "Playback diagnostics on — press play and watch the numbers" : "Diagnostics off");
+  },
   fullscreen: () => {
     const el = document.getElementById("stage");
     if (document.fullscreenElement) document.exitFullscreen?.();
@@ -1724,6 +1806,26 @@ function setExportBusy(p) {
   btn.textContent = `Exporting ${Math.round(p * 100)}%`;
 }
 
+/* The numbers, on the picture, because the browser this is meant to diagnose
+   is usually not the one with the developer tools open. */
+function paintPerf() {
+  const el = $("perfBox");
+  if (!el) return;
+  const r = Perf.report();
+  const warn = (c, bad) => c ? ` style="color:${bad ? "var(--bad,#e5484d)" : "var(--ok,#46a758)"}"` : "";
+  el.innerHTML =
+    `<b>Playback</b>
+     <span>drawn <i${warn(true, r.fps < 24)}>${r.fps}/s</i></span>
+     <span>composite <i${warn(true, r.compositeAvg > 12)}>${r.compositeAvg} ms</i> avg</span>
+     <span>worst <i${warn(true, r.compositeWorst > 40)}>${r.compositeWorst} ms</i></span>
+     <span>resyncs <i${warn(true, r.resyncsPerSec > .5)}>${r.resyncsPerSec}/s</i></span>
+     <span>decoders <i>${r.decoders}</i></span>
+     <span>canvas filters <i${warn(true, !r.canvasFilters)}>${r.canvasFilters ? "yes" : "no"}</i></span>
+     ${r.playFails ? `<span>play refused <i style="color:var(--bad,#e5484d)">${r.playFails}×</i></span>
+        <span class="perr">${esc(r.lastError)}</span>` : ""}
+     <span class="perr">${esc(navigator.userAgent.match(/(Safari|Chrome|Firefox)\/[\d.]+/g)?.join(" ") || "")}</span>`;
+}
+
 /* The button says what pressing it will do, which is the opposite of the state
    it is in. With no label on it that has to be the tooltip and the icon: arrows
    pointing outwards to go in, inwards to come back. */
@@ -1825,6 +1927,7 @@ const MENUS = {
           ["Detach audio", "detachAudio"], ["Unlink audio", "unlinkAudio"],
           ["Reset transform", "resetTransform"], ["Fit to frame", "fitFrame"]],
   mView: [["Zoom in", "zoomIn"], ["Zoom out", "zoomOut"], ["Fit timeline", "zoomFit"], null,
+          ["Playback diagnostics", "diagnostics"], null,
           ["Add video track", "addVideoTrack"], ["Add audio track", "addAudioTrack"]],
 };
 
@@ -2347,7 +2450,7 @@ addEventListener("kiln-project", e => {
 window.__kilnStrip = () => { timeline.render(); };
 
 window.Kiln = {
-  App, M, ACT, timeline, addMediaFiles, addToTimeline, generateSample, seek,
+  App, M, ACT, timeline, Perf, addMediaFiles, addToTimeline, generateSample, seek,
   setSelection, doExport, exportVideo, renderAll, drawPreview, setExportBusy,
   duration: () => M.duration(App.project),
   clips: () => App.project.tracks.flatMap(t => t.clips),
