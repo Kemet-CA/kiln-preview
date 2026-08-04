@@ -1,5 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kiln — Workspace Preview</title>
+<title>Kiln — every workspace, in your browser</title>
+<meta name="description" content="Photo editor, video editor, voice studio, documents, PDF, code, colour and translation — one workspace suite that runs entirely in your browser. Your files never leave your machine.">
+<meta name="theme-color" content="#0B0A09">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Kiln — every workspace, in your browser">
+<meta property="og:description" content="Edit photos, cut video, record voice, write, read PDFs, translate and code. Nothing is uploaded — every tool runs on your own machine.">
+<meta property="og:url" content="https://kemet-ca.github.io/kiln-preview/">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E2622A'/%3E%3Crect x='9' y='9' width='14' height='14' rx='3' fill='%230B0A09'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="search.css">
@@ -7,7 +18,6 @@
 <script src="i18n.js"></script>
 <script src="search.js"></script>
 
-<meta name="kiln-build" content="36810b4-1955">
 <style>
 /* ==========================================================
    KILN design tokens — warm ash-black ground, blackbody accent
@@ -446,12 +456,20 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
   border:1px solid color-mix(in srgb,var(--tint) 22%,var(--line));
   background:color-mix(in srgb,var(--tint) 9%,var(--card1));
   color:var(--tint);opacity:.5;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  animation:bob var(--dur,26s) ease-in-out infinite alternate;animation-delay:var(--delay,0s);
+  animation:bob var(--dur,26s) ease-in-out infinite;animation-delay:var(--delay,0s);
   will-change:transform;transition:opacity .4s var(--ez)}
 .flo svg{width:46%;height:46%;opacity:.85}
+/* A closed loop rather than a there-and-back: three stops trace a soft arc, so
+   nothing ever retraces its own path and the motion reads as drift rather than
+   as a slider being pushed. Small numbers, long times — the aim is a page that
+   feels alive when you are not looking at it, not one that moves. */
 @keyframes bob{
-  from{transform:translate3d(0,0,0) rotate(var(--rot,0deg))}
-  to{transform:translate3d(var(--dx,10px),var(--dy,-22px),0) rotate(calc(var(--rot,0deg) + var(--spin,3deg)))}}
+  0%  {transform:translate3d(0,0,0) rotate(var(--rot,0deg))}
+  33% {transform:translate3d(var(--dx,10px),var(--dy,-22px),0)
+        rotate(calc(var(--rot,0deg) + var(--spin,2.5deg)))}
+  66% {transform:translate3d(calc(var(--dx,10px) * -.6),calc(var(--dy,-22px) * .75),0)
+        rotate(calc(var(--rot,0deg) - var(--spin,2.5deg)))}
+  100%{transform:translate3d(0,0,0) rotate(var(--rot,0deg))}}
 /* Scrolling moves them, it does not switch them off: the layer drifts up at a
    fraction of the page's speed, so they stay with you the whole way down and
    settle back at the top. */
@@ -732,6 +750,9 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
 }
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
+<meta name="kiln-build" content="3b10049-2015">
+</head>
+<body>
 <div id="app">
 <div class="chrome">
   <div class="brand"><span class="mark"></span>Kiln</div>
@@ -1287,14 +1308,14 @@ $("openCmdk3").addEventListener("click",()=>KilnSearch.open(""));
 /* Spread over the whole viewport rather than the hero, and slow: nothing here
    should ever pull the eye off what someone came to do. */
 const FLOATS=[
-  {id:"image",   x:"5%",  y:"12%", s:98, dx:"9px",  dy:"-14px", rot:"-8deg", dur:"64s", delay:"0s"},
-  {id:"video",   x:"14%", y:"58%", s:76, dx:"-8px", dy:"-11px", rot:"6deg",  dur:"78s", delay:"-14s"},
-  {id:"voice",   x:"86%", y:"18%", s:90, dx:"-9px", dy:"12px",  rot:"9deg",  dur:"72s", delay:"-28s"},
-  {id:"color",   x:"79%", y:"66%", s:70, dx:"7px",  dy:"10px",  rot:"-5deg", dur:"68s", delay:"-8s"},
-  {id:"pdf",     x:"44%", y:"84%", s:62, dx:"6px",  dy:"-9px",  rot:"4deg",  dur:"82s", delay:"-40s"},
-  {id:"code",    x:"93%", y:"44%", s:58, dx:"-6px", dy:"-10px", rot:"-7deg", dur:"60s", delay:"-20s"},
-  {id:"documents",x:"27%",y:"30%", s:54, dx:"7px",  dy:"9px",   rot:"5deg",  dur:"86s", delay:"-52s"},
-  {id:"storage", x:"63%", y:"12%", s:50, dx:"-6px", dy:"11px",  rot:"-6deg", dur:"74s", delay:"-33s"},
+  {id:"image",   x:"5%",  y:"12%", s:98, dx:"20px", dy:"-26px", rot:"-8deg", dur:"27s", delay:"0s"},
+  {id:"video",   x:"14%", y:"58%", s:76, dx:"-17px",dy:"-21px", rot:"6deg",  dur:"32s", delay:"-6s"},
+  {id:"voice",   x:"86%", y:"18%", s:90, dx:"-19px",dy:"23px",  rot:"9deg",  dur:"29s", delay:"-12s"},
+  {id:"color",   x:"79%", y:"66%", s:70, dx:"16px", dy:"20px",  rot:"-5deg", dur:"34s", delay:"-4s"},
+  {id:"pdf",     x:"44%", y:"84%", s:62, dx:"14px", dy:"-18px", rot:"4deg",  dur:"31s", delay:"-17s"},
+  {id:"code",    x:"93%", y:"44%", s:58, dx:"-13px",dy:"-19px", rot:"-7deg", dur:"25s", delay:"-9s"},
+  {id:"documents",x:"27%",y:"30%", s:54, dx:"15px", dy:"18px",  rot:"5deg",  dur:"36s", delay:"-22s"},
+  {id:"storage", x:"63%", y:"12%", s:50, dx:"-14px",dy:"22px",  rot:"-6deg", dur:"30s", delay:"-14s"},
 ];
 $("floaters").innerHTML=FLOATS.map(f=>{
   const w=WORKSPACES.find(w=>w.id===f.id);
@@ -2873,3 +2894,5 @@ document.addEventListener("keyup",e=>{
 renderTabs();
 go("home");
 </script>
+</body>
+</html>

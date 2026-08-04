@@ -386,12 +386,6 @@ export function clipAt(track, t) {
   for (const c of track.clips) if (t >= c.start && t < clipEnd(c) && (!best || c.start >= best.start)) best = c;
   return best;
 }
-/* a track of this kind with nothing occupying [at, at+dur) */
-export function freeTrack(project, kind, at, dur) {
-  return project.tracks.find(t => t.kind === kind && !t.locked &&
-    !t.clips.some(c => at < clipEnd(c) && c.start < at + dur)) || null;
-}
-
 /* ---------------- keyframes ----------------
    Values are stored against a 0..1 position inside the clip, so trimming a
    clip keeps its animation aligned with its own content. */
